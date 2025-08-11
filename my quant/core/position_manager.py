@@ -13,14 +13,14 @@ Handles:
 
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, time
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from enum import Enum
 import logging
 import uuid
 from utils.config_helper import ConfigAccessor
-from utils.time_utils import now_ist
+from utils.time_utils import now_ist, is_within_session, apply_buffer_to_time
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,8 @@ class Trade:
     lot_size: int
 
 class PositionManager:
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], **kwargs):
+        # Existing initialization...
         self.config = config
         self.config_accessor = ConfigAccessor(config)
         self.initial_capital = self.config_accessor.get_capital_param('initial_capital', 100000)
@@ -145,7 +146,7 @@ class PositionManager:
         self.positions: Dict[str, Position] = {}
         self.completed_trades: List[Trade] = []
         self.daily_pnl = 0.0
-        self.session_params = config.get('session', {})
+        self.session_config = config.get('session', {})
         logger.info(f"PositionManager initialized with capital: {self.initial_capital:,}")
 
     def _ensure_timezone(self, dt):
@@ -326,33 +327,25 @@ class PositionManager:
                     exits.append((exit_quantity, reason))
         return exits
 
-    def process_positions(self, row, timestamp, session_params=None):
+    def process_positions(self, row, timestamp, session_config=None):
         """Enhanced position processing with session awareness"""
         current_price = row['close']
         
-        # Check for session exit if parameters provided
-        if session_params:
-            from utils.time_utils import is_time_to_exit
-            exit_buffer = session_params.get('exit_before_close', 20)
-            end_hour = session_params.get('intraday_end_hour', 15)
-            end_min = session_params.get('intraday_end_min', 30)
-            
-            if is_time_to_exit(timestamp, exit_buffer, end_hour, end_min):
-                # Close all positions for session end
-                for position_id in list(self.positions.keys()):
-                    self.close_position_full(position_id, current_price, timestamp, "Session End")
-                return
-        
         # Ensure timezone-aware
         timestamp = self._ensure_timezone(timestamp)
+        
+        # Check for session exit using the new method
+        if self.should_exit_for_session_end(timestamp):
+            # Close all positions for session end
+            for position_id in list(self.positions.keys()):
+                self.close_position_full(position_id, current_price, timestamp, ExitReason.SESSION_END.value)
+            return
         
         for position_id in list(self.positions.keys()):
             position = self.positions.get(position_id)
             if not position or position.status == PositionStatus.CLOSED:
                 continue
-            if session_end:
-                self.close_position_full(position_id, current_price, timestamp, ExitReason.SESSION_END.value)
-                continue
+            
             exits = self.check_exit_conditions(position_id, current_price, timestamp)
             for exit_quantity, exit_reason in exits:
                 if exit_quantity > 0:
@@ -516,6 +509,34 @@ class PositionManager:
             "risk_based_lots": risk_based_quantity // user_lot_size,
             "approach_used": "risk_limited" if final_quantity == risk_based_quantity else "capital_limited"
         }
+
+    def should_exit_for_session_end(self, current_time: datetime) -> bool:
+        """
+        Check if position should exit based on user-defined session end and buffer
+        """
+        # Get session configuration if not already cached
+        if not hasattr(self, '_cached_session_end') or not hasattr(self, '_cached_end_buffer'):
+            # Use session_config which is already initialized in the constructor
+            self.session_end = time(
+                self.session_config.get('end_hour', 15),
+                self.session_config.get('end_min', 30)
+            )
+            self.end_buffer = self.session_config.get('end_buffer_minutes', 20)
+            
+            # Cache these values to avoid recalculation
+            self._cached_session_end = self.session_end
+            self._cached_end_buffer = self.end_buffer
+        else:
+            # Use cached values
+            self.session_end = self._cached_session_end
+            self.end_buffer = self._cached_end_buffer
+        
+        # Calculate effective end time with buffer
+        effective_end = apply_buffer_to_time(
+            self.session_end, self.end_buffer, is_start=False)
+        
+        # Simple comparison
+        return current_time.time() >= effective_end
 
 if __name__ == "__main__":
     # Example usage and testing

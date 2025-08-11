@@ -16,16 +16,17 @@ Features:
 import pandas as pd
 import numpy as np
 from datetime import datetime, time, timedelta
-import pytz
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
+import pytz
 import logging
+from utils.time_utils import is_within_session, ensure_tz_aware, apply_buffer_to_time
+from utils.config_helper import ConfigAccessor
+
 
 # Import indicators
 from core.indicators import calculate_all_indicators
 from core.indicators import IncrementalEMA, IncrementalMACD, IncrementalVWAP, IncrementalATR
-from utils.time_utils import now_ist, normalize_datetime_to_ist, is_time_to_exit, ensure_tz_aware
-from utils.config_helper import ConfigAccessor
 
 
 logger = logging.getLogger(__name__)
@@ -73,18 +74,31 @@ class ModularIntradayStrategy:
         self.min_bars_required = 50  # Minimum bars needed for indicators
         self.bars_processed = 0
         
-        # Session management
+        # Session configuration
         self.session_params = config.get('session', {})
-        self.intraday_start = time(
-            self.session_params.get('intraday_start_hour', 9),
-            self.session_params.get('intraday_start_min', 15)
+        self.session_start = time(
+            self.session_params.get('start_hour', 9),
+            self.session_params.get('start_min', 15)
         )
-        self.intraday_end = time(
-            self.session_params.get('intraday_end_hour', 15),
-            self.session_params.get('intraday_end_min', 30)
+        self.session_end = time(
+            self.session_params.get('end_hour', 15),
+            self.session_params.get('end_min', 30)
         )
-        self.exit_before_close = self.session_params.get('exit_before_close', 20)
+        self.start_buffer_minutes = self.session_params.get('start_buffer_minutes', 5)
+        self.end_buffer_minutes = self.session_params.get('end_buffer_minutes', 20)
         
+        # Get timezone setting
+        tz_name = self.session_params.get('timezone', 'Asia/Kolkata')
+        try:
+            self.timezone = pytz.timezone(tz_name)
+        except:
+            self.timezone = pytz.timezone('Asia/Kolkata')
+            logger.warning(f"Invalid timezone {tz_name}, using Asia/Kolkata")
+            
+        logger.info(f"Session configured: {self.session_start.strftime('%H:%M')} to "
+                   f"{self.session_end.strftime('%H:%M')} with "
+                   f"buffers: +{self.start_buffer_minutes}/-{self.end_buffer_minutes} min")
+
         # Trading constraints
         self.max_positions_per_day = config.get('max_trades_per_day', 10)
         self.min_signal_gap = config.get('min_signal_gap_minutes', 5)
@@ -147,47 +161,47 @@ class ModularIntradayStrategy:
     
     def is_trading_session(self, current_time: datetime) -> bool:
         """
-        Check if current time is within trading session.
+        Check if current time is within user-defined trading session
         """
-        # Convert timezone-aware datetime to naive time for comparison
-        # This ensures consistent comparison regardless of timezone info
-        if current_time.tzinfo is not None:
-            # Create local time for comparison
-            local_time = current_time.time()
-            # If the datetime is timezone-aware, we need to compare the hour and minute directly
-            return (self.intraday_start.hour <= local_time.hour <= self.intraday_end.hour and 
-                   (local_time.hour > self.intraday_start.hour or local_time.minute >= self.intraday_start.minute) and
-                   (local_time.hour < self.intraday_end.hour or local_time.minute <= self.intraday_end.minute))
-        else:
-            # Original logic for naive datetimes
-            t = current_time.time()
-            return self.intraday_start <= t <= self.intraday_end
-    
-    def should_exit_for_session(self, now: datetime) -> bool:
-        """Enhanced session exit logic with user-configurable buffer"""
-        if not hasattr(self, 'session_params'):
-            return False
-            
-        exit_buffer = self.session_params.get('exit_before_close', 20)
-        end_hour = self.session_params.get('intraday_end_hour', 15)
-        end_min = self.session_params.get('intraday_end_min', 30)
+        # Ensure current_time is timezone-aware
+        if current_time.tzinfo is None and hasattr(self, 'timezone'):
+            current_time = self.timezone.localize(current_time)
         
-        from utils.time_utils import is_time_to_exit
-        return is_time_to_exit(now, exit_buffer, end_hour, end_min)
+        # Direct comparison using the simplified function
+        return is_within_session(current_time, self.session_start, self.session_end)
+
+    def get_effective_session_times(self):
+        """
+        Get effective session start and end times after applying buffers
+        Returns tuple of (effective_start, effective_end) as time objects
+        """
+        effective_start = apply_buffer_to_time(
+            self.session_start, self.start_buffer_minutes, is_start=True)
+        effective_end = apply_buffer_to_time(
+            self.session_end, self.end_buffer_minutes, is_start=False)
+        return effective_start, effective_end
+
+    def should_exit_for_session(self, now: datetime) -> bool:
+        """
+        Check if positions should be exited based on user-defined session end and buffer
+        """
+        if not self.is_trading_session(now):
+            logger.debug(f"✅ Should exit: Not in trading session {now}")
+            return True
+        
+        # Get effective end time with buffer
+        _, buffer_end = self.get_effective_session_times()
+        
+        if now.time() >= buffer_end:
+            logger.debug(f"✅ Should exit: After buffer end {buffer_end}")
+            return True
+        
+        return False
 
     def is_market_closed(self, current_time: datetime) -> bool:
         """Check if market is completely closed (after end time)"""
-        if not hasattr(self, 'session_params'):
-            return False
-            
-        end_hour = self.session_params.get('intraday_end_hour', 15)
-        end_min = self.session_params.get('intraday_end_min', 30)
-        
-        current_minutes = current_time.hour * 60 + current_time.minute
-        end_minutes = end_hour * 60 + end_min
-        
-        return current_minutes >= end_minutes
-    
+        return current_time.time() >= self.session_end
+
     def can_enter_new_position(self, current_time: datetime) -> bool:
         """
         Check if new positions can be entered.
@@ -200,6 +214,19 @@ class ModularIntradayStrategy:
         """
         # Check if in trading session
         if not self.is_trading_session(current_time):
+            logger.debug(f"❌ Cannot enter: Not in trading session {current_time}")
+            return False
+        
+        # Get effective session times
+        buffer_start, buffer_end = self.get_effective_session_times()
+        
+        # Check if within buffer periods
+        if current_time.time() < buffer_start:
+            logger.debug(f"❌ Cannot enter: Before buffer start {buffer_start}")
+            return False
+        
+        if current_time.time() > buffer_end:
+            logger.debug(f"❌ Cannot enter: After buffer end {buffer_end}")
             return False
         
         # Check daily trade limit
@@ -207,8 +234,8 @@ class ModularIntradayStrategy:
             return False
         
         # Check no-trade periods
-        session_start = datetime.combine(current_time.date(), self.intraday_start)
-        session_end = datetime.combine(current_time.date(), self.intraday_end)
+        session_start = datetime.combine(current_time.date(), self.session_start)
+        session_end = datetime.combine(current_time.date(), self.session_end)
 
         # Ensure session_start and session_end are timezone-aware
         session_start = ensure_tz_aware(session_start, current_time.tzinfo)
@@ -256,30 +283,14 @@ class ModularIntradayStrategy:
         
         # === EMA CROSSOVER SIGNAL ===
         if self.use_ema_crossover:
-            if ('fast_ema' in row and 'slow_ema' in row and
-                not pd.isna(row['fast_ema']) and not pd.isna(row['slow_ema'])):
-                # Check EMA crossover 
-                fast_ema = row['fast_ema']
-                slow_ema = row['slow_ema']
-                
-                # Add detailed logging every 1000 calls
-                if not hasattr(self, '_ema_log_count'):
-                    self._ema_log_count = 0
-                self._ema_log_count += 1
-                
-                if self._ema_log_count % 1000 == 0:
-                    logger.info(f"EMA Analysis #{self._ema_log_count//1000}:")
-                    logger.info(f"  Fast EMA: {fast_ema:.4f}")
-                    logger.info(f"  Slow EMA: {slow_ema:.4f}")
-                    logger.info(f"  Difference: {fast_ema - slow_ema:.4f}")
-                    logger.info(f"  Bullish: {fast_ema > slow_ema}")
-                
-                if fast_ema > slow_ema:
+            if 'ema_bullish' in row:
+                # Use pre-calculated continuous ema_bullish state
+                if row['ema_bullish']:
                     signal_conditions.append(True)
-                    signal_reasons.append(f"EMA Cross: {fast_ema:.2f} > {slow_ema:.2f}")
+                    signal_reasons.append(f"EMA: Fast ({row.get('fast_ema', 0):.2f}) above Slow ({row.get('slow_ema', 0):.2f})")
                 else:
                     signal_conditions.append(False)
-                    signal_reasons.append(f"EMA Cross: Fast EMA not above Slow EMA")
+                    signal_reasons.append(f"EMA: Fast not above Slow EMA")
             else:
                 signal_conditions.append(False)
                 signal_reasons.append("EMA Cross: Data not available")
@@ -407,11 +418,18 @@ class ModularIntradayStrategy:
         signal = self.generate_entry_signal(row, current_time)
         return signal.action == 'BUY'
     
+    def should_close(self, row: pd.Series, timestamp: datetime, position_manager) -> bool:
+        """
+        FIXED: Method name compatibility for backtest runner.
+        Redirects to should_exit() method.
+        """
+        return self.should_exit(row, timestamp, position_manager)
+    
     def should_enter_short(self, row: pd.Series, current_time: Optional[datetime] = None) -> bool:
         """
         Check if should enter short position.
         
-        This strategy is LONG-ONLY, so this always returns False.
+        This strategy is LONG-ONLY, so this always responds with False.
         
         Returns:
             False (no short positions allowed)
@@ -434,12 +452,26 @@ class ModularIntradayStrategy:
         if current_time is None:
             current_time = row.name if hasattr(row, 'name') else datetime.now()
         
-        # Always exit at session end
-        if self.should_exit_session(current_time):
+        # Always exit at session end - renamed from should_exit_session
+        if self.should_exit_for_session(current_time):
             return True
         
         # Let position manager handle stop loss, take profit, and trailing stops
         return False
+    
+    def handle_exit(self, position_id: str, exit_price: float, timestamp: datetime, 
+                   position_manager, reason: str = "Strategy Exit") -> bool:
+        """
+        FIXED: Added missing handle_exit method for backtest compatibility.
+        """
+        try:
+            success = position_manager.close_position_full(position_id, exit_price, timestamp, reason)
+            if success:
+                logger.info(f"✅ Strategy exit executed: {position_id} @ {exit_price:.2f} - {reason}")
+            return success
+        except Exception as e:
+            logger.error(f"❌ Strategy exit failed: {e}")
+            return False
     
     def get_signal_description(self, row: pd.Series) -> str:
         """
@@ -626,9 +658,10 @@ class ModularIntradayStrategy:
                 'max_trades_per_day': self.max_positions_per_day
             },
             'session': {
-                'start': self.intraday_start.strftime('%H:%M'),
-                'end': self.intraday_end.strftime('%H:%M'),
-                'exit_before_close': self.exit_before_close
+                'start': self.session_start.strftime('%H:%M'),
+                'end': self.session_end.strftime('%H:%M'),
+                'start_buffer_minutes': self.start_buffer_minutes,
+                'end_buffer_minutes': self.end_buffer_minutes
             },
             'daily_stats': self.daily_stats.copy()
         }
@@ -661,7 +694,7 @@ class ModularIntradayStrategy:
             errors.append("Base stop loss must be positive")
         
         # Validate session parameters
-        if self.intraday_start >= self.intraday_end:
+        if self.session_start >= self.session_end:
             errors.append("Session start must be before session end")
         
         return errors
@@ -708,27 +741,6 @@ class ModularIntradayStrategy:
         row['vwap'] = vwap_val
         row['atr'] = atr_val
 
-    def is_session_live(self, current_time: datetime) -> bool:
-        """Check if current time is within trading session."""
-        # Ensure timezone-aware datetime
-        current_time = ensure_tz_aware(current_time)
-    
-        # Extract time components for consistent comparison
-        hour, minute = current_time.hour, current_time.minute
-        current_minutes = hour * 60 + minute
-    
-        # Get session boundaries in minutes
-        start_hour = self.session_params.get('intraday_start_hour', 9)
-        start_min = self.session_params.get('intraday_start_min', 15)
-        start_minutes = start_hour * 60 + start_min
-    
-        end_hour = self.session_params.get('intraday_end_hour', 15)
-        end_min = self.session_params.get('intraday_end_min', 15)
-        end_minutes = end_hour * 60 + end_min
-    
-        # Simple minutes-based comparison that ignores timezone
-        return start_minutes <= current_minutes <= end_minutes
-
     def entry_signal(self, row: pd.Series) -> bool:
         # Collect signal conditions from enabled indicators only
         signal_conditions = []
@@ -736,17 +748,14 @@ class ModularIntradayStrategy:
 
         # EMA Crossover
         if self.config.get('use_ema_crossover', False):
-            if ('fast_ema' in row and 'slow_ema' in row and
-                not pd.isna(row['fast_ema']) and not pd.isna(row['slow_ema'])):
-                # Check EMA crossover 
-                fast_ema = row['fast_ema']
-                slow_ema = row['slow_ema']
-                if fast_ema > slow_ema:
+            if 'ema_bullish' in row:
+                # Use pre-calculated continuous ema_bullish state
+                if row['ema_bullish']:
                     signal_conditions.append(True)
-                    signal_reasons.append(f"EMA Cross: {fast_ema:.2f} > {slow_ema:.2f}")
+                    signal_reasons.append(f"EMA: Fast ({row.get('fast_ema', 0):.2f}) above Slow ({row.get('slow_ema', 0):.2f})")
                 else:
                     signal_conditions.append(False)
-                    signal_reasons.append(f"EMA Cross: Fast EMA not above Slow EMA")
+                    signal_reasons.append(f"EMA: Fast not above Slow EMA")
             else:
                 signal_conditions.append(False)
                 signal_reasons.append("EMA Cross: Data not available")
@@ -884,21 +893,3 @@ if __name__ == "__main__":
     
     print("\n✅ Strategy test completed successfully!")
 
-
-
-"""
-CONFIGURATION PARAMETER NAMING CONVENTION:
-- Constructor parameter: __init__(self, config: Dict[str, Any], ...)
-- Internal storage: self.config = config
-- All parameter access: self.config.get('parameter_name', default)
-- Session parameters: self.session_params = config.get('session', {})
-
-MEMORY OPTIMIZATION:
-- calculate_indicators() method supports memory_optimized=True for large datasets
-- Uses self.config for parameter access, not self.params
-
-CRITICAL CONSISTENCY REQUIREMENTS:
-- Always use self.config.get() for parameter access
-- Never use self.params (removed in favor of self.config)
-- Session parameter access should use self.session_params.get()
-- Indicator"""

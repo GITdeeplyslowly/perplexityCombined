@@ -11,10 +11,10 @@ Features:
 - Market holiday and weekend handling
 """
 
-from datetime import datetime, time, timedelta, date, timezone
+import pytz
+from datetime import datetime, time, timedelta, date
 from typing import Optional, Tuple, NewType
 import logging
-import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -447,25 +447,74 @@ def ensure_tz_aware(dt, fallback_tz=None, default_tz="Asia/Kolkata"):
     else:
         return pytz.timezone(default_tz).localize(dt)
 
-def is_trading_session(current_time: datetime, start_time: time, end_time: time) -> bool:
-    """Check if the current time is within the trading session."""
+def is_within_session(current_time, session_start, session_end):
+    """
+    Simple function to check if time is within a session range.
+    All times should be timezone-aware or all naive.
+    
+    Args:
+        current_time (datetime): The current datetime to check
+        session_start (time or datetime): The session start time
+        session_end (time or datetime): The session end time
+        
+    Returns:
+        bool: True if current_time is within session, False otherwise
+    """
     if not isinstance(current_time, datetime):
+        logger.warning("current_time must be a datetime object")
         return False
     
-    # Ensure all times are timezone-aware for correct comparison
-    current_time_aware = ensure_tz_aware(current_time)
+    # Extract time component if datetime was provided
+    if isinstance(session_start, datetime):
+        session_start = session_start.time()
+    if isinstance(session_end, datetime):
+        session_end = session_end.time()
     
-    # Create timezone-aware start and end datetimes for the same day as current_time
-    start_dt = current_time_aware.replace(hour=start_time.hour, minute=start_time.minute, second=0, microsecond=0)
-    end_dt = current_time_aware.replace(hour=end_time.hour, minute=end_time.minute, second=0, microsecond=0)
+    current_time_only = current_time.time()
+    return session_start <= current_time_only <= session_end
 
-    is_active = start_dt <= current_time_aware <= end_dt
+def apply_buffer_to_time(base_time, buffer_minutes, is_start=True):
+    """
+    Apply buffer minutes to a time object
     
-    # ✅ DIAGNOSTIC: Log the comparison details periodically
-    if current_time.second == 1: # Log once per minute
-        logger.debug(f"Session Check: Start({start_dt}) <= Current({current_time_aware}) <= End({end_dt}) -> {is_active}")
+    Args:
+        base_time (time): Base time to apply buffer to
+        buffer_minutes (int): Buffer in minutes
+        is_start (bool): If True, add buffer (for start time), otherwise subtract (for end time)
         
-    return is_active
+    Returns:
+        time: New time with buffer applied
+    """
+    dt = datetime.combine(datetime.today(), base_time)
+    if is_start:
+        dt += timedelta(minutes=buffer_minutes)
+    else:
+        dt -= timedelta(minutes=buffer_minutes)
+    return dt.time()
+
+# Maintain old functions for backward compatibility but mark as deprecated
+def is_market_session(current_time, open_time, close_time):
+    """
+    DEPRECATED: Use is_within_session instead
+    """
+    logger.warning("is_market_session is deprecated, use is_within_session instead")
+    return is_within_session(current_time, open_time, close_time)
+
+def is_trading_session(current_time, start_time, end_time):
+    """
+    DEPRECATED: Use is_within_session instead
+    """
+    logger.warning("is_trading_session is deprecated, use is_within_session instead")
+    return is_within_session(current_time, start_time, end_time)
+
+def is_time_to_exit(current_time, exit_buffer, end_hour, end_min):
+    """
+    DEPRECATED: Use apply_buffer_to_time instead
+    """
+    logger.warning("is_time_to_exit is deprecated")
+    end_time = time(end_hour, end_min)
+    exit_time = apply_buffer_to_time(end_time, exit_buffer, is_start=False)
+    return current_time.time() >= exit_time
 
 # Example usage and testing
 if __name__ == "__main__":

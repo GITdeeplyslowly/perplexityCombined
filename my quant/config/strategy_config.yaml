@@ -78,12 +78,15 @@ capital:
 
 session:
   is_intraday: true
-  intraday_start_hour: 9
-  intraday_start_min: 15
-  intraday_end_hour: 15
-  intraday_end_min: 30
-  exit_before_close: 20
-  timezone: Asia/Kolkata
+  start_hour: 9
+  start_min: 15
+  end_hour: 15
+  end_min: 30
+  timezone: "Asia/Kolkata"
+  
+  # User-defined buffer periods
+  start_buffer_minutes: 5
+  end_buffer_minutes: 20
 
 reentry:
   reentry_price_buffer: 5
@@ -103,6 +106,15 @@ live:
   feed_type: Quote
   log_ticks: false
   visual_indicator: true
+
+# === Instrument Configuration ===
+instrument:
+  symbol: "NIFTY"
+  exchange: "NSE_FO"
+  lot_size: 75
+  tick_size: 0.05
+  product_type: "INTRADAY"
+
 
 data_quality:
   strict_mode: true          # Fail fast on critical data issues

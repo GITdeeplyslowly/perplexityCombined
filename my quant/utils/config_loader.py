@@ -7,9 +7,6 @@ Centralized configuration loader for the unified trading system.
 - Ensures consistent config access across all modules
 - Supports environment variable overrides for sensitive data
 """
-
-import yaml
-import os
 from typing import Dict, Any, Optional
 from pathlib import Path
 import logging
@@ -52,6 +49,12 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Dict[str, Any]:
     
     # Validate and apply defaults
     config = _validate_and_apply_defaults(config)
+    
+    # Check for warnings but don't invalidate
+    validation = validate_session_config(config.get('session', {}))
+    if validation['warnings']:
+        for warning in validation['warnings']:
+            logger.warning(f"Session configuration warning: {warning}")
     
     logger.info(f"Configuration loaded successfully from {config_path}")
     return config
@@ -407,6 +410,72 @@ def create_config_template(output_path: str = "config/strategy_config_template.y
     
     save_config(template, output_path)
     print(f"Configuration template created at {output_path}")
+
+def validate_session_config(session_config: Dict[str, Any]) -> Dict[str, list]:
+    """Check session configuration and return warnings"""
+    result = {'warnings': []}
+    
+    # Check if session config is present
+    if not session_config:
+        result['warnings'].append("Missing session configuration, will use defaults")
+        return result
+        
+    # Check for required fields with defaults
+    required_fields = [
+        ('start_hour', 9),
+        ('start_min', 15),
+        ('end_hour', 15),
+        ('end_min', 30),
+    ]
+    
+    for field, default in required_fields:
+        if field not in session_config:
+            result['warnings'].append(f"Missing '{field}' in session config, will use default: {default}")
+            session_config[field] = default
+    
+    # Validate time values
+    if not (0 <= session_config.get('start_hour', 0) <= 23):
+        result['warnings'].append(f"Invalid start_hour {session_config.get('start_hour')}, should be 0-23")
+    
+    if not (0 <= session_config.get('start_min', 0) <= 59):
+        result['warnings'].append(f"Invalid start_min {session_config.get('start_min')}, should be 0-59")
+    
+    if not (0 <= session_config.get('end_hour', 0) <= 23):
+        result['warnings'].append(f"Invalid end_hour {session_config.get('end_hour')}, should be 0-23")
+    
+    if not (0 <= session_config.get('end_min', 0) <= 59):
+        result['warnings'].append(f"Invalid end_min {session_config.get('end_min')}, should be 0-59")
+    
+    # Check session duration
+    start_minutes = session_config.get('start_hour', 9) * 60 + session_config.get('start_min', 15)
+    end_minutes = session_config.get('end_hour', 15) * 60 + session_config.get('end_min', 30)
+    
+    if start_minutes >= end_minutes:
+        result['warnings'].append("Session end must be after session start")
+    
+    # Check buffers
+    start_buffer = session_config.get('start_buffer_minutes', 5)
+    end_buffer = session_config.get('end_buffer_minutes', 20)
+    session_duration = end_minutes - start_minutes
+    
+    if start_buffer + end_buffer >= session_duration:
+        result['warnings'].append(
+            f"Total buffers ({start_buffer + end_buffer}min) exceed session duration ({session_duration}min)")
+    
+    # Check for unusual session times (standard market: 9:15 - 15:30)
+    standard_start = 9*60 + 15
+    standard_end = 15*60 + 30
+    
+    if start_minutes < standard_start:
+        result['warnings'].append(
+            f"Session start {session_config['start_hour']:02d}:{session_config['start_min']:02d} is before standard market open (09:15)")
+    
+    if end_minutes > standard_end:
+        result['warnings'].append(
+            f"Session end {session_config['end_hour']:02d}:{session_config['end_min']:02d} is after standard market close (15:30)")
+    
+    # Return all warnings - no blocking validation errors
+    return result
 
 # Example usage and testing
 if __name__ == "__main__":
