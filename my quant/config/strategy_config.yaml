@@ -59,16 +59,16 @@ strategy:
   volume_multiplier: 1.5
 
 risk:
-  base_sl_points: 15
+  base_sl_points: 12
   use_trail_stop: true
-  trail_activation_points: 25    # Points gain before trail SL activates
-  trail_distance_points: 10      # Distance of trail SL from max price
+  trail_activation_points: 5    # Points gain before trail SL activates
+  trail_distance_points: 7    # Distance of trail SL from max price
 
   # === Tiered Take Profits ===
   tp_points: [10, 25, 50, 100]
   tp_percents: [0.25, 0.25, 0.25, 0.25]
 
-  risk_per_trade_percent: 1.0    # % of total capital risked per trade
+  risk_per_trade_percent: 5.0    # % of total capital risked per trade
   commission_percent: 0.1        # Commission as percentage per trade
   commission_per_trade: 0.0      # Minimum per-trade commission
   buy_buffer: 0                  # Optional points buffer for entry slippage

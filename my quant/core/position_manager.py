@@ -414,7 +414,7 @@ class PositionManager:
                 'profit_factor': 0.0,
                 'max_win': 0.0,
                 'max_loss': 0.0,
-                'total_commission': 0.0
+                'total_commission': 0.0                
             }
         winning_trades = [t for t in self.completed_trades if t.net_pnl > 0]
         losing_trades = [t for t in self.completed_trades if t.net_pnl < 0]

@@ -47,6 +47,36 @@ class ConfigAccessor:
                 validation['warnings'].append(f"Missing parameter: {section}.{param}")
         return validation
 
+    def is_indicator_enabled(self, indicator_name: str) -> bool:
+        """
+        Check if a specific indicator is enabled in the strategy configuration.
+        
+        Args:
+            indicator_name (str): Name of the indicator to check
+            
+        Returns:
+            bool: True if the indicator is enabled, False otherwise
+        """
+        # Map indicator names to their configuration keys
+        indicator_map = {
+            'rsi': 'use_rsi_filter',
+            'ema_crossover': 'use_ema_crossover', 
+            'macd': 'use_macd',
+            'vwap': 'use_vwap',
+            'htf_trend': 'use_htf_trend',
+            'bollinger_bands': 'use_bollinger_bands',
+            'stochastic': 'use_stochastic',
+            'atr': 'use_atr'
+        }
+        
+        # Get the appropriate config key for this indicator
+        config_key = indicator_map.get(indicator_name)
+        if config_key:
+            return self.get_strategy_param(config_key, False)
+        
+        # Fallback: try direct mapping with 'use_' prefix
+        return self.get_strategy_param(f'use_{indicator_name}', False)
+
 def create_nested_config_from_flat(flat_config: Dict[str, Any]) -> Dict[str, Any]:
     nested_config = {
         'strategy': {},

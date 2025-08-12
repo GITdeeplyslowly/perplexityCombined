@@ -168,7 +168,13 @@ def calculate_all_indicators(df: pd.DataFrame, params: Dict, chunk_size=1000):
         pass  # Add actual logic or use pass as placeholder
 
     # Any nested parameter access
-    filter_type = config_accessor.get_nested_param(['strategy', 'advanced', 'filter_settings', 'type'], 'simple')
+    # Handle nested parameters safely
+    try:
+        advanced_config = config_accessor.config.get('strategy', {}).get('advanced', {})
+        filter_settings = advanced_config.get('filter_settings', {})
+        filter_type = filter_settings.get('type', 'simple')
+    except (AttributeError, KeyError):
+        filter_type = 'simple'  # Default fallback
     
     # Set volume threshold scaling factor
     volume_multiplier = config_accessor.get_strategy_param('volume_multiplier', 1.0)

@@ -35,48 +35,38 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class UnifiedTradingGUI(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Unified Quantitative Trading System")
-        self.geometry("950x700")
-        self.protocol("WM_DELETE_WINDOW", self._on_close)
+    def __init__(self, master=None):
+        super().__init__(master)
+        self.title("Unified Trading System")
+        self.geometry("1024x768")
+        
+        # Initialize ALL variables FIRST before any GUI components
+        self._initialize_all_variables()
+        
+        # Create notebook for tabs
+        self.notebook = ttk.Notebook(self)
+        
+        # Create tab frames first
+        self.bt_tab = ttk.Frame(self.notebook)
+        self.ft_tab = ttk.Frame(self.notebook)
+        self.log_tab = ttk.Frame(self.notebook)
+        
+        # Add tabs to notebook
+        self.notebook.add(self.bt_tab, text="Backtest")
+        self.notebook.add(self.ft_tab, text="Forward Test")
+        self.notebook.add(self.log_tab, text="Logs")
+        
+        # Pack notebook
+        self.notebook.pack(expand=1, fill="both")
 
-        self.tabControl = ttk.Notebook(self)
-        self.tab_backtest = ttk.Frame(self.tabControl)
-        self.tab_forward = ttk.Frame(self.tabControl)
-        self.tab_status = ttk.Frame(self.tabControl)
-
-        self.tabControl.add(self.tab_backtest, text="Backtest")
-        self.tabControl.add(self.tab_forward, text="Forward Test")
-        self.tabControl.add(self.tab_status, text="Status / Logs")
-        self.tabControl.pack(expand=1, fill="both")
-
+        # Build GUI components AFTER variable initialization
         self._build_backtest_tab()
         self._build_forward_test_tab()
-        self._build_status_tab()
-
-        self._backtest_thread = None
-        self._forward_thread = None
-        self.symbol_token_map = {}  # Initialize simple symbol-to-token mapping
-
-        self.capital_usable = tk.StringVar(value="₹0 (0%)")
-        self.max_lots = tk.StringVar(value="0 lots (0 shares)")
-        self.max_risk = tk.StringVar(value="₹0 (0%)")
-        self.recommended_lots = tk.StringVar(value="0 lots (0 shares)")
-
-        # Session configuration variables
-        self.session_start_hour = tk.StringVar(value="9")
-        self.session_start_min = tk.StringVar(value="15")
-        self.session_end_hour = tk.StringVar(value="15")
-        self.session_end_min = tk.StringVar(value="30")
-        self.start_buffer = tk.StringVar(value="5")
-        self.end_buffer = tk.StringVar(value="20")
-        self.timezone = tk.StringVar(value="Asia/Kolkata")
-        self.session_status = tk.StringVar(value="⚠️ Not checked")
+        self._build_log_tab()
 
     # --- Backtest Tab ---
     def _build_backtest_tab(self):
-        frame = self.tab_backtest
+        frame = self.bt_tab
         frame.columnconfigure(1, weight=1)
         row = 0
         
@@ -84,6 +74,11 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_data_file = tk.StringVar()
         ttk.Entry(frame, textvariable=self.bt_data_file, width=55).grid(row=row, column=1, padx=5, pady=5)
         ttk.Button(frame, text="Browse", command=self._bt_browse_csv).grid(row=row, column=2, padx=5, pady=5)
+        row += 1
+
+        # Add Run Backtest button early for visibility
+        ttk.Button(frame, text="Run Backtest", command=self._bt_run_backtest, 
+                  style="Accent.TButton").grid(row=row, column=0, columnspan=3, pady=10)
         row += 1
 
         # Strategy Configuration for Backtest
@@ -405,7 +400,6 @@ class UnifiedTradingGUI(tk.Tk):
             
             # === BACKTEST SECTION ===
             'backtest': {
-                'max_drawdown_pct': 0,
                 'allow_short': False,
                 'close_at_session_end': True,
                 'save_results': True,
@@ -435,8 +429,6 @@ class UnifiedTradingGUI(tk.Tk):
             self.bt_result_box.insert(tk.END, f"Winning Trades: {metrics['winning_trades']}\n")
             self.bt_result_box.insert(tk.END, f"Losing Trades: {metrics['losing_trades']}\n")
             self.bt_result_box.insert(tk.END, f"Total Profit/Loss: ₹{metrics['total_pnl']:.2f}\n")
-            self.bt_result_box.insert(tk.END, f"Sharpe Ratio: {metrics['sharpe_ratio']:.2f}\n")
-            self.bt_result_box.insert(tk.END, f"Max Drawdown: {metrics['max_drawdown']:.2f}%\n")
             self.bt_result_box.insert(tk.END, "Trade metrics saved to 'trade_metrics.csv'\n")
             
             # Enable the result box for user interaction
@@ -459,7 +451,7 @@ class UnifiedTradingGUI(tk.Tk):
 
     # --- Forward Test Tab ---
     def _build_forward_test_tab(self):
-        frame = self.tab_forward
+        frame = self.ft_tab
         frame.columnconfigure(1, weight=1)
         row = 0
 
@@ -894,7 +886,6 @@ class UnifiedTradingGUI(tk.Tk):
 
             # === BACKTEST SECTION (for compatibility) ===
             'backtest': {
-                'max_drawdown_pct': 0,
                 'allow_short': False,
                 'close_at_session_end': True,
                 'save_results': True,
@@ -925,8 +916,8 @@ class UnifiedTradingGUI(tk.Tk):
         messagebox.showinfo("Stop", "Forward test stop functionality not yet implemented.")
 
     # --- Status Tab ---
-    def _build_status_tab(self):
-        frame = self.tab_status
+    def _build_log_tab(self):
+        frame = self.log_tab
         row = 0
         
         ttk.Label(frame, text="Unified Trading System Status & Logs", font=('Arial', 14, 'bold')).grid(row=row, column=0, sticky="w", pady=10)
@@ -1294,16 +1285,16 @@ class UnifiedTradingGUI(tk.Tk):
             self.session_status.set("⚠️ Invalid number format")
     
     def _apply_session_config(self, start_hour, start_min, end_hour, end_min, 
-                             start_buffer, end_buffer):
+                         start_buffer, end_buffer):
         """Apply user configuration regardless of validation status"""
         # Ensure config attribute exists
         if not hasattr(self, 'config'):
             self.config = {}
-        
-        # Ensure session section exists
+    
+        # Ensure session section exists  
         if 'session' not in self.config:
             self.config['session'] = {}
-            
+         
         # Apply all settings
         self.config['session'].update({
             'start_hour': start_hour,
@@ -1322,6 +1313,30 @@ class UnifiedTradingGUI(tk.Tk):
         
         logger.info(f"User defined session: {start_hour:02d}:{start_min:02d}-{end_hour:02d}:{end_min:02d} " +
                    f"with {start_buffer}+{end_buffer}min buffers (effective: {effective_minutes}min)")
+               
+    def _initialize_all_variables(self):
+        """Initialize all variables used by GUI components"""
+        # Thread management
+        self._backtest_thread = None
+        self._forward_thread = None
+        self.symbol_token_map = {}
+        
+        # Capital management variables
+        self.capital_usable = tk.StringVar(value="₹0 (0%)")
+        self.max_lots = tk.StringVar(value="0 lots (0 shares)")
+        self.max_risk = tk.StringVar(value="₹0 (0%)")
+        self.recommended_lots = tk.StringVar(value="0 lots (0 shares)")
+        
+        # Session configuration variables
+        self.session_start_hour = tk.StringVar(value="9")
+        self.session_start_min = tk.StringVar(value="15")
+        self.session_end_hour = tk.StringVar(value="15")
+        self.session_end_min = tk.StringVar(value="30")
+        self.start_buffer = tk.StringVar(value="5")
+        self.end_buffer = tk.StringVar(value="20")
+        self.timezone = tk.StringVar(value="Asia/Kolkata")
+        self.session_status = tk.StringVar(value="⚠️ Not checked")
+
 if __name__ == "__main__":
     app = UnifiedTradingGUI()
     app.mainloop()

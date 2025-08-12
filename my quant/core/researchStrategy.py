@@ -872,7 +872,6 @@ if __name__ == "__main__":
         'tick_size': 0.05
     }
     
-    # Create strategy
     strategy = ModularIntradayStrategy(test_params)
     
     # Validate parameters
