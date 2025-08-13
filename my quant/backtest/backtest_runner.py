@@ -1,4 +1,5 @@
-# backtest_runner_refactored.py
+# backtest_runner.py - Core backtesting engine
+
 """
 Refactored backtest runner implementing "normalize early, standardize everywhere" principle.
 
@@ -32,7 +33,14 @@ import logging
 from core.position_manager import PositionManager
 from utils.simple_loader import load_data_simple
 from utils.time_utils import normalize_datetime_to_ist, now_ist, ensure_tz_aware, is_within_session, is_time_to_exit
+from utils.config_helper import ConfigAccessor, create_config_from_defaults
+#from utils.data_loader import load_data
+from utils.logger_setup import setup_logger
+from core.indicators import calculate_all_indicators
+from core.researchStrategy import ModularIntradayStrategy
+from backtest.results import BacktestResults
 
+# Set up logger
 logger = logging.getLogger(__name__)
 
 def get_available_indicator_columns(df, max_columns=6):
@@ -82,108 +90,193 @@ def get_strategy(config: dict):
     # Pass nested config directly to strategy
     return strat_mod.ModularIntradayStrategy(config, ind_mod)
 
-def run_backtest(config: Dict[str, Any], data_file: str,
-                 df_normalized=None, skip_indicator_calculation=False):
-    """Run a backtest with the given configuration"""
-    # Add comprehensive error handling wrapper
-    try:
-        return _run_backtest_internal(config, data_file, df_normalized, skip_indicator_calculation)
-    except Exception as e:
-        logger.error(f"CRITICAL BACKTEST ERROR: {str(e)}")
-        logger.error(f"Error type: {type(e).__name__}")
-        import traceback
-        logger.error(f"Full traceback:\n{traceback.format_exc()}")
-        raise
-
-def _run_backtest_internal(config: Dict[str, Any], data_file: str,
-                          df_normalized=None, skip_indicator_calculation=False):
-    """Internal backtest function with detailed error tracking"""
-    logger.info("=" * 60)
-    logger.info("STARTING BACKTEST WITH NORMALIZED DATA PIPELINE")
-    logger.info("=" * 60)
+class BacktestRunner:
+    """
+    Backtesting engine for testing strategies against historical data.
+    """
     
-    # Load configuration
-    if isinstance(config, str):
-        config = load_config(config)
+    def __init__(self, config=None, data_path=None):
+        """
+        Initialize backtest runner with configuration.
         
-    # Extract parameters
-    strategy_params = config.get('strategy', {})
-    session_params = config.get('session', {})
-    risk_params = config.get('risk', {})
-    instrument_params = config.get('instrument', {})
-    capital = config.get('capital', {}).get('initial_capital', 100000)
+        Args:
+            config: Strategy configuration (from GUI or defaults)
+            data_path: Path to CSV data file (optional)
+        """
+        # Use provided config or create from defaults
+        if config is None:
+            self.config = create_config_from_defaults()
+            logger.info("Using default configuration")
+        else:
+            self.config = config
+            logger.info("Using provided configuration")
+            
+        # Create config accessor
+        self.config_accessor = ConfigAccessor(self.config)
+        
+        # Log validation results
+        validation = self.config_accessor.validate_required_params()
+        if not validation['valid']:
+            logger.error(f"Configuration validation failed: {validation['errors']}")
+            raise ValueError(f"Invalid configuration: {validation['errors']}")
+        
+        # Set data path
+        self.data_path = data_path or "data/market_data.csv"
+        
+        # Initialize other properties
+        self.data = None
+        self.results = None
+        self.strategy = None
+        self.position_manager = None
+        
+        logger.info(f"BacktestRunner initialized with {self.config_accessor.get('strategy.strategy_version')} strategy")
     
-    # Add a default for the symbol if it's missing
-    if 'symbol' not in instrument_params:
-        instrument_params['symbol'] = 'DEFAULT_SYMBOL'
-        logger.warning(f"Instrument symbol not found in config. Using default: '{instrument_params['symbol']}'")
+    def _prepare_data(self):
+        """Load and prepare data for backtesting"""
+        try:
+            # Load data
+            self.data = load_data_simple(self.data_path, process_as_ticks=True)
+            if self.data is None or self.data.empty:
+                raise ValueError(f"No data loaded from {self.data_path}")
+                
+            logger.info(f"Data loaded: {len(self.data)} rows from {self.data.index[0]} to {self.data.index[-1]}")
+                
+            # Calculate indicators
+            self.data = calculate_all_indicators(self.data, self.config)
+            logger.info("Indicators calculated successfully")
+            
+        except Exception as e:
+            logger.exception(f"Error preparing data: {e}")
+            raise
+    
+    def run(self):
+        """
+        Run backtest with current configuration.
+        
+        Returns:
+            BacktestResults object with performance metrics
+        """
+        try:
+            logger.info("Starting backtest run")
+            
+            # Prepare data
+            self._prepare_data()
+            
+            # Create strategy and position manager
+            self.strategy = ModularIntradayStrategy(self.config)
+            self.position_manager = PositionManager(self.config)
+            
+            # Run backtest logic
+            self._run_backtest_logic()
+            
+            # Calculate and return results
+            self.results = BacktestResults(
+                positions=self.position_manager.closed_positions,
+                data=self.data,
+                config=self.config
+            )
+            
+            # Save results if configured
+            if self.config.get('backtest', {}).get('save_results', True):
+                self._save_results()
+                
+            logger.info("Backtest completed successfully")
+            return self.results
+            
+        except Exception as e:
+            logger.exception(f"Error running backtest: {e}")
+            raise
+    
+    def _run_backtest_logic(self):
+        """
+        Core backtest loop logic
+        """
+        logger.info("=" * 60)
+        logger.info("STARTING BACKTEST WITH NORMALIZED DATA PIPELINE")
+        logger.info("=" * 60)
+        
+        # Load configuration
+        config = self.config
+        
+        # Extract parameters
+        strategy_params = config.get('strategy', {})
+        session_params = config.get('session', {})
+        risk_params = config.get('risk', {})
+        instrument_params = config.get('instrument', {})
+        capital = config.get('capital', {}).get('initial_capital', 100000)
+        
+        # Add a default for the symbol if it's missing
+        if 'symbol' not in instrument_params:
+            instrument_params['symbol'] = 'DEFAULT_SYMBOL'
+            logger.warning(f"Instrument symbol not found in config. Using default: '{instrument_params['symbol']}'")
      
-    # FIXED: Maintain consistent nested structure throughout
-    logger.info("=== NESTED CONFIG STRUCTURE MAINTAINED ===")
-    for section, params in config.items():
-        if isinstance(params, dict):
-            logger.info(f"Section '{section}': {len(params)} parameters")
+        # FIXED: Maintain consistent nested structure throughout
+        logger.info("=== NESTED CONFIG STRUCTURE MAINTAINED ===")
+        for section, params in config.items():
+            if isinstance(params, dict):
+                logger.info(f"Section '{section}': {len(params)} parameters")
      
-    # Ensure session parameters are consistent
-    session_params = config.get("session", {})
-    if "intraday_end_min" not in session_params:
-        session_params["intraday_end_min"] = 30  # Consistent with NSE close time
-    if "exit_before_close" not in session_params:
-        session_params["exit_before_close"] = 20  # Default value
-    if "timezone" not in session_params:
-        session_params["timezone"] = "Asia/Kolkata"
+        # Ensure session parameters are consistent
+        session_params = config.get("session", {})
+        if "intraday_end_min" not in session_params:
+            session_params["intraday_end_min"] = 30  # Consistent with NSE close time
+        if "exit_before_close" not in session_params:
+            session_params["exit_before_close"] = 20  # Default value
+        if "timezone" not in session_params:
+            session_params["timezone"] = "Asia/Kolkata"
 
-    # Initialize components with nested config
-    strategy = get_strategy(config)
-    
-    # CRITICAL: Validate strategy interface before proceeding
-    required_methods = ['can_open_long', 'open_long', 'calculate_indicators', 'should_exit']
-    missing_methods = [method for method in required_methods if not hasattr(strategy, method)]
-    if missing_methods:
-        logger.error(f"CRITICAL: Strategy missing required methods: {missing_methods}")
-        return pd.DataFrame(), {"error": f"Strategy validation failed: missing {missing_methods}"}
-    
-    logger.info("✅ Strategy interface validation passed")
-    
-    # FIXED: Pass nested config directly to PositionManager
-    logger.info("=== NESTED CONFIG PASSED TO POSITION MANAGER ===")
-    
-    # Validate configuration completeness
-    config_validation = _validate_complete_config(config)
-    if not config_validation["valid"]:
-        logger.error(f"Configuration validation failed: {config_validation['errors']}")
-        return pd.DataFrame(), {"error": f"Config validation failed: {config_validation['errors']}"}
-    
-    # Validate critical sections exist
-    required_sections = ['strategy', 'risk', 'capital', 'instrument', 'session']
-    missing_sections = [s for s in required_sections if s not in config]
-    if missing_sections:
-        logger.warning(f"❌ MISSING config sections: {missing_sections}")
+        # Initialize components with nested config
+        strategy = get_strategy(config)
+        
+        # CRITICAL: Validate strategy interface before proceeding
+        required_methods = ['can_open_long', 'open_long', 'calculate_indicators', 'should_exit']
+        missing_methods = [method for method in required_methods if not hasattr(strategy, method)]
+        if missing_methods:
+            logger.error(f"CRITICAL: Strategy missing required methods: {missing_methods}")
+            return pd.DataFrame(), {"error": f"Strategy validation failed: missing {missing_methods}"}
+        
+        logger.info("✅ Strategy interface validation passed")
+        
+        # FIXED: Pass nested config directly to PositionManager
+        logger.info("=== NESTED CONFIG PASSED TO POSITION MANAGER ===")
+        
+        # Validate configuration completeness
+        config_validation = _validate_complete_config(config)
+        if not config_validation["valid"]:
+            logger.error(f"Configuration validation failed: {config_validation['errors']}")
+            return pd.DataFrame(), {"error": f"Config validation failed: {config_validation['errors']}"}
+        
+        # Validate critical sections exist
+        required_sections = ['strategy', 'risk', 'capital', 'instrument', 'session']
+        missing_sections = [s for s in required_sections if s not in config]
+        if missing_sections:
+            logger.warning(f"❌ MISSING config sections: {missing_sections}")
      
-    # Initialize PositionManager with nested config
-    position_manager = PositionManager(config)
-    
-    # Skip data loading if df_normalized is provided
-    if df_normalized is None:
-        logger.info("Loading data with centralized loader...")
-        df_normalized, quality_report = load_and_normalize_data(data_file, process_as_ticks=True)
-        logger.info(f"Loaded and normalized data. Shape: {df_normalized.shape}. Time range: {df_normalized.index.min()} to {df_normalized.index.max()}")
-        if df_normalized.empty:
-            logger.error("CRITICAL: DataFrame is empty after normalization. Cannot proceed.")
-            return pd.DataFrame(), position_manager.get_performance_summary()
-    else:
-        # If df_normalized is provided, create a simple quality report
-        # Calculate sample indices even for pre-loaded dataframes
-        sample_indices = []
-        total_rows = len(df_normalized)
-        for chunk_start in range(0, total_rows, 1000):
-            chunk_end = min(chunk_start + 1000, total_rows)
-            if chunk_end - chunk_start >= 5:
-                step = (chunk_end - chunk_start) // 5
-                chunk_sample = [chunk_start + i * step for i in range(5)]
-            else:
-                chunk_sample = list(range(chunk_start, chunk_end))
-            sample_indices.extend(chunk_sample)
+        # Initialize PositionManager with nested config
+        position_manager = PositionManager(config)
+        
+        # Skip data loading if df_normalized is provided
+        df_normalized = self.data
+        if df_normalized is None:
+            logger.info("Loading data with centralized loader...")
+            df_normalized, quality_report = load_and_normalize_data(self.data_path, process_as_ticks=True)
+            logger.info(f"Loaded and normalized data. Shape: {df_normalized.shape}. Time range: {df_normalized.index.min()} to {df_normalized.index.max()}")
+            if df_normalized.empty:
+                logger.error("CRITICAL: DataFrame is empty after normalization. Cannot proceed.")
+                return pd.DataFrame(), position_manager.get_performance_summary()
+        else:
+            # If df_normalized is provided, create a simple quality report
+            # Calculate sample indices even for pre-loaded dataframes
+            sample_indices = []
+            total_rows = len(df_normalized)
+            for chunk_start in range(0, total_rows, 1000):
+                chunk_end = min(chunk_start + 1000, total_rows)
+                if chunk_end - chunk_start >= 5:
+                    step = (chunk_end - chunk_start) // 5
+                    chunk_sample = [chunk_start + i * step for i in range(5)]
+                else:
+                    chunk_sample = list(range(chunk_start, chunk_end))
+                sample_indices.extend(chunk_sample)
     
         # Create quality report WITH sample_indices
         quality_report = type('SimpleQualityReport', (), {
@@ -194,225 +287,225 @@ def _run_backtest_internal(config: Dict[str, Any], data_file: str,
             'sample_indices': sample_indices  # Add this critical field
         })
 
-    # Get session configuration
-    session_config = config.get('session', {})
-    
-    # Apply user-defined session filtering before processing
-    if df_normalized is not None and not df_normalized.empty:
-        logger.info("Applying session filtering to data based on user configuration")
-        df_normalized = filter_data_by_session(df_normalized, session_config)
-        if df_normalized.empty:
-            logger.error("No data remains after session filtering. Check session settings.")
-            return pd.DataFrame(), position_manager.get_performance_summary()
-    
-    # Optimize memory usage for large tick dataset
-    if len(df_normalized) > 5000:
-        logger.info(f"Optimizing memory usage for large tick dataset ({len(df_normalized)} ticks)")
-        # Chunk processing: Process full dataset in memory-efficient chunks
-        chunk_size = min(2000, max(1000, len(df_normalized) // 10))  # Adaptive chunk size
-        logger.info(f"Processing {len(df_normalized)} rows in chunks of {chunk_size}")
+        # Get session configuration
+        session_config = config.get('session', {})
         
-        # Process indicators in chunks and combine results
-        df_with_indicators = process_indicators_sequential(df_normalized, strategy, chunk_size)
-        logger.info(f"Chunk processing completed. Full dataset with indicators: {len(df_with_indicators)} rows")
-    else:
-        # Normal processing for smaller datasets
-        df_with_indicators = strategy.calculate_indicators(df_normalized)
-    
-    # CRITICAL: Validate indicator calculation success
-    if df_with_indicators is None or df_with_indicators.empty:
-        logger.error("CRITICAL: Indicator calculation returned empty DataFrame")
-        return pd.DataFrame(), {"error": "Indicator calculation failed"}
-    
-    logger.info(f"✅ Indicators calculated successfully. DataFrame shape: {df_with_indicators.shape}")
-    
-    # === STAGE 3: AFTER INDICATOR CALCULATION ===
-    if hasattr(quality_report, 'sample_indices'):
-        logger.info("=" * 80)
-        logger.info("STAGE 3: AFTER INDICATOR CALCULATION (Same Rows)")
-        logger.info("=" * 80)
+        # Apply user-defined session filtering before processing
+        if df_normalized is not None and not df_normalized.empty:
+            logger.info("Applying session filtering to data based on user configuration")
+            df_normalized = filter_data_by_session(df_normalized, session_config)
+            if df_normalized.empty:
+                logger.error("No data remains after session filtering. Check session settings.")
+                return pd.DataFrame(), position_manager.get_performance_summary()
         
-        for i, idx in enumerate(quality_report.sample_indices[:25]):
-            if idx < len(df_with_indicators):
-                row_data = df_with_indicators.iloc[idx]
-                
-                # Build indicator summary string
-                indicators = []
-                if 'fast_ema' in row_data and not pd.isna(row_data['fast_ema']):
-                    indicators.append(f"FastEMA={row_data['fast_ema']:.3f}")
-                if 'slow_ema' in row_data and not pd.isna(row_data['slow_ema']):
-                    indicators.append(f"SlowEMA={row_data['slow_ema']:.3f}")
-                if 'vwap' in row_data and not pd.isna(row_data['vwap']):
-                    indicators.append(f"VWAP={row_data['vwap']:.3f}")
-                if 'macd' in row_data and not pd.isna(row_data['macd']):
-                    indicators.append(f"MACD={row_data['macd']:.4f}")
-                if 'rsi' in row_data and not pd.isna(row_data['rsi']):
-                    indicators.append(f"RSI={row_data['rsi']:.1f}")
-                
-                indicator_str = ", ".join(indicators[:4]) if indicators else "No indicators"
-                
-                # Signal status
-                signals = []
-                if 'ema_bullish' in row_data:
-                    signals.append(f"EMA_Bull={row_data['ema_bullish']}")
-                if 'vwap_bullish' in row_data:
-                    signals.append(f"VWAP_Bull={row_data['vwap_bullish']}")
-                
-                signal_str = ", ".join(signals) if signals else "No signals"
-                
-                logger.info(f"Ind  Row {idx:6d} (Sample {i+1:2d}): "
-                           f"Time={row_data.name}, "
-                           f"Close={row_data.get('close', 'N/A'):8.2f}, "
-                           f"[{indicator_str}], Signals=[{signal_str}]")
-    
-    # Log final indicator status for verification
-    logger.info("Indicators calculated. Final 5 rows:")
-    # Dynamically build column list based on what's available
-    log_columns = get_available_indicator_columns(df_with_indicators)
-    if len(log_columns) > 1:  # More than just 'close'
-        logger.info(f"\n{df_with_indicators[log_columns].tail(5).to_string()}")
-    else:
-        # Use safe column selection for fallback logging
-        fallback_columns = safe_column_selection(df_with_indicators, ['close', 'volume'])
-        logger.info(f"\n{df_with_indicators[fallback_columns].tail(5).to_string()}")
-
-    # Quick EMA diagnostic
-    if 'fast_ema' in df_with_indicators.columns and 'slow_ema' in df_with_indicators.columns:
-        fast_above_slow = (df_with_indicators['fast_ema'] > df_with_indicators['slow_ema']).sum()
-        total_rows = len(df_with_indicators)
-        logger.info(f"EMA DIAGNOSTIC: {fast_above_slow}/{total_rows} rows have fast > slow ({fast_above_slow/total_rows*100:.1f}%)")
-    
-    # VWAP diagnostics (only if VWAP is enabled)
-    if 'vwap' in df_with_indicators.columns:
-        above_vwap = (df_with_indicators['close'] > df_with_indicators['vwap']).sum()
-        logger.info(f"VWAP DIAGNOSTIC: {above_vwap}/{total_rows} rows have price > VWAP ({above_vwap/total_rows*100:.1f}%)")
-    
-    # MACD diagnostics (only if MACD is enabled)
-    if 'macd' in df_with_indicators.columns and 'macd_signal' in df_with_indicators.columns:
-        macd_bullish = (df_with_indicators['macd'] > df_with_indicators['macd_signal']).sum()
-        logger.info(f"MACD DIAGNOSTIC: {macd_bullish}/{total_rows} rows have MACD > Signal ({macd_bullish/total_rows*100:.1f}%)")
-    
-    # Show sample of ALL available indicators
-    available_for_sample = safe_column_selection(df_with_indicators, ['fast_ema', 'slow_ema', 'vwap', 'macd', 'macd_signal', 'rsi', 'htf_ema'])
-    if available_for_sample:
-        sample = df_with_indicators[available_for_sample].dropna().head(10)
-        logger.info(f"Sample indicator values:\n{sample.to_string()}")
-
-    # Backtest execution loop
-    logger.info("Starting backtest execution...")
-    position_id = None
-    in_position = False
-     
-    processed_bars = 0
-    signals_detected = 0
-    entries_attempted = 0
-    trades_executed = 0
-     
-    for timestamp, row in df_with_indicators.iterrows():
-        processed_bars += 1
-        
-        # ENSURE timezone awareness for timestamp
-        now = ensure_tz_aware(timestamp)
-
-        # Check if session end reached using position manager
-        if position_manager.should_exit_for_session_end(now):
-            # Close all positions and terminate
-            for pos_id in list(position_manager.positions.keys()):
-                position_manager.close_position_full(pos_id, row['close'], now, "Exit Buffer")
-            logger.info(f"Session end reached at {now.time()}, closing all positions")
-            break  # Stop processing completely
-
-        # For debugging the first few iterations
-        if processed_bars <= 1:
-            logger.info(f"Processing timestamp: {now} (tzinfo: {now.tzinfo})")
-        
-        # Process positions with timezone-aware timestamp
-        position_manager.process_positions(row, now)
-        
-        # Entry Logic: only if not already in position and conditions meet
-        if not in_position and strategy.can_open_long(row, now):
-            signals_detected += 1
-            entries_attempted += 1
-            logger.info(f"🎯 SIGNAL DETECTED at {now}: Price={row['close']:.2f}")
+        # Optimize memory usage for large tick dataset
+        if len(df_normalized) > 5000:
+            logger.info(f"Optimizing memory usage for large tick dataset ({len(df_normalized)} ticks)")
+            # Chunk processing: Process full dataset in memory-efficient chunks
+            chunk_size = min(2000, max(1000, len(df_normalized) // 10))  # Adaptive chunk size
+            logger.info(f"Processing {len(df_normalized)} rows in chunks of {chunk_size}")
             
-            position_id = strategy.open_long(row, now, position_manager)
-            in_position = position_id is not None
-            
-            if in_position:
-                trades_executed += 1
-                logger.info(f"✅ TRADE EXECUTED: Position {position_id} opened @ {row['close']:.2f}")
-            else:
-                logger.warning(f"❌ TRADE FAILED: Signal detected but position not opened")
+            # Process indicators in chunks and combine results
+            df_with_indicators = process_indicators_sequential(df_normalized, strategy, chunk_size)
+            logger.info(f"Chunk processing completed. Full dataset with indicators: {len(df_with_indicators)} rows")
+        else:
+            # Normal processing for smaller datasets
+            df_with_indicators = strategy.calculate_indicators(df_normalized)
         
-        # Exit Logic: PositionManager handles trailing stops, TPs, SLs and session-end exits
-        if in_position:
+        # CRITICAL: Validate indicator calculation success
+        if df_with_indicators is None or df_with_indicators.empty:
+            logger.error("CRITICAL: Indicator calculation returned empty DataFrame")
+            return pd.DataFrame(), {"error": "Indicator calculation failed"}
+        
+        logger.info(f"✅ Indicators calculated successfully. DataFrame shape: {df_with_indicators.shape}")
+        
+        # === STAGE 3: AFTER INDICATOR CALCULATION ===
+        if hasattr(quality_report, 'sample_indices'):
+            logger.info("=" * 80)
+            logger.info("STAGE 3: AFTER INDICATOR CALCULATION (Same Rows)")
+            logger.info("=" * 80)
+            
+            for i, idx in enumerate(quality_report.sample_indices[:25]):
+                if idx < len(df_with_indicators):
+                    row_data = df_with_indicators.iloc[idx]
+                    
+                    # Build indicator summary string
+                    indicators = []
+                    if 'fast_ema' in row_data and not pd.isna(row_data['fast_ema']):
+                        indicators.append(f"FastEMA={row_data['fast_ema']:.3f}")
+                    if 'slow_ema' in row_data and not pd.isna(row_data['slow_ema']):
+                        indicators.append(f"SlowEMA={row_data['slow_ema']:.3f}")
+                    if 'vwap' in row_data and not pd.isna(row_data['vwap']):
+                        indicators.append(f"VWAP={row_data['vwap']:.3f}")
+                    if 'macd' in row_data and not pd.isna(row_data['macd']):
+                        indicators.append(f"MACD={row_data['macd']:.4f}")
+                    if 'rsi' in row_data and not pd.isna(row_data['rsi']):
+                        indicators.append(f"RSI={row_data['rsi']:.1f}")
+                    
+                    indicator_str = ", ".join(indicators[:4]) if indicators else "No indicators"
+                    
+                    # Signal status
+                    signals = []
+                    if 'ema_bullish' in row_data:
+                        signals.append(f"EMA_Bull={row_data['ema_bullish']}")
+                    if 'vwap_bullish' in row_data:
+                        signals.append(f"VWAP_Bull={row_data['vwap_bullish']}")
+                    
+                    signal_str = ", ".join(signals) if signals else "No signals"
+                    
+                    logger.info(f"Ind  Row {idx:6d} (Sample {i+1:2d}): "
+                               f"Time={row_data.name}, "
+                               f"Close={row_data.get('close', 'N/A'):8.2f}, "
+                               f"[{indicator_str}], Signals=[{signal_str}]")
+        
+        # Log final indicator status for verification
+        logger.info("Indicators calculated. Final 5 rows:")
+        # Dynamically build column list based on what's available
+        log_columns = get_available_indicator_columns(df_with_indicators)
+        if len(log_columns) > 1:  # More than just 'close'
+            logger.info(f"\n{df_with_indicators[log_columns].tail(5).to_string()}")
+        else:
+            # Use safe column selection for fallback logging
+            fallback_columns = safe_column_selection(df_with_indicators, ['close', 'volume'])
+            logger.info(f"\n{df_with_indicators[fallback_columns].tail(5).to_string()}")
+
+        # Quick EMA diagnostic
+        if 'fast_ema' in df_with_indicators.columns and 'slow_ema' in df_with_indicators.columns:
+            fast_above_slow = (df_with_indicators['fast_ema'] > df_with_indicators['slow_ema']).sum()
+            total_rows = len(df_with_indicators)
+            logger.info(f"EMA DIAGNOSTIC: {fast_above_slow}/{total_rows} rows have fast > slow ({fast_above_slow/total_rows*100:.1f}%)")
+        
+        # VWAP diagnostics (only if VWAP is enabled)
+        if 'vwap' in df_with_indicators.columns:
+            above_vwap = (df_with_indicators['close'] > df_with_indicators['vwap']).sum()
+            logger.info(f"VWAP DIAGNOSTIC: {above_vwap}/{total_rows} rows have price > VWAP ({above_vwap/total_rows*100:.1f}%)")
+        
+        # MACD diagnostics (only if MACD is enabled)
+        if 'macd' in df_with_indicators.columns and 'macd_signal' in df_with_indicators.columns:
+            macd_bullish = (df_with_indicators['macd'] > df_with_indicators['macd_signal']).sum()
+            logger.info(f"MACD DIAGNOSTIC: {macd_bullish}/{total_rows} rows have MACD > Signal ({macd_bullish/total_rows*100:.1f}%)")
+        
+        # Show sample of ALL available indicators
+        available_for_sample = safe_column_selection(df_with_indicators, ['fast_ema', 'slow_ema', 'vwap', 'macd', 'macd_signal', 'rsi', 'htf_ema'])
+        if available_for_sample:
+            sample = df_with_indicators[available_for_sample].dropna().head(10)
+            logger.info(f"Sample indicator values:\n{sample.to_string()}")
+
+        # Backtest execution loop
+        logger.info("Starting backtest execution...")
+        position_id = None
+        in_position = False
+         
+        processed_bars = 0
+        signals_detected = 0
+        entries_attempted = 0
+        trades_executed = 0
+         
+        for timestamp, row in df_with_indicators.iterrows():
+            processed_bars += 1
+            
+            # ENSURE timezone awareness for timestamp
+            now = ensure_tz_aware(timestamp)
+
+            # Check if session end reached using position manager
+            if position_manager.should_exit_for_session_end(now):
+                # Close all positions and terminate
+                for pos_id in list(position_manager.positions.keys()):
+                    position_manager.close_position_full(pos_id, row['close'], now, "Exit Buffer")
+                logger.info(f"Session end reached at {now.time()}, closing all positions")
+                break  # Stop processing completely
+
+            # For debugging the first few iterations
+            if processed_bars <= 1:
+                logger.info(f"Processing timestamp: {now} (tzinfo: {now.tzinfo})")
+            
+            # Process positions with timezone-aware timestamp
             position_manager.process_positions(row, now)
             
-            # FIXED: Use correct method name
-            if strategy.should_exit(row, now, position_manager):
-                last_price = row['close']
-                strategy.handle_exit(position_id, last_price, now, position_manager, reason="Strategy Exit")
+            # Entry Logic: only if not already in position and conditions meet
+            if not in_position and strategy.can_open_long(row, now):
+                signals_detected += 1
+                entries_attempted += 1
+                logger.info(f"🎯 SIGNAL DETECTED at {now}: Price={row['close']:.2f}")
+                
+                position_id = strategy.open_long(row, now, position_manager)
+                in_position = position_id is not None
+                
+                if in_position:
+                    trades_executed += 1
+                    logger.info(f"✅ TRADE EXECUTED: Position {position_id} opened @ {row['close']:.2f}")
+                else:
+                    logger.warning(f"❌ TRADE FAILED: Signal detected but position not opened")
+            
+            # Exit Logic: PositionManager handles trailing stops, TPs, SLs and session-end exits
+            if in_position:
+                position_manager.process_positions(row, now)
+                
+                # FIXED: Use correct method name
+                if strategy.should_exit(row, now, position_manager):
+                    last_price = row['close']
+                    strategy.handle_exit(position_id, last_price, now, position_manager, reason="Strategy Exit")
+                    in_position = False
+                    position_id = None
+                    logger.debug(f"Strategy exit at {now} @ {last_price:.2f}")
+            else:
+                # Still allow PositionManager to process positions in edge cases
+                position_manager.process_positions(row, now)
+            
+            # Reset position state if position closed by PositionManager
+            if position_id and position_id not in position_manager.positions:
                 in_position = False
                 position_id = None
-                logger.debug(f"Strategy exit at {now} @ {last_price:.2f}")
+            
+            # FIXED: Add periodic progress logging
+            if processed_bars % 1000 == 0:
+                logger.info(f"📊 Progress: {processed_bars:,} bars processed, "
+                            f"Signals: {signals_detected}, Entries: {entries_attempted}, "
+                            f"Trades: {trades_executed}")
+        
+        logger.info(f"🏁 Backtest completed: {signals_detected} signals, {trades_executed} trades executed")
+        
+        # Defensive: flatten any still-open positions at backtest end
+        if position_id and position_id in position_manager.positions:
+            last_price = df_with_indicators.iloc[-1]['close']
+            now = df_with_indicators.index[-1]
+            strategy.handle_exit(position_id, last_price, now, position_manager, reason="End of Backtest")
+            logger.info(f"Closed final position at backtest end @ {last_price:.2f}")
+        
+        # Gather and print summary
+        trades = position_manager.get_trade_history()
+        performance = position_manager.get_performance_summary()
+        
+        logger.info("=" * 60)
+        logger.info("BACKTEST SUMMARY")
+        logger.info("=" * 60)
+        logger.info(f"Data Quality:")
+        logger.info(f"  Total input rows: {quality_report.total_rows}")
+        logger.info(f"  Processed rows: {quality_report.rows_processed}")
+        logger.info(f"  Data quality: {quality_report.rows_processed/quality_report.total_rows*100:.1f}%")
+        logger.info("")
+        logger.info(f"Trading Performance:")
+        logger.info(f"  Total Trades: {performance['total_trades']}")
+        logger.info(f"  Win Rate: {performance['win_rate']:.2f}%")
+        logger.info(f"  Total P&L: {performance['total_pnl']:.2f}")
+        logger.info(f"  Avg Win: {performance['avg_win']:.2f}")
+        logger.info(f"  Avg Loss: {performance['avg_loss']:.2f}")
+        logger.info(f"  Profit Factor: {performance['profit_factor']:.2f}")
+        logger.info(f"  Max Win: {performance['max_win']:.2f}")
+        logger.info(f"  Max Loss: {performance['max_loss']:.2f}")
+        logger.info(f"  Total Commission: {performance['total_commission']:.2f}")
+        logger.info("=" * 60)
+        
+        # Save trade log CSV file
+        if trades:
+            trades_df = pd.DataFrame(trades)
+            trades_df.to_csv("backtest_trades.csv", index=False)
+            logger.info("Trade log written to backtest_trades.csv")
         else:
-            # Still allow PositionManager to process positions in edge cases
-            position_manager.process_positions(row, now)
+            logger.warning("No trades executed during backtest")
+            trades_df = pd.DataFrame()
         
-        # Reset position state if position closed by PositionManager
-        if position_id and position_id not in position_manager.positions:
-            in_position = False
-            position_id = None
-        
-        # FIXED: Add periodic progress logging
-        if processed_bars % 1000 == 0:
-            logger.info(f"📊 Progress: {processed_bars:,} bars processed, "
-                        f"Signals: {signals_detected}, Entries: {entries_attempted}, "
-                        f"Trades: {trades_executed}")
-    
-    logger.info(f"🏁 Backtest completed: {signals_detected} signals, {trades_executed} trades executed")
-    
-    # Defensive: flatten any still-open positions at backtest end
-    if position_id and position_id in position_manager.positions:
-        last_price = df_with_indicators.iloc[-1]['close']
-        now = df_with_indicators.index[-1]
-        strategy.handle_exit(position_id, last_price, now, position_manager, reason="End of Backtest")
-        logger.info(f"Closed final position at backtest end @ {last_price:.2f}")
-    
-    # Gather and print summary
-    trades = position_manager.get_trade_history()
-    performance = position_manager.get_performance_summary()
-    
-    logger.info("=" * 60)
-    logger.info("BACKTEST SUMMARY")
-    logger.info("=" * 60)
-    logger.info(f"Data Quality:")
-    logger.info(f"  Total input rows: {quality_report.total_rows}")
-    logger.info(f"  Processed rows: {quality_report.rows_processed}")
-    logger.info(f"  Data quality: {quality_report.rows_processed/quality_report.total_rows*100:.1f}%")
-    logger.info("")
-    logger.info(f"Trading Performance:")
-    logger.info(f"  Total Trades: {performance['total_trades']}")
-    logger.info(f"  Win Rate: {performance['win_rate']:.2f}%")
-    logger.info(f"  Total P&L: {performance['total_pnl']:.2f}")
-    logger.info(f"  Avg Win: {performance['avg_win']:.2f}")
-    logger.info(f"  Avg Loss: {performance['avg_loss']:.2f}")
-    logger.info(f"  Profit Factor: {performance['profit_factor']:.2f}")
-    logger.info(f"  Max Win: {performance['max_win']:.2f}")
-    logger.info(f"  Max Loss: {performance['max_loss']:.2f}")
-    logger.info(f"  Total Commission: {performance['total_commission']:.2f}")
-    logger.info("=" * 60)
-    
-    # Save trade log CSV file
-    if trades:
-        trades_df = pd.DataFrame(trades)
-        trades_df.to_csv("backtest_trades.csv", index=False)
-        logger.info("Trade log written to backtest_trades.csv")
-    else:
-        logger.warning("No trades executed during backtest")
-        trades_df = pd.DataFrame()
-    
-    return trades_df, performance
+        return trades_df, performance
 
 def run_backtest_debug(strategy, data, position_manager, risk_manager, start_date, end_date):
     """Enhanced backtest with production-level debugging."""
@@ -807,23 +900,27 @@ def filter_data_by_session(df, session_config):
 
 if __name__ == "__main__":
     import argparse
-    
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
         datefmt='%H:%M:%S'
     )
-    
+
     parser = argparse.ArgumentParser(description="Refactored Backtest Runner with Simple Data Loading")
-    parser.add_argument("--config", default="config/strategy_config.yaml", help="Config YAML path")
     parser.add_argument("--data", required=True, help="Path to historical data CSV/LOG")
-    
+
     args = parser.parse_args()
-    
+
     try:
-        trades_df, performance = run_backtest(args.config, args.data)
+        # Always load config from defaults.py, ignore --config argument
+        from config.defaults import DEFAULT_CONFIG
+        import copy
+        config = copy.deepcopy(DEFAULT_CONFIG)
+        runner = BacktestRunner(config=config, data_path=args.data)
+        trades_df, performance = runner.run()
         logger.info("Backtest completed successfully")
-        
+
     except Exception as e:
         logger.error(f"Backtest failed: {str(e)}")
         raise

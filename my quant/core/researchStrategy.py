@@ -1,16 +1,8 @@
 """
-core/strategy.py - Unified Long-Only Intraday Trading Strategy
+researchStrategy.py - Core trading strategy implementation
 
-This is the core strategy logic used by both backtest engine and live trading bot.
-Enforces long-only, intraday-only constraints while supporting all indicators.
-
-Features:
-- Multi-indicator signal generation
-- Parameter-driven configuration  
-- Long-only, intraday-only enforcement
-- Session management
-- Entry/exit logic with multiple filters
-- Compatible with both backtest and live systems
+This module contains the main trading strategy logic used by both backtest
+and live trading systems.
 """
 
 import pandas as pd
@@ -61,7 +53,7 @@ class ModularIntradayStrategy:
         validation = self.config_accessor.validate_required_params()
         if not validation['valid']:
             logger.error(f"Configuration validation failed: {validation['errors']}")
-            raise ValueError(f"Invalid configuration: ṇ{validation['errors']}")
+            raise ValueError(f"Invalid configuration: {validation['errors']}")
         
         self.indicators = indicators_module  # Store but don't necessarily use
         self.name = "Modular Intraday Long-Only Strategy"
@@ -71,7 +63,6 @@ class ModularIntradayStrategy:
         self.is_initialized = False
         self.current_position = None
         self.last_signal_time = None
-        self.min_bars_required = 50  # Minimum bars needed for indicators
         self.bars_processed = 0
         
         # Session configuration
@@ -105,15 +96,15 @@ class ModularIntradayStrategy:
         self.no_trade_start_minutes = config.get('no_trade_start_minutes', 5)
         self.no_trade_end_minutes = config.get('no_trade_end_minutes', 30)
         
-        # Indicator parameters
+        # Indicator parameters - use config_accessor for consistent access
         self.use_ema_crossover = self.config_accessor.get_strategy_param('use_ema_crossover', True)
-        self.use_macd = self.config_accessor.get_strategy_param('use_macd', True)
-        self.use_vwap = self.config_accessor.get_strategy_param('use_vwap', True)
+        self.use_macd = self.config_accessor.get_strategy_param('use_macd', False)
+        self.use_vwap = self.config_accessor.get_strategy_param('use_vwap', False)
         self.use_rsi_filter = self.config_accessor.get_strategy_param('use_rsi_filter', False)
-        self.use_htf_trend = self.config_accessor.get_strategy_param('use_htf_trend', True)  # Now optional!
+        self.use_htf_trend = self.config_accessor.get_strategy_param('use_htf_trend', False)
         self.use_bollinger_bands = self.config_accessor.get_strategy_param('use_bollinger_bands', False)
         self.use_stochastic = self.config_accessor.get_strategy_param('use_stochastic', False)
-        self.use_atr = self.config_accessor.get_strategy_param('use_atr', True)
+        self.use_atr = self.config_accessor.get_strategy_param('use_atr', False)
         
         # EMA parameters
         self.fast_ema = self.config_accessor.get_strategy_param('fast_ema', 9)

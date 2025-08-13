@@ -1,126 +1,91 @@
+"""
+config_helper.py - Simplified Configuration Access Helper
+"""
+from typing import Dict, Any, Optional, List
+from copy import deepcopy
 import logging
-from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
 class ConfigAccessor:
+    """
+    Helper class for accessing configuration parameters in a nested dictionary.
+    Simplifies access and provides consistent defaults.
+    """
     def __init__(self, config: Dict[str, Any]):
-        self.config = config
-
-    def get_strategy_param(self, key: str, default: Any = None) -> Any:
-        return self.config.get('strategy', {}).get(key, default)
-
-    def get_risk_param(self, key: str, default: Any = None) -> Any:
-        return self.config.get('risk', {}).get(key, default)
-
-    def get_capital_param(self, key: str, default: Any = None) -> Any:
-        return self.config.get('capital', {}).get(key, default)
-
-    def get_instrument_param(self, key: str, default: Any = None) -> Any:
-        return self.config.get('instrument', {}).get(key, default)
-
-    def get_session_param(self, key: str, default: Any = None) -> Any:
-        return self.config.get('session', {}).get(key, default)
-
-    def get_backtest_param(self, key: str, default: Any = None) -> Any:
-        return self.config.get('backtest', {}).get(key, default)
-
-    def validate_required_params(self) -> Dict[str, Any]:
-        validation = {
-            'valid': True,
-            'errors': [],
-            'warnings': []
-        }
-        required_sections = ['strategy', 'risk', 'capital', 'instrument', 'session']
-        for section in required_sections:
-            if section not in self.config:
-                validation['errors'].append(f"Missing required section: {section}")
-                validation['valid'] = False
-        critical_params = [
-            ('strategy', 'use_ema_crossover'),
-            ('risk', 'base_sl_points'),
-            ('capital', 'initial_capital'),
-            ('session', 'intraday_start_hour')
-        ]
-        for section, param in critical_params:
-            if section in self.config and param not in self.config[section]:
-                validation['warnings'].append(f"Missing parameter: {section}.{param}")
-        return validation
-
-    def is_indicator_enabled(self, indicator_name: str) -> bool:
+        self.config = config if config else {}
+        
+    def get(self, path: str, default: Any = None) -> Any:
+        """Get value from nested config using dot notation"""
+        parts = path.split('.')
+        current = self.config
+        
+        for part in parts:
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
+                return default
+                
+        return current
+    
+    def get_strategy_param(self, param_name: str, default: Any = None) -> Any:
         """
-        Check if a specific indicator is enabled in the strategy configuration.
+        Get a strategy parameter with fallback to default.
         
         Args:
-            indicator_name (str): Name of the indicator to check
-            
+            param_name: Parameter name
+            default: Default value if parameter is missing
+        
         Returns:
-            bool: True if the indicator is enabled, False otherwise
+            Parameter value
         """
-        # Map indicator names to their configuration keys
-        indicator_map = {
-            'rsi': 'use_rsi_filter',
-            'ema_crossover': 'use_ema_crossover', 
-            'macd': 'use_macd',
-            'vwap': 'use_vwap',
-            'htf_trend': 'use_htf_trend',
-            'bollinger_bands': 'use_bollinger_bands',
-            'stochastic': 'use_stochastic',
-            'atr': 'use_atr'
-        }
+        if 'strategy' not in self.config:
+            return default
+            
+        return self.config['strategy'].get(param_name, default)
+    
+    def get_risk_param(self, param_name: str, default: Any = None) -> Any:
+        """
+        Get a risk parameter with fallback to default.
         
-        # Get the appropriate config key for this indicator
-        config_key = indicator_map.get(indicator_name)
-        if config_key:
-            return self.get_strategy_param(config_key, False)
+        Args:
+            param_name: Parameter name
+            default: Default value if parameter is missing
         
-        # Fallback: try direct mapping with 'use_' prefix
-        return self.get_strategy_param(f'use_{indicator_name}', False)
+        Returns:
+            Parameter value
+        """
+        if 'risk' not in self.config:
+            return default
+            
+        return self.config['risk'].get(param_name, default)
+        
+    def validate_required_params(self) -> Dict[str, Any]:
+        """
+        Validate that required parameters exist in config.
+        
+        Returns:
+            Dict with validation status
+        """
+        missing = []
+        required_paths = [
+            'strategy.strategy_version',
+            'session.start_hour',
+            'session.end_hour'
+        ]
+        
+        for path in required_paths:
+            if self.get(path) is None:
+                missing.append(path)
+                
+        return {"valid": len(missing) == 0, "errors": missing}
 
-def create_nested_config_from_flat(flat_config: Dict[str, Any]) -> Dict[str, Any]:
-    nested_config = {
-        'strategy': {},
-        'risk': {},
-        'capital': {},
-        'instrument': {},
-        'session': {},
-        'backtest': {}
-    }
-    strategy_params = [
-        'use_ema_crossover', 'use_macd', 'use_vwap', 'use_rsi_filter', 'use_htf_trend',
-        'use_bollinger_bands', 'use_stochastic', 'use_atr', 'fast_ema', 'slow_ema',
-        'macd_fast', 'macd_slow', 'macd_signal', 'rsi_length', 'rsi_overbought',
-        'rsi_oversold', 'htf_period', 'strategy_version', 'indicator_update_mode'
-    ]
-    risk_params = [
-        'base_sl_points', 'use_trail_stop', 'trail_activation_points', 
-        'trail_distance_points', 'tp_points', 'tp_percents', 'risk_per_trade_percent',
-        'commission_percent', 'commission_per_trade', 'buy_buffer'
-    ]
-    capital_params = ['initial_capital']
-    instrument_params = ['symbol', 'exchange', 'lot_size', 'tick_size', 'product_type']
-    session_params = [
-        'intraday_start_hour', 'intraday_start_min', 'intraday_end_hour',
-        'intraday_end_min', 'exit_before_close', 'timezone'
-    ]
-    backtest_params = [
-        'max_drawdown_pct', 'allow_short', 'close_at_session_end',
-        'save_results', 'results_dir', 'log_level'
-    ]
-    param_mapping = {
-        'strategy': strategy_params,
-        'risk': risk_params,
-        'capital': capital_params,
-        'instrument': instrument_params,
-        'session': session_params,
-        'backtest': backtest_params
-    }
-    for section, param_list in param_mapping.items():
-        for param in param_list:
-            if param in flat_config:
-                nested_config[section][param] = flat_config[param]
-    for section in nested_config.keys():
-        if section in flat_config and isinstance(flat_config[section], dict):
-            nested_config[section].update(flat_config[section])
-    logger.info(f"Converted flat config to nested: {len(flat_config)} → {sum(len(v) for v in nested_config.values())} parameters")
-    return nested_config
+def create_config_from_defaults():
+    """
+    Create a new configuration object from defaults.
+    
+    Returns:
+        Fresh config dictionary
+    """
+    from config.defaults import DEFAULT_CONFIG
+    return deepcopy(DEFAULT_CONFIG)

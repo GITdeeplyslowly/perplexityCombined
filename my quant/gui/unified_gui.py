@@ -1,454 +1,320 @@
 """
-gui/unified_gui.py
+unified_gui.py - Unified Trading Interface for both Backtesting and Live Trading
 
-Unified GUI for both Backtest and Forward (Live) Test modes:
-- Tab 1: Backtest mode (CSV selection, config, run backtest, show results)
-- Tab 2: Forward Test mode (SmartAPI login, manual symbol cache refresh, symbol/feed select, start/stop simulated live)
-- Tab 3: Status/Logs (view latest logs and info)
-
-All orders are simulated; no real trading occurs in this GUI.
+Provides a comprehensive GUI for:
+- Configuring strategy parameters
+- Running backtests
+- Starting/stopping live trading
+- Visualizing results
+- Managing configurations
 """
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import threading
 import os
+import json
 from datetime import datetime
 import logging
-import yaml
-
-from backtest.backtest_runner import run_backtest
+import numpy as np
+import pytz
+from utils.cache_manager import refresh_symbol_cache, load_symbol_cache
 from live.trader import LiveTrader
-from utils.cache_manager import load_symbol_cache, refresh_symbol_cache, get_token_for_symbol
-from utils.simple_loader import load_data_simple
-from utils.time_utils import now_ist
+
+# Add import for defaults
+from config.defaults import DEFAULT_CONFIG
+from utils.config_helper import ConfigAccessor, create_config_from_defaults
+from utils.logger_setup import setup_logger
+from backtest.backtest_runner import BacktestRunner
 
 LOG_FILENAME = "unified_gui.log"
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)8s] %(name)s: %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_FILENAME, encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+logger = setup_logger(log_file=LOG_FILENAME, log_level=logging.INFO)
+
+# Add now_ist function
+def now_ist():
+    """Return current time in India Standard Time"""
+    return datetime.now(pytz.timezone('Asia/Kolkata'))
 
 class UnifiedTradingGUI(tk.Tk):
     def __init__(self, master=None):
         super().__init__(master)
+        
         self.title("Unified Trading System")
-        self.geometry("1024x768")
+        self.geometry("1200x800")
+        self.minsize(1000, 700)
         
         # Initialize ALL variables FIRST before any GUI components
         self._initialize_all_variables()
         
-        # Create notebook for tabs
-        self.notebook = ttk.Notebook(self)
+        # Initialize from defaults
+        self._initialize_variables_from_defaults()
         
-        # Create tab frames first
-        self.bt_tab = ttk.Frame(self.notebook)
-        self.ft_tab = ttk.Frame(self.notebook)
-        self.log_tab = ttk.Frame(self.notebook)
+        # Create GUI components
+        self._create_gui_framework()
         
-        # Add tabs to notebook
-        self.notebook.add(self.bt_tab, text="Backtest")
-        self.notebook.add(self.ft_tab, text="Forward Test")
-        self.notebook.add(self.log_tab, text="Logs")
-        
-        # Pack notebook
-        self.notebook.pack(expand=1, fill="both")
-
-        # Build GUI components AFTER variable initialization
+        # Build the tabs
         self._build_backtest_tab()
         self._build_forward_test_tab()
         self._build_log_tab()
+        
+        # Load any saved preferences
+        self._load_user_preferences()
+        
+        logger.info("GUI initialized successfully")
+        
+    def _initialize_variables_from_defaults(self):
+        """Initialize all GUI variables from defaults.py"""
+        # Get defaults
+        strategy_defaults = DEFAULT_CONFIG['strategy']
+        risk_defaults = DEFAULT_CONFIG['risk']
+        capital_defaults = DEFAULT_CONFIG['capital']
+        instrument_defaults = DEFAULT_CONFIG['instrument']
+        session_defaults = DEFAULT_CONFIG['session']
+        
+        # Strategy variables
+        self.bt_use_ema_crossover = tk.BooleanVar(value=strategy_defaults['use_ema_crossover'])
+        self.bt_use_macd = tk.BooleanVar(value=strategy_defaults['use_macd'])
+        self.bt_use_vwap = tk.BooleanVar(value=strategy_defaults['use_vwap'])
+        self.bt_use_rsi_filter = tk.BooleanVar(value=strategy_defaults['use_rsi_filter'])
+        self.bt_use_htf_trend = tk.BooleanVar(value=strategy_defaults['use_htf_trend'])
+        self.bt_use_bollinger_bands = tk.BooleanVar(value=strategy_defaults['use_bollinger_bands'])
+        self.bt_use_stochastic = tk.BooleanVar(value=strategy_defaults['use_stochastic'])
+        self.bt_use_atr = tk.BooleanVar(value=strategy_defaults['use_atr'])
+        
+        # EMA parameters
+        self.bt_fast_ema = tk.StringVar(value=str(strategy_defaults['fast_ema']))
+        self.bt_slow_ema = tk.StringVar(value=str(strategy_defaults['slow_ema']))
+        
+        # MACD parameters
+        self.bt_macd_fast = tk.StringVar(value=str(strategy_defaults['macd_fast']))
+        self.bt_macd_slow = tk.StringVar(value=str(strategy_defaults['macd_slow']))
+        self.bt_macd_signal = tk.StringVar(value=str(strategy_defaults['macd_signal']))
+        
+        # Risk management
+        self.bt_base_sl_points = tk.StringVar(value=str(risk_defaults['base_sl_points']))
+        self.bt_tp_points = [tk.StringVar(value=str(p)) for p in risk_defaults['tp_points']]
+        self.bt_tp_percents = [tk.StringVar(value=str(p*100)) for p in risk_defaults['tp_percents']]
+        self.bt_use_trail_stop = tk.BooleanVar(value=risk_defaults['use_trail_stop'])
+        self.bt_trail_activation = tk.StringVar(value=str(risk_defaults['trail_activation_points']))
+        self.bt_trail_distance = tk.StringVar(value=str(risk_defaults['trail_distance_points']))
+        
+        # Capital settings
+        self.bt_initial_capital = tk.StringVar(value=str(capital_defaults['initial_capital']))
+        
+        # Instrument settings
+        self.bt_symbol = tk.StringVar(value=instrument_defaults['symbol'])
+        self.bt_exchange = tk.StringVar(value=instrument_defaults['exchange'])
+        self.bt_lot_size = tk.StringVar(value=str(instrument_defaults['lot_size']))
+        
+        # Session settings
+        self.bt_is_intraday = tk.BooleanVar(value=session_defaults['is_intraday'])
+        self.bt_session_start_hour = tk.StringVar(value=str(session_defaults['start_hour']))
+        self.bt_session_start_min = tk.StringVar(value=str(session_defaults['start_min']))
+        self.bt_session_end_hour = tk.StringVar(value=str(session_defaults['end_hour']))
+        self.bt_session_end_min = tk.StringVar(value=str(session_defaults['end_min']))
 
-    # --- Backtest Tab ---
-    def _build_backtest_tab(self):
-        frame = self.bt_tab
-        frame.columnconfigure(1, weight=1)
-        row = 0
+    def _load_user_preferences(self):
+        """Load user preferences from saved file"""
+        prefs_file = "user_preferences.json"
+        if os.path.exists(prefs_file):
+            try:
+                with open(prefs_file, 'r') as f:
+                    user_prefs = json.load(f)
+                
+                # Apply saved preferences to GUI controls
+                self._apply_preferences_to_gui(user_prefs)
+                
+                logger.info(f"User preferences loaded from {prefs_file}")
+            except Exception as e:
+                logger.error(f"Failed to load preferences: {e}")
+    
+    def _apply_preferences_to_gui(self, preferences):
+        """Apply saved preferences to GUI controls"""
+        # Map JSON preferences to GUI variables
+        # Process only preferences that differ from defaults
         
-        ttk.Label(frame, text="Data File (.csv, .log):").grid(row=row, column=0, sticky="e")
-        self.bt_data_file = tk.StringVar()
-        ttk.Entry(frame, textvariable=self.bt_data_file, width=55).grid(row=row, column=1, padx=5, pady=5)
-        ttk.Button(frame, text="Browse", command=self._bt_browse_csv).grid(row=row, column=2, padx=5, pady=5)
-        row += 1
-
-        # Add Run Backtest button early for visibility
-        ttk.Button(frame, text="Run Backtest", command=self._bt_run_backtest, 
-                  style="Accent.TButton").grid(row=row, column=0, columnspan=3, pady=10)
-        row += 1
-
-        # Strategy Configuration for Backtest
-        ttk.Label(frame, text="Strategy Configuration", font=('Arial', 12, 'bold')).grid(row=row, column=0, columnspan=3, sticky="w", pady=(15,5))
-        row += 1
-
-        # Indicator Toggles
-        ttk.Label(frame, text="Indicators:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=2)
-        row += 1
+        # Strategy parameters
+        if 'strategy' in preferences:
+            strategy_prefs = preferences['strategy']
+            self._set_if_exists(self.bt_use_ema_crossover, 'use_ema_crossover', strategy_prefs)
+            self._set_if_exists(self.bt_use_macd, 'use_macd', strategy_prefs)
+            self._set_if_exists(self.bt_use_vwap, 'use_vwap', strategy_prefs)
+            self._set_if_exists(self.bt_use_rsi_filter, 'use_rsi_filter', strategy_prefs)
+            self._set_if_exists(self.bt_use_htf_trend, 'use_htf_trend', strategy_prefs)
+            self._set_if_exists(self.bt_use_bollinger_bands, 'use_bollinger_bands', strategy_prefs)
+            self._set_if_exists(self.bt_use_stochastic, 'use_stochastic', strategy_prefs)
+            self._set_if_exists(self.bt_use_atr, 'use_atr', strategy_prefs)
+            self._set_if_exists(self.bt_fast_ema, 'fast_ema', strategy_prefs)
+            self._set_if_exists(self.bt_slow_ema, 'slow_ema', strategy_prefs)
+            self._set_if_exists(self.bt_macd_fast, 'macd_fast', strategy_prefs)
+            self._set_if_exists(self.bt_macd_slow, 'macd_slow', strategy_prefs)
+            self._set_if_exists(self.bt_macd_signal, 'macd_signal', strategy_prefs)
         
-        bt_indicators_frame = ttk.Frame(frame)
-        bt_indicators_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        
-        self.bt_use_ema_crossover = tk.BooleanVar(value=True)
-        self.bt_use_macd = tk.BooleanVar(value=True)
-        self.bt_use_vwap = tk.BooleanVar(value=True)
-        self.bt_use_rsi_filter = tk.BooleanVar(value=False)
-        self.bt_use_htf_trend = tk.BooleanVar(value=True)
-        self.bt_use_bollinger_bands = tk.BooleanVar(value=False)
-        self.bt_use_stochastic = tk.BooleanVar(value=False)
-        self.bt_use_atr = tk.BooleanVar(value=True)
-        
-        ttk.Checkbutton(bt_indicators_frame, text="EMA Crossover", variable=self.bt_use_ema_crossover).grid(row=0, column=0, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="MACD", variable=self.bt_use_macd).grid(row=0, column=1, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="VWAP", variable=self.bt_use_vwap).grid(row=0, column=2, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="RSI Filter", variable=self.bt_use_rsi_filter).grid(row=0, column=3, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="HTF Trend", variable=self.bt_use_htf_trend).grid(row=1, column=0, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="Bollinger Bands", variable=self.bt_use_bollinger_bands).grid(row=1, column=1, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="Stochastic", variable=self.bt_use_stochastic).grid(row=1, column=2, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="ATR", variable=self.bt_use_atr).grid(row=1, column=3, sticky="w", padx=5)
-        row += 1
-
-        # --- Strategy version selector ---------------------------------
-        ttk.Label(frame, text="Strategy Version:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-
-        self.bt_strategy_version = tk.StringVar(value="research")   # default for backtest
-        ttk.Combobox(frame,
-                     textvariable=self.bt_strategy_version,
-                     values=["research", "live"],
-                     width=12,
-                     state="readonly").grid(row=row, column=0, sticky="w", padx=5, pady=2)
-        row += 1
-
-        # Parameters
-        ttk.Label(frame, text="Parameters:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        
-        self.bt_param_frame = ttk.LabelFrame(self.bt_tab, text="Parameters")
-        self.bt_param_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        
-        bt_params_frame = ttk.Frame(frame)
-        bt_params_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        
-        # EMA Parameters
-        ttk.Label(bt_params_frame, text="Fast EMA:").grid(row=0, column=0, sticky="e", padx=2)
-        self.bt_fast_ema = tk.StringVar(value="9")
-        ttk.Entry(bt_params_frame, textvariable=self.bt_fast_ema, width=8).grid(row=0, column=1, padx=2)
-        
-        ttk.Label(bt_params_frame, text="Slow EMA:").grid(row=0, column=2, sticky="e", padx=2)
-        self.bt_slow_ema = tk.StringVar(value="21")
-        ttk.Entry(bt_params_frame, textvariable=self.bt_slow_ema, width=8).grid(row=0, column=3, padx=2)
- 
-         # MACD Parameters
-        ttk.Label(bt_params_frame, text="MACD Fast:").grid(row=1, column=0, sticky="e", padx=2)
-        self.bt_macd_fast = tk.StringVar(value="12")
-        ttk.Entry(bt_params_frame, textvariable=self.bt_macd_fast, width=8).grid(row=1, column=1, padx=2)
-        
-        ttk.Label(bt_params_frame, text="MACD Slow:").grid(row=1, column=2, sticky="e", padx=2)
-        self.bt_macd_slow = tk.StringVar(value="26")
-        ttk.Entry(bt_params_frame, textvariable=self.bt_macd_slow, width=8).grid(row=1, column=3, padx=2)
-        
-        ttk.Label(bt_params_frame, text="MACD Signal:").grid(row=1, column=4, sticky="e", padx=2)
-        self.bt_macd_signal = tk.StringVar(value="9")
-        ttk.Entry(bt_params_frame, textvariable=self.bt_macd_signal, width=8).grid(row=1, column=5, padx=2)
-        
-        # RSI Parameters
-        ttk.Label(bt_params_frame, text="RSI Length:").grid(row=2, column=0, sticky="e", padx=2)
-        self.bt_rsi_length = tk.StringVar(value="14")
-        ttk.Entry(bt_params_frame, textvariable=self.bt_rsi_length, width=8).grid(row=2, column=1, padx=2)
-        
-        ttk.Label(bt_params_frame, text="RSI Oversold:").grid(row=2, column=2, sticky="e", padx=2)
-        self.bt_rsi_oversold = tk.StringVar(value="30")
-        ttk.Entry(bt_params_frame, textvariable=self.bt_rsi_oversold, width=8).grid(row=2, column=3, padx=2)
-        
-        ttk.Label(bt_params_frame, text="RSI Overbought:").grid(row=2, column=4, sticky="e", padx=2)
-        self.bt_rsi_overbought = tk.StringVar(value="70")
-        ttk.Entry(bt_params_frame, textvariable=self.bt_rsi_overbought, width=8).grid(row=2, column=5, padx=2)
-        
-        # HTF Parameters
-        ttk.Label(bt_params_frame, text="HTF Period:").grid(row=3, column=0, sticky="e", padx=2)
-        self.bt_htf_period = tk.StringVar(value="20")
-        ttk.Entry(bt_params_frame, textvariable=self.bt_htf_period, width=8).grid(row=3, column=1, padx=2)
-        row += 1
-
-        # Risk Management
-        ttk.Label(frame, text="Risk Management:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        
-        bt_risk_frame = ttk.Frame(frame)
-        bt_risk_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        
-        ttk.Label(bt_risk_frame, text="Stop Loss Points:").grid(row=0, column=0, sticky="e", padx=2)
-        self.bt_base_sl_points = tk.StringVar(value="15")
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_base_sl_points, width=8).grid(row=0, column=1, padx=2)
-        
-        ttk.Label(bt_risk_frame, text="TP1 Points:").grid(row=0, column=2, sticky="e", padx=2)
-        self.bt_tp1_points = tk.StringVar(value="10")
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp1_points, width=8).grid(row=0, column=3, padx=2)
-        
-        ttk.Label(bt_risk_frame, text="TP2 Points:").grid(row=0, column=4, sticky="e", padx=2)
-        self.bt_tp2_points = tk.StringVar(value="25")
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp2_points, width=8).grid(row=0, column=5, padx=2)
-        
-        ttk.Label(bt_risk_frame, text="TP3 Points:").grid(row=1, column=0, sticky="e", padx=2)
-        self.bt_tp3_points = tk.StringVar(value="50")
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp3_points, width=8).grid(row=1, column=1, padx=2)
-        
-        ttk.Label(bt_risk_frame, text="TP4 Points:").grid(row=1, column=2, sticky="e", padx=2)
-        self.bt_tp4_points = tk.StringVar(value="100")
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp4_points, width=8).grid(row=1, column=3, padx=2)
-        
-        self.bt_use_trail_stop = tk.BooleanVar(value=True)
-        ttk.Checkbutton(bt_risk_frame, text="Use Trailing Stop", variable=self.bt_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
-        
-        ttk.Label(bt_risk_frame, text="Trail Activation Points:").grid(row=2, column=0, sticky="e", padx=2)
-        self.bt_trail_activation_points = tk.StringVar(value="25")
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_trail_activation_points, width=8).grid(row=2, column=1, padx=2)
-        
-        ttk.Label(bt_risk_frame, text="Trail Distance Points:").grid(row=2, column=2, sticky="e", padx=2)
-        self.bt_trail_distance_points = tk.StringVar(value="10")
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_trail_distance_points, width=8).grid(row=2, column=3, padx=2)
-        
-        ttk.Label(bt_risk_frame, text="Risk % per Trade:").grid(row=2, column=4, sticky="e", padx=2)
-        self.bt_risk_per_trade_percent = tk.StringVar(value="1.0")
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
-        
-        ttk.Label(bt_risk_frame, text="Initial Capital:").grid(row=3, column=0, sticky="e", padx=2)
-        self.bt_initial_capital = tk.StringVar(value="100000")
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_initial_capital, width=12).grid(row=3, column=1, padx=2)
-        row += 1
-
-        # Add instrument panel before capital management
-        row = self._build_instrument_panel(frame, row)
-
-        # Add session timing panel between instrument panel and capital management
-        row = self._build_session_timing_panel(frame, row)
-
-        # Add capital management panel after risk management
-        row = self._build_capital_management_panel(frame, row)
-
-        ttk.Button(frame, text="Run Backtest", command=self._bt_run_backtest).grid(row=row, column=0, columnspan=3, pady=10)
-        row += 1
-
-        self.bt_result_box = tk.Text(frame, height=20, state="disabled", wrap="word")
-        self.bt_result_box.grid(row=row, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
-        frame.rowconfigure(row, weight=1)
-
-    def _build_capital_management_panel(self, frame, row):
-        """Build comprehensive capital management panel"""
-        
-        # Capital Management Header
-        ttk.Label(frame, text="Capital Management:", font=('Arial', 10, 'bold')).grid(
-            row=row, column=0, sticky="w", padx=5, pady=(10,2)
-        )
-        row += 1
-        
-        capital_frame = ttk.Frame(frame)
-        capital_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        
-        # User Input Fields
-        ttk.Label(capital_frame, text="Available Capital:").grid(row=0, column=0, sticky="e", padx=2)
-        self.bt_available_capital = tk.StringVar(value="100000")
-        capital_entry = ttk.Entry(capital_frame, textvariable=self.bt_available_capital, width=12)
-        capital_entry.grid(row=0, column=1, padx=2)
-        capital_entry.bind('<KeyRelease>', self._update_capital_calculations)
-        
-        ttk.Label(capital_frame, text="Risk % per Trade:").grid(row=0, column=2, sticky="e", padx=2)
-        self.bt_risk_percentage = tk.StringVar(value="1.0")
-        risk_entry = ttk.Entry(capital_frame, textvariable=self.bt_risk_percentage, width=8)
-        risk_entry.grid(row=0, column=3, padx=2)
-        risk_entry.bind('<KeyRelease>', self._update_capital_calculations)
-        
-        # Instrument Configuration
-        ttk.Label(capital_frame, text="Lot Size:").grid(row=1, column=0, sticky="e", padx=2)
-        self.bt_lot_size = tk.StringVar(value="75")  # NIFTY default
-        lot_entry = ttk.Entry(capital_frame, textvariable=self.bt_lot_size, width=8)
-        lot_entry.grid(row=1, column=1, padx=2)
-        lot_entry.bind('<KeyRelease>', self._update_capital_calculations)
-        
-        ttk.Label(capital_frame, text="Price per Unit:").grid(row=1, column=2, sticky="e", padx=2)
-        self.bt_current_price = tk.StringVar(value="154.00")  # Sample price
-        price_entry = ttk.Entry(capital_frame, textvariable=self.bt_current_price, width=8)
-        price_entry.grid(row=1, column=3, padx=2)
-        price_entry.bind('<KeyRelease>', self._update_capital_calculations)
-        
-        # Real-time Capital Display (Read-only)
-        display_frame = ttk.LabelFrame(capital_frame, text="Capital Analysis", padding=5)
-        display_frame.grid(row=2, column=0, columnspan=4, sticky="ew", pady=(10,0))
-        
-        # Capital Usage Display
-        self.capital_usable = tk.StringVar(value="₹95,000 (95%)")
-        ttk.Label(display_frame, text="Capital Usable:").grid(row=0, column=0, sticky="w")
-        ttk.Label(display_frame, textvariable=self.capital_usable, foreground="blue").grid(
-            row=0, column=1, sticky="w", padx=10
-        )
-        
-        self.max_lots = tk.StringVar(value="8 lots (600 shares)")
-        ttk.Label(display_frame, text="Max Affordable Lots:").grid(row=0, column=2, sticky="w", padx=10)
-        ttk.Label(display_frame, textvariable=self.max_lots, foreground="green").grid(
-            row=0, column=3, sticky="w", padx=10
-        )
-        
-        self.max_risk = tk.StringVar(value="₹1,000 (1%)")
-        ttk.Label(display_frame, text="Max Capital at Risk:").grid(row=1, column=0, sticky="w")
-        ttk.Label(display_frame, textvariable=self.max_risk, foreground="red").grid(
-            row=1, column=1, sticky="w", padx=10
-        )
-        
-        self.recommended_lots = tk.StringVar(value="1 lot (75 shares)")
-        ttk.Label(display_frame, text="Recommended Position:").grid(row=1, column=2, sticky="w", padx=10)
-        ttk.Label(display_frame, textvariable=self.recommended_lots, foreground="purple").grid(
-            row=1, column=3, sticky="w", padx=10
-        )
-        
-        return row + 1
-
-    def _bt_browse_csv(self):
-        file = filedialog.askopenfilename(
-            title="Select Data File",
-            filetypes=[
-                ("CSV and LOG files", "*.csv;*.log"),
-                ("CSV files", "*.csv"),
-                ("LOG files", "*.log"),
-                ("All files", "*.*")
-            ]
-        )
-        if file:
-            self.bt_data_file.set(file)
-
-    def _bt_run_backtest(self):
-        """Run backtest with proper nested configuration structure"""
-        if not self.bt_data_file.get():
-            messagebox.showerror("Error", "Please select a data file")
-            return
-        
-        if self._backtest_thread and self._backtest_thread.is_alive():
-            messagebox.showwarning("Warning", "Backtest already running")
-            return
-
-        # FIXED: Build proper nested configuration structure
-        gui_config = {
-            # === STRATEGY SECTION ===
-            'strategy': {
-                'strategy_version': self.bt_strategy_version.get(),
-                'use_ema_crossover': self.bt_use_ema_crossover.get(),
-                'use_macd': self.bt_use_macd.get(),
-                'use_vwap': self.bt_use_vwap.get(),
-                'use_rsi_filter': self.bt_use_rsi_filter.get(),
-                'use_htf_trend': self.bt_use_htf_trend.get(),
-                'use_bollinger_bands': self.bt_use_bollinger_bands.get(),
-                'use_stochastic': self.bt_use_stochastic.get(),
-                'use_atr': self.bt_use_atr.get(),
-                'fast_ema': int(self.bt_fast_ema.get()),
-                'slow_ema': int(self.bt_slow_ema.get()),
-                'macd_fast': int(self.bt_macd_fast.get()),
-                'macd_slow': int(self.bt_macd_slow.get()),
-                'macd_signal': int(self.bt_macd_signal.get()),
-                'rsi_length': int(self.bt_rsi_length.get()),
-                'rsi_oversold': int(self.bt_rsi_oversold.get()),
-                'rsi_overbought': int(self.bt_rsi_overbought.get()),
-                'htf_period': int(self.bt_htf_period.get()),
-                'indicator_update_mode': 'tick'
-            },
+        # Risk parameters
+        if 'risk' in preferences:
+            risk_prefs = preferences['risk']
+            self._set_if_exists(self.bt_base_sl_points, 'base_sl_points', risk_prefs)
+            self._set_if_exists(self.bt_use_trail_stop, 'use_trail_stop', risk_prefs)
+            self._set_if_exists(self.bt_trail_activation, 'trail_activation_points', risk_prefs)
+            self._set_if_exists(self.bt_trail_distance, 'trail_distance_points', risk_prefs)
             
-            # === RISK MANAGEMENT SECTION ===
-            'risk': {
-                'base_sl_points': float(self.bt_base_sl_points.get()),
-                'tp_points': [
-                    float(self.bt_tp1_points.get()),
-                    float(self.bt_tp2_points.get()),
-                    float(self.bt_tp3_points.get()),
-                    float(self.bt_tp4_points.get())
-                ],
-                'tp_percents': [0.25, 0.25, 0.25, 0.25],
-                'use_trail_stop': self.bt_use_trail_stop.get(),
-                'trail_activation_points': float(self.bt_trail_activation_points.get()),
-                'trail_distance_points': float(self.bt_trail_distance_points.get()),
-                'risk_per_trade_percent': float(self.bt_risk_per_trade_percent.get()),
-                'commission_percent': 0.03,
-                'commission_per_trade': 0.0
-            },
+            # Handle tp_points and tp_percents arrays
+            if 'tp_points' in risk_prefs and len(risk_prefs['tp_points']) == len(self.bt_tp_points):
+                for i, tp in enumerate(risk_prefs['tp_points']):
+                    self.bt_tp_points[i].set(str(tp))
             
-            # === CAPITAL SECTION ===
-            'capital': {
-                'initial_capital': float(self.bt_initial_capital.get())
-            },
-            
-            # === INSTRUMENT SECTION ===
-            'instrument': {
-                'symbol': self.bt_instrument_type.get(),
-                'exchange': 'NSE_FO',
-                'lot_size': int(self.bt_lot_size.get()),
-                'tick_size': 0.05,
-                'product_type': 'INTRADAY'
-            },
-            
-            # === SESSION SECTION ===
-            'session': {
-                'is_intraday': True,
-                'start_hour': int(self.session_start_hour.get()),
-                'start_min': int(self.session_start_min.get()),
-                'end_hour': int(self.session_end_hour.get()),
-                'end_min': int(self.session_end_min.get()),
-                'start_buffer_minutes': int(self.start_buffer.get()),
-                'end_buffer_minutes': int(self.end_buffer.get()),
-                'timezone': self.timezone.get()
-            },
-            
-            # === BACKTEST SECTION ===
-            'backtest': {
-                'allow_short': False,
-                'close_at_session_end': True,
-                'save_results': True,
-                'results_dir': 'backtest_results',
-                'log_level': 'INFO'
-            }
-        }
-
-        logger.info(f"Config being sent: {gui_config}")
- 
+            if 'tp_percents' in risk_prefs and len(risk_prefs['tp_percents']) == len(self.bt_tp_percents):
+                for i, tp in enumerate(risk_prefs['tp_percents']):
+                    self.bt_tp_percents[i].set(str(tp*100))  # Convert back to percentage display
+        
+        # Capital settings
+        if 'capital' in preferences:
+            capital_prefs = preferences['capital']
+            self._set_if_exists(self.bt_initial_capital, 'initial_capital', capital_prefs)
+        
+        # Instrument settings
+        if 'instrument' in preferences:
+            instrument_prefs = preferences['instrument']
+            self._set_if_exists(self.bt_symbol, 'symbol', instrument_prefs)
+            self._set_if_exists(self.bt_exchange, 'exchange', instrument_prefs)
+            self._set_if_exists(self.bt_lot_size, 'lot_size', instrument_prefs)
+        
+        # Session settings
+        if 'session' in preferences:
+            session_prefs = preferences['session']
+            self._set_if_exists(self.bt_is_intraday, 'is_intraday', session_prefs)
+            self._set_if_exists(self.bt_session_start_hour, 'start_hour', session_prefs)
+            self._set_if_exists(self.bt_session_start_min, 'start_min', session_prefs)
+            self._set_if_exists(self.bt_session_end_hour, 'end_hour', session_prefs)
+            self._set_if_exists(self.bt_session_end_min, 'end_min', session_prefs)
+    
+    def _set_if_exists(self, var, key, prefs_dict):
+        """Set tkinter variable if key exists in preferences"""
+        if key in prefs_dict:
+            if isinstance(var, tk.BooleanVar):
+                var.set(bool(prefs_dict[key]))
+            else:
+                var.set(str(prefs_dict[key]))
+    
+    def save_user_preferences(self):
+        """Save user preferences to JSON file"""
         try:
-            self.bt_result_box.config(state="normal")
-            self.bt_result_box.delete(1.0, tk.END)
+            # Build config from current GUI state
+            config = self.build_config_from_gui()
             
-            # Validate configuration structure before running
-            self._validate_nested_config(gui_config)
-            logger.info("Using nested configuration structure for backtest")
+            # Compare with defaults and save only differences
+            diff_config = self._get_config_diff(config, DEFAULT_CONFIG)
             
-            from backtest.backtest_runner import run_backtest
-            
-            logger.info("Starting backtest execution...")
-            trades_df, metrics = run_backtest(gui_config, self.bt_data_file.get())
-            
-            # Display results in the text box
-            self.bt_result_box.insert(tk.END, "Backtest completed successfully!\n")
-            self.bt_result_box.insert(tk.END, f"Total Trades: {metrics['total_trades']}\n")
-            self.bt_result_box.insert(tk.END, f"Winning Trades: {metrics['winning_trades']}\n")
-            self.bt_result_box.insert(tk.END, f"Losing Trades: {metrics['losing_trades']}\n")
-            self.bt_result_box.insert(tk.END, f"Total Profit/Loss: ₹{metrics['total_pnl']:.2f}\n")
-            self.bt_result_box.insert(tk.END, "Trade metrics saved to 'trade_metrics.csv'\n")
-            
-            # Enable the result box for user interaction
-            self.bt_result_box.config(state="normal")
+            # Save to file
+            with open("user_preferences.json", 'w') as f:
+                json.dump(diff_config, f, indent=2)
+                
+            logger.info("User preferences saved successfully")
+            messagebox.showinfo("Success", "Preferences saved successfully")
         except Exception as e:
-            logger.error(f"Error in backtest execution: {e}")
-            messagebox.showerror("Backtest Error", f"An error occurred during backtest: {e}")
-
-    def _validate_nested_config(self, config):
-        """Validate that the configuration has the expected nested structure"""
-        required_sections = ['strategy', 'risk', 'capital', 'instrument', 'session', 'backtest']
-        missing_sections = [section for section in required_sections if section not in config]
+            logger.error(f"Failed to save preferences: {e}")
+            messagebox.showerror("Error", f"Failed to save preferences: {e}")
+    
+    def _get_config_diff(self, current, defaults):
+        """Extract only values that differ from defaults"""
+        diff = {}
         
-        if missing_sections:
-            raise ValueError(f"Missing configuration sections: {missing_sections}")
+        for section, params in current.items():
+            if section in defaults and isinstance(params, dict):
+                section_diff = {}
+                
+                for param, value in params.items():
+                    if param in defaults[section]:
+                        default_value = defaults[section][param]
+                        
+                        # Only store if different from default
+                        if value != default_value:
+                            section_diff[param] = value
+                
+                if section_diff:
+                    diff[section] = section_diff
         
-        # Log validation success
-        logger.info(f"Configuration validation passed - all required sections present")
-        return True
-
+        return diff
+    
+    def build_config_from_gui(self):
+        """Build complete configuration from current GUI state"""
+        # Start with fresh copy of defaults
+        config = create_config_from_defaults()
+        
+        # Update with current GUI values
+        
+        # Strategy settings
+        config['strategy']['use_ema_crossover'] = self.bt_use_ema_crossover.get()
+        config['strategy']['use_macd'] = self.bt_use_macd.get()
+        config['strategy']['use_vwap'] = self.bt_use_vwap.get()
+        config['strategy']['use_rsi_filter'] = self.bt_use_rsi_filter.get()
+        config['strategy']['use_htf_trend'] = self.bt_use_htf_trend.get()
+        config['strategy']['use_bollinger_bands'] = self.bt_use_bollinger_bands.get()
+        config['strategy']['use_stochastic'] = self.bt_use_stochastic.get()
+        config['strategy']['use_atr'] = self.bt_use_atr.get()
+        
+        # Convert string inputs to appropriate types
+        config['strategy']['fast_ema'] = int(self.bt_fast_ema.get())
+        config['strategy']['slow_ema'] = int(self.bt_slow_ema.get())
+        config['strategy']['macd_fast'] = int(self.bt_macd_fast.get())
+        config['strategy']['macd_slow'] = int(self.bt_macd_slow.get())
+        config['strategy']['macd_signal'] = int(self.bt_macd_signal.get())
+        
+        # Risk settings
+        config['risk']['base_sl_points'] = float(self.bt_base_sl_points.get())
+        config['risk']['use_trail_stop'] = self.bt_use_trail_stop.get()
+        config['risk']['trail_activation_points'] = float(self.bt_trail_activation.get())
+        config['risk']['trail_distance_points'] = float(self.bt_trail_distance.get())
+        
+        # Update take profit points and percentages
+        tp_points = [float(var.get()) for var in self.bt_tp_points]
+        tp_percents = [float(var.get())/100.0 for var in self.bt_tp_percents]  # Convert from percentage display
+        config['risk']['tp_points'] = tp_points
+        config['risk']['tp_percents'] = tp_percents
+        
+        # Capital settings
+        config['capital']['initial_capital'] = float(self.bt_initial_capital.get())
+        
+        # Instrument settings
+        config['instrument']['symbol'] = self.bt_symbol.get()
+        config['instrument']['exchange'] = self.bt_exchange.get()
+        config['instrument']['lot_size'] = int(self.bt_lot_size.get())
+        
+        # Session settings
+        config['session']['is_intraday'] = self.bt_is_intraday.get()
+        config['session']['start_hour'] = int(self.bt_session_start_hour.get())
+        config['session']['start_min'] = int(self.bt_session_start_min.get())
+        config['session']['end_hour'] = int(self.bt_session_end_hour.get())
+        config['session']['end_min'] = int(self.bt_session_end_min.get())
+        
+        return config
+    
+    def run_backtest(self):
+        """Run backtest with GUI configuration"""
+        try:
+            # Get configuration directly from GUI
+            config = self.build_config_from_gui()
+            
+            # Log the actual configuration used
+            logger.info("====== BACKTEST CONFIGURATION ======")
+            for section, params in config.items():
+                if isinstance(params, dict):
+                    logger.info(f"{section}: {params}")
+            
+            # Create and run backtest with GUI config
+            backtest = BacktestRunner(config=config)
+            results = backtest.run()
+            
+            # Display results
+            self.display_backtest_results(results)
+            
+            # Optional: Save preferences after successful run
+            self.save_user_preferences()
+            
+        except Exception as e:
+            logger.exception(f"Backtest failed: {e}")
+            messagebox.showerror("Backtest Error", f"Failed to run backtest: {e}")
+    
     # --- Forward Test Tab ---
     def _build_forward_test_tab(self):
         frame = self.ft_tab
@@ -1336,6 +1202,24 @@ class UnifiedTradingGUI(tk.Tk):
         self.end_buffer = tk.StringVar(value="20")
         self.timezone = tk.StringVar(value="Asia/Kolkata")
         self.session_status = tk.StringVar(value="⚠️ Not checked")
+
+    def _create_gui_framework(self):
+        """Create the core GUI framework - notebook and tabs"""
+        # Create notebook for tabs
+        self.notebook = ttk.Notebook(self)
+        
+        # Create tab frames
+        self.bt_tab = ttk.Frame(self.notebook)
+        self.ft_tab = ttk.Frame(self.notebook)
+        self.log_tab = ttk.Frame(self.notebook)
+        
+        # Add tabs to notebook
+        self.notebook.add(self.bt_tab, text="Backtest")
+        self.notebook.add(self.ft_tab, text="Forward Test")
+        self.notebook.add(self.log_tab, text="Logs")
+        
+        # Pack notebook
+        self.notebook.pack(expand=1, fill="both")
 
 if __name__ == "__main__":
     app = UnifiedTradingGUI()

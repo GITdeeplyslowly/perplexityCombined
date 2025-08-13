@@ -11,9 +11,10 @@ Compute trading performance metrics for backtests, including:
 
 import pandas as pd
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass
 from utils.time_utils import format_timestamp
+import os
 
 # Optional helpers (safe_divide and drawdown logic)
 def safe_divide(numerator, denominator, default=0.0):
@@ -200,3 +201,5 @@ class Results:
         equity_df.to_csv(equity_file, index=False)
 
         return trades_file
+
+BacktestResults = Results

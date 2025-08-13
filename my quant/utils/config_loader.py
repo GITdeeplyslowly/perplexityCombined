@@ -1,508 +1,82 @@
 """
-utils/config_loader.py
+config_loader.py - Compatibility layer for the new defaults-based configuration
 
-Centralized configuration loader for the unified trading system.
-- Loads and validates YAML configuration files
-- Provides default values and parameter validation
-- Ensures consistent config access across all modules
-- Supports environment variable overrides for sensitive data
+This module provides backward compatibility for code that still uses config_loader.
+It redirects to the defaults.py-based configuration system.
 """
+
 from typing import Dict, Any, Optional
 from pathlib import Path
 import logging
+from copy import deepcopy
+import os
+import json
+
+# Import defaults and helper
+from config.defaults import DEFAULT_CONFIG
+from utils.config_helper import create_config_from_defaults
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CONFIG_PATH = "config/strategy_config.yaml"
-
-def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> Dict[str, Any]:
+def load_config(config_path: str = None) -> Dict[str, Any]:
     """
-    Load configuration from YAML file with validation and defaults.
+    Load configuration - now simply returns a copy of the defaults
+    with optional user preferences applied.
     
     Args:
-        config_path: Path to YAML configuration file
+        config_path: Path to config file (ignored, kept for compatibility)
         
     Returns:
-        Dictionary containing validated configuration
-        
-    Raises:
-        FileNotFoundError: If config file doesn't exist
-        yaml.YAMLError: If YAML parsing fails
-        ValueError: If required parameters are missing
+        Complete configuration dictionary
     """
-    config_path = Path(config_path)
+    logger.info("Using defaults.py-based configuration (YAML no longer used)")
     
-    if not config_path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    # Start with defaults
+    config = create_config_from_defaults()
     
-    try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
-    except yaml.YAMLError as e:
-        raise yaml.YAMLError(f"Error parsing YAML file {config_path}: {e}")
-    
-    if not config:
-        raise ValueError(f"Configuration file {config_path} is empty or invalid")
-    
-    # Apply environment variable overrides for sensitive data
-    config = _apply_env_overrides(config)
-    
-    # Validate and apply defaults
-    config = _validate_and_apply_defaults(config)
-    
-    # Check for warnings but don't invalidate
-    validation = validate_session_config(config.get('session', {}))
-    if validation['warnings']:
-        for warning in validation['warnings']:
-            logger.warning(f"Session configuration warning: {warning}")
-    
-    logger.info(f"Configuration loaded successfully from {config_path}")
-    return config
-
-def _apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Apply environment variable overrides for sensitive configuration.
-    
-    Environment variables follow pattern: TRADING_SECTION_KEY
-    Example: TRADING_LIVE_API_KEY overrides config['live']['api_key']
-    """
-    # SmartAPI credentials from environment
-    live_config = config.setdefault('live', {})
-    
-    env_mappings = {
-        'TRADING_LIVE_API_KEY': ('live', 'api_key'),
-        'TRADING_LIVE_CLIENT_CODE': ('live', 'client_code'),
-        'TRADING_LIVE_PIN': ('live', 'pin'),
-        'TRADING_LIVE_TOTP_SECRET': ('live', 'totp_secret'),
-        'TRADING_INITIAL_CAPITAL': ('capital', 'initial_capital'),
-    }
-    
-    for env_var, (section, key) in env_mappings.items():
-        env_value = os.getenv(env_var)
-        if env_value:
-            if section not in config:
-                config[section] = {}
-            
-            # Convert to appropriate type
-            if key == 'initial_capital':
-                config[section][key] = int(env_value)
-            else:
-                config[section][key] = env_value
-            
-            logger.info(f"Applied environment override for {section}.{key}")
+    # Optionally apply user preferences if they exist
+    prefs_file = "user_preferences.json"
+    if os.path.exists(prefs_file):
+        try:
+            with open(prefs_file, 'r') as f:
+                user_prefs = json.load(f)
+                
+            # Apply preferences to config
+            for key_path, value in user_prefs.items():
+                # Handle dot notation paths
+                parts = key_path.split('.')
+                if len(parts) == 2:
+                    section, param = parts
+                    if section in config and param in config[section]:
+                        config[section][param] = value
+                        
+            logger.info(f"Applied user preferences from {prefs_file}")
+        except Exception as e:
+            logger.error(f"Failed to load user preferences: {e}")
     
     return config
-
-def _validate_and_apply_defaults(config: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Validate configuration and apply default values where needed.
-    """
-    # Ensure all required sections exist
-    required_sections = ['strategy', 'risk', 'capital', 'session', 'instrument']
-    for section in required_sections:
-        if section not in config:
-            config[section] = {}
-    
-    # Apply strategy defaults
-    strategy_defaults = {
-        'use_ema_crossover': True,
-        'use_macd': True,
-        'use_vwap': True,
-        'use_rsi_filter': False,
-        'use_htf_trend': True,
-        'use_bollinger_bands': False,
-        'use_stochastic': False,
-        'use_atr': True,
-        'fast_ema': 9,
-        'slow_ema': 21,
-        'macd_fast': 12,
-        'macd_slow': 26,
-        'macd_signal': 9,
-        'rsi_length': 14,
-        'rsi_overbought': 70,
-        'rsi_oversold': 30,
-        'htf_period': 20,
-        'strategy_version': 'live'
-    }
-    
-    for key, default_value in strategy_defaults.items():
-        config['strategy'].setdefault(key, default_value)
-    
-    # Apply risk management defaults
-    risk_defaults = {
-        'base_sl_points': 15,
-        'tp_points': [10, 25, 50, 100],
-        'tp_percents': [0.25, 0.25, 0.25, 0.25],
-        'use_trail_stop': True,
-        'trail_activation_points': 25,
-        'trail_distance_points': 10,
-        'risk_per_trade_percent': 1.0,
-        'max_position_value_percent': 95,
-        'commission_percent': 0.03,
-        'commission_per_trade': 0.0,
-        'stt_percent': 0.025,
-        'exchange_charges_percent': 0.0019,
-        'gst_percent': 18.0,
-        'slippage_points': 1
-    }
-    
-    for key, default_value in risk_defaults.items():
-        config['risk'].setdefault(key, default_value)
-    
-    # Apply capital defaults
-    capital_defaults = {
-        'initial_capital': 100000
-    }
-    
-    for key, default_value in capital_defaults.items():
-        config['capital'].setdefault(key, default_value)
-    
-    # Apply session defaults
-    session_defaults = {
-        'is_intraday': True,
-        'intraday_start_hour': 9,
-        'intraday_start_min': 15,
-        'intraday_end_hour': 15,
-        'intraday_end_min': 30,  # Correct NSE closing time (3:30 PM)
-        'exit_before_close': 20,
-        'timezone': 'Asia/Kolkata'
-    }
-    
-    for key, default_value in session_defaults.items():
-        config['session'].setdefault(key, default_value)
-    
-    # Apply instrument defaults
-    instrument_defaults = {
-        'symbol': 'NIFTY24DECFUT',
-        'exchange': 'NSE_FO',
-        'lot_size': 15,
-        'tick_size': 0.05,
-        'product_type': 'INTRADAY'
-    }
-    
-    for key, default_value in instrument_defaults.items():
-        config['instrument'].setdefault(key, default_value)
-    
-    # Apply live trading defaults
-    live_defaults = {
-        'paper_trading': True,  # Always default to simulation
-        'exchange_type': 'NSE_FO',
-        'feed_type': 'Quote',
-        'log_ticks': False,
-        'visual_indicator': True
-    }
-    
-    config.setdefault('live', {})
-    for key, default_value in live_defaults.items():
-        config['live'].setdefault(key, default_value)
-    
-    # Validate critical parameters
-    _validate_config_values(config)
-    
-    return config
-
-def _validate_config_values(config: Dict[str, Any]) -> None:
-    """
-    Validate critical configuration values.
-    
-    Raises:
-        ValueError: If validation fails
-    """
-    errors = []
-    
-    # Validate session parameters
-    session = config.get('session', {})
-    start_hour = session.get('intraday_start_hour', 9)
-    start_min = session.get('intraday_start_min', 15)
-    end_hour = session.get('intraday_end_hour', 15)
-    end_min = session.get('intraday_end_min', 30)
-    
-    start_minutes = start_hour * 60 + start_min
-    end_minutes = end_hour * 60 + end_min
-    
-    if start_minutes >= end_minutes:
-        errors.append("Session start time must be before end time")
-    
-    if session.get('exit_before_close', 20) >= (end_minutes - start_minutes):
-        errors.append("exit_before_close cannot be longer than session duration")
-    
-    # Validate strategy parameters
-    strategy = config['strategy']
-    if strategy.get('fast_ema', 0) >= strategy.get('slow_ema', 0):
-        errors.append("fast_ema must be less than slow_ema")
-    
-    if strategy.get('rsi_oversold', 0) >= strategy.get('rsi_overbought', 100):
-        errors.append("rsi_oversold must be less than rsi_overbought")
-    
-    # Validate risk parameters
-    risk = config['risk']
-    if risk.get('risk_per_trade_percent', 0) <= 0:
-        errors.append("risk_per_trade_percent must be positive")
-    
-    if risk.get('base_sl_points', 0) <= 0:
-        errors.append("base_sl_points must be positive")
-    
-    # Validate capital
-    capital = config['capital']
-    if capital.get('initial_capital', 0) <= 0:
-        errors.append("initial_capital must be positive")
-    
-    # Validate instrument
-    instrument = config['instrument']
-    if instrument.get('lot_size', 0) <= 0:
-        errors.append("lot_size must be positive")
-    
-    if instrument.get('tick_size', 0) <= 0:
-        errors.append("tick_size must be positive")
-    
-    if errors:
-        raise ValueError("Configuration validation failed:\n" + "\n".join(errors))
-
-def save_config(config: Dict[str, Any], config_path: str = DEFAULT_CONFIG_PATH) -> None:
-    """
-    Save configuration to YAML file.
-    
-    Args:
-        config: Configuration dictionary to save
-        config_path: Output file path
-    """
-    config_path = Path(config_path)
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    try:
-        with open(config_path, 'w', encoding='utf-8') as f:
-            yaml.safe_dump(config, f, default_flow_style=False, indent=2)
-        logger.info(f"Configuration saved to {config_path}")
-    except Exception as e:
-        raise IOError(f"Failed to save configuration to {config_path}: {e}")
-
-def get_config_value(config: Dict[str, Any], key_path: str, default: Any = None) -> Any:
-    """
-    Get nested configuration value using dot notation.
-    
-    Args:
-        config: Configuration dictionary
-        key_path: Dot-separated key path (e.g., 'strategy.fast_ema')
-        default: Default value if key not found
-        
-    Returns:
-        Configuration value or default
-        
-    Example:
-        value = get_config_value(config, 'strategy.fast_ema', 9)
-    """
-    keys = key_path.split('.')
-    current = config
-    
-    try:
-        for key in keys:
-            current = current[key]
-        return current
-    except (KeyError, TypeError):
-        return default
-
-def set_config_value(config: Dict[str, Any], key_path: str, value: Any) -> None:
-    """
-    Set nested configuration value using dot notation.
-    
-    Args:
-        config: Configuration dictionary
-        key_path: Dot-separated key path (e.g., 'strategy.fast_ema')
-        value: Value to set
-        
-    Example:
-        set_config_value(config, 'strategy.fast_ema', 12)
-    """
-    keys = key_path.split('.')
-    current = config
-    
-    # Navigate to parent dict
-    for key in keys[:-1]:
-        if key not in current:
-            current[key] = {}
-        current = current[key]
-    
-    # Set the value
-    current[keys[-1]] = value
 
 def merge_configs(base_config: Dict[str, Any], override_config: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Merge two configuration dictionaries, with override taking precedence.
-    
-    Args:
-        base_config: Base configuration
-        override_config: Override configuration
-        
-    Returns:
-        Merged configuration
+    Merge configurations - kept for compatibility
     """
-    result = base_config.copy()
+    result = deepcopy(base_config)
     
-    for key, value in override_config.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = merge_configs(result[key], value)
-        else:
-            result[key] = value
+    for section, params in override_config.items():
+        if section not in result:
+            result[section] = {}
+            
+        if isinstance(params, dict):
+            for param, value in params.items():
+                result[section][param] = value
     
     return result
 
-def create_config_template(output_path: str = "config/strategy_config_template.yaml") -> None:
+# Keep minimal versions of other functions for compatibility
+def _validate_and_apply_defaults(config: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Create a template configuration file with all possible parameters.
-    
-    Args:
-        output_path: Path for the template file
+    Apply defaults - now just a wrapper around create_config_from_defaults
+    with merging of any provided values.
     """
-    template = {
-        'strategy': {
-            'use_ema_crossover': True,
-            'use_macd': True,
-            'use_vwap': True,
-            'use_rsi_filter': False,
-            'use_htf_trend': True,
-            'use_bollinger_bands': False,
-            'use_stochastic': False,
-            'use_atr': True,
-            'fast_ema': 9,
-            'slow_ema': 21,
-            'macd_fast': 12,
-            'macd_slow': 26,
-            'macd_signal': 9,
-            'rsi_length': 14,
-            'rsi_overbought': 70,
-            'rsi_oversold': 30,
-            'htf_period': 20,
-            'strategy_version': 'live'
-        },
-        'risk': {
-            'base_sl_points': 15,
-            'tp_points': [10, 25, 50, 100],
-            'tp_percents': [0.25, 0.25, 0.25, 0.25],
-            'use_trail_stop': True,
-            'trail_activation_points': 25,
-            'trail_distance_points': 10,
-            'risk_per_trade_percent': 1.0,
-            'commission_percent': 0.03
-        },
-        'capital': {
-            'initial_capital': 100000
-        },
-        'session': {
-            'is_intraday': True,
-            'intraday_start_hour': 9,
-            'intraday_start_min': 15,
-            'intraday_end_hour': 15,
-            'intraday_end_min': 30,  # Correct NSE closing time (3:30 PM)
-            'exit_before_close': 20
-        },
-        'instrument': {
-            'symbol': 'NIFTY24DECFUT',
-            'exchange': 'NSE_FO',
-            'lot_size': 15,
-            'tick_size': 0.05
-        },
-        'live': {
-            'paper_trading': True,
-            'feed_type': 'Quote',
-            'log_ticks': False
-        }
-    }
-    
-    save_config(template, output_path)
-    print(f"Configuration template created at {output_path}")
-
-def validate_session_config(session_config: Dict[str, Any]) -> Dict[str, list]:
-    """Check session configuration and return warnings"""
-    result = {'warnings': []}
-    
-    # Check if session config is present
-    if not session_config:
-        result['warnings'].append("Missing session configuration, will use defaults")
-        return result
-        
-    # Check for required fields with defaults
-    required_fields = [
-        ('start_hour', 9),
-        ('start_min', 15),
-        ('end_hour', 15),
-        ('end_min', 30),
-    ]
-    
-    for field, default in required_fields:
-        if field not in session_config:
-            result['warnings'].append(f"Missing '{field}' in session config, will use default: {default}")
-            session_config[field] = default
-    
-    # Validate time values
-    if not (0 <= session_config.get('start_hour', 0) <= 23):
-        result['warnings'].append(f"Invalid start_hour {session_config.get('start_hour')}, should be 0-23")
-    
-    if not (0 <= session_config.get('start_min', 0) <= 59):
-        result['warnings'].append(f"Invalid start_min {session_config.get('start_min')}, should be 0-59")
-    
-    if not (0 <= session_config.get('end_hour', 0) <= 23):
-        result['warnings'].append(f"Invalid end_hour {session_config.get('end_hour')}, should be 0-23")
-    
-    if not (0 <= session_config.get('end_min', 0) <= 59):
-        result['warnings'].append(f"Invalid end_min {session_config.get('end_min')}, should be 0-59")
-    
-    # Check session duration
-    start_minutes = session_config.get('start_hour', 9) * 60 + session_config.get('start_min', 15)
-    end_minutes = session_config.get('end_hour', 15) * 60 + session_config.get('end_min', 30)
-    
-    if start_minutes >= end_minutes:
-        result['warnings'].append("Session end must be after session start")
-    
-    # Check buffers
-    start_buffer = session_config.get('start_buffer_minutes', 5)
-    end_buffer = session_config.get('end_buffer_minutes', 20)
-    session_duration = end_minutes - start_minutes
-    
-    if start_buffer + end_buffer >= session_duration:
-        result['warnings'].append(
-            f"Total buffers ({start_buffer + end_buffer}min) exceed session duration ({session_duration}min)")
-    
-    # Check for unusual session times (standard market: 9:15 - 15:30)
-    standard_start = 9*60 + 15
-    standard_end = 15*60 + 30
-    
-    if start_minutes < standard_start:
-        result['warnings'].append(
-            f"Session start {session_config['start_hour']:02d}:{session_config['start_min']:02d} is before standard market open (09:15)")
-    
-    if end_minutes > standard_end:
-        result['warnings'].append(
-            f"Session end {session_config['end_hour']:02d}:{session_config['end_min']:02d} is after standard market close (15:30)")
-    
-    # Return all warnings - no blocking validation errors
-    return result
-
-# Example usage and testing
-if __name__ == "__main__":
-    # Create a sample config for testing
-    test_config_path = "test_config.yaml"
-    create_config_template(test_config_path)
-    
-    # Load and validate
-    try:
-        config = load_config(test_config_path)
-        print("✅ Configuration loaded and validated successfully")
-        
-        # Test nested access
-        fast_ema = get_config_value(config, 'strategy.fast_ema')
-        print(f"Fast EMA: {fast_ema}")
-        
-        # Test modification
-        set_config_value(config, 'strategy.fast_ema', 12)
-        modified_ema = get_config_value(config, 'strategy.fast_ema')
-        print(f"Modified Fast EMA: {modified_ema}")
-        
-        print("✅ Config loader test completed successfully")
-        
-    except Exception as e:
-        print(f"❌ Configuration test failed: {e}")
-    
-    finally:
-        # Clean up test file
-        if os.path.exists(test_config_path):
-            os.remove(test_config_path)
+    base_config = create_config_from_defaults()
+    return merge_configs(base_config, config) if config else base_config
