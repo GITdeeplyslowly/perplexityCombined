@@ -63,15 +63,14 @@ class UnifiedTradingGUI(tk.Tk):
         logger.info("GUI initialized successfully")
         
     def _initialize_variables_from_defaults(self):
-        """Initialize all GUI variables from defaults.py"""
-        # Get defaults
+        """Initialize all GUI variables from defaults.py (single source of truth)"""
         strategy_defaults = DEFAULT_CONFIG['strategy']
         risk_defaults = DEFAULT_CONFIG['risk']
         capital_defaults = DEFAULT_CONFIG['capital']
         instrument_defaults = DEFAULT_CONFIG['instrument']
         session_defaults = DEFAULT_CONFIG['session']
-        
-        # Strategy variables
+
+        # --- Strategy variables ---
         self.bt_use_ema_crossover = tk.BooleanVar(value=strategy_defaults['use_ema_crossover'])
         self.bt_use_macd = tk.BooleanVar(value=strategy_defaults['use_macd'])
         self.bt_use_vwap = tk.BooleanVar(value=strategy_defaults['use_vwap'])
@@ -80,33 +79,38 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_use_bollinger_bands = tk.BooleanVar(value=strategy_defaults['use_bollinger_bands'])
         self.bt_use_stochastic = tk.BooleanVar(value=strategy_defaults['use_stochastic'])
         self.bt_use_atr = tk.BooleanVar(value=strategy_defaults['use_atr'])
-        
         # EMA parameters
         self.bt_fast_ema = tk.StringVar(value=str(strategy_defaults['fast_ema']))
         self.bt_slow_ema = tk.StringVar(value=str(strategy_defaults['slow_ema']))
-        
         # MACD parameters
         self.bt_macd_fast = tk.StringVar(value=str(strategy_defaults['macd_fast']))
         self.bt_macd_slow = tk.StringVar(value=str(strategy_defaults['macd_slow']))
         self.bt_macd_signal = tk.StringVar(value=str(strategy_defaults['macd_signal']))
-        
-        # Risk management
+        # RSI parameters
+        self.bt_rsi_length = tk.StringVar(value=str(strategy_defaults.get('rsi_length', 14)))
+        self.bt_rsi_oversold = tk.StringVar(value=str(strategy_defaults.get('rsi_oversold', 30)))
+        self.bt_rsi_overbought = tk.StringVar(value=str(strategy_defaults.get('rsi_overbought', 70)))
+        # HTF parameter
+        self.bt_htf_period = tk.StringVar(value=str(strategy_defaults.get('htf_period', 20)))
+
+        # --- Risk management ---
         self.bt_base_sl_points = tk.StringVar(value=str(risk_defaults['base_sl_points']))
         self.bt_tp_points = [tk.StringVar(value=str(p)) for p in risk_defaults['tp_points']]
         self.bt_tp_percents = [tk.StringVar(value=str(p*100)) for p in risk_defaults['tp_percents']]
         self.bt_use_trail_stop = tk.BooleanVar(value=risk_defaults['use_trail_stop'])
         self.bt_trail_activation = tk.StringVar(value=str(risk_defaults['trail_activation_points']))
         self.bt_trail_distance = tk.StringVar(value=str(risk_defaults['trail_distance_points']))
-        
-        # Capital settings
+        self.bt_risk_per_trade_percent = tk.StringVar(value=str(risk_defaults.get('risk_per_trade_percent', 1.0)))
+
+        # --- Capital settings ---
         self.bt_initial_capital = tk.StringVar(value=str(capital_defaults['initial_capital']))
-        
-        # Instrument settings
+
+        # --- Instrument settings ---
         self.bt_symbol = tk.StringVar(value=instrument_defaults['symbol'])
         self.bt_exchange = tk.StringVar(value=instrument_defaults['exchange'])
         self.bt_lot_size = tk.StringVar(value=str(instrument_defaults['lot_size']))
-        
-        # Session settings
+
+        # --- Session settings ---
         self.bt_is_intraday = tk.BooleanVar(value=session_defaults['is_intraday'])
         self.bt_session_start_hour = tk.StringVar(value=str(session_defaults['start_hour']))
         self.bt_session_start_min = tk.StringVar(value=str(session_defaults['start_min']))
@@ -238,7 +242,6 @@ class UnifiedTradingGUI(tk.Tk):
     
     def build_config_from_gui(self):
         """Build complete configuration from current GUI state"""
-        # Start with fresh copy of defaults
         config = create_config_from_defaults()
         
         # Update with current GUI values
@@ -287,6 +290,9 @@ class UnifiedTradingGUI(tk.Tk):
         config['session']['end_hour'] = int(self.bt_session_end_hour.get())
         config['session']['end_min'] = int(self.bt_session_end_min.get())
         
+        # Set the data file path for the backtest runner
+        config['backtest']['data_path'] = self.bt_data_file.get()
+
         return config
     
     def run_backtest(self):
@@ -511,9 +517,43 @@ class UnifiedTradingGUI(tk.Tk):
         self.ft_risk_per_trade_percent = tk.StringVar(value="1.0")
         ttk.Entry(risk_frame, textvariable=self.ft_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
         
-        ttk.Label(risk_frame, text="Initial Capital:").grid(row=3, column=0, sticky="e", padx=2)
-        self.ft_initial_capital = tk.StringVar(value="100000")
-        ttk.Entry(risk_frame, textvariable=self.ft_initial_capital, width=12).grid(row=3, column=1, padx=2)
+        # --- Instrument Settings ---
+        ttk.Label(frame, text="Instrument Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
+        row += 1
+        instrument_frame = ttk.Frame(frame)
+        instrument_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        ttk.Label(instrument_frame, text="Symbol:").grid(row=0, column=0, sticky="e", padx=2)
+        ttk.Entry(instrument_frame, textvariable=self.bt_symbol, width=16).grid(row=0, column=1, padx=2)
+        ttk.Label(instrument_frame, text="Exchange:").grid(row=0, column=2, sticky="e", padx=2)
+        ttk.Entry(instrument_frame, textvariable=self.bt_exchange, width=10).grid(row=0, column=3, padx=2)
+        ttk.Label(instrument_frame, text="Lot Size:").grid(row=0, column=4, sticky="e", padx=2)
+        ttk.Entry(instrument_frame, textvariable=self.bt_lot_size, width=8).grid(row=0, column=5, padx=2)
+        row += 1
+
+        # --- Capital Settings ---
+        ttk.Label(frame, text="Capital Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
+        row += 1
+        capital_frame = ttk.Frame(frame)
+        capital_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        ttk.Label(capital_frame, text="Initial Capital:").grid(row=0, column=0, sticky="e", padx=2)
+        ttk.Entry(capital_frame, textvariable=self.bt_initial_capital, width=14).grid(row=0, column=1, padx=2)
+        row += 1
+
+        # --- Session Settings ---
+        ttk.Label(frame, text="Session Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
+        row += 1
+        session_frame = ttk.Frame(frame)
+        session_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        ttk.Label(session_frame, text="Start (HH:MM):").grid(row=0, column=0, sticky="e", padx=2)
+        ttk.Entry(session_frame, textvariable=self.bt_session_start_hour, width=4).grid(row=0, column=1, padx=1)
+        ttk.Label(session_frame, text=":").grid(row=0, column=2)
+        ttk.Entry(session_frame, textvariable=self.bt_session_start_min, width=4).grid(row=0, column=3, padx=1)
+        ttk.Label(session_frame, text="End (HH:MM):").grid(row=0, column=4, sticky="e", padx=2)
+        ttk.Entry(session_frame, textvariable=self.bt_session_end_hour, width=4).grid(row=0, column=5, padx=1)
+        ttk.Label(session_frame, text=":").grid(row=0, column=6)
+        ttk.Entry(session_frame, textvariable=self.bt_session_end_min, width=4).grid(row=0, column=7, padx=1)
+        ttk.Label(session_frame, text="Intraday:").grid(row=1, column=0, sticky="e", padx=2)
+        ttk.Checkbutton(session_frame, variable=self.bt_is_intraday).grid(row=1, column=1, sticky="w", padx=2)
         row += 1
 
         # Trading Controls
@@ -562,7 +602,7 @@ class UnifiedTradingGUI(tk.Tk):
             for symbol in sorted(symbols.keys()):
                 self.ft_symbols_listbox.insert(tk.END, symbol)
             
-            self.ft_cache_status.set(f"Cache loaded: {len(symbols)} symbols")
+            self.ft_cache_status.set(f"Cache refreshed: {len(symbols)} symbols")
             logger.info(f"Symbol cache refreshed: {len(symbols)} symbols")
         except Exception as e:
             error_msg = f"Failed to refresh symbols: {e}"
@@ -1186,7 +1226,7 @@ class UnifiedTradingGUI(tk.Tk):
         self._backtest_thread = None
         self._forward_thread = None
         self.symbol_token_map = {}
-        
+    
         # Capital management variables
         self.capital_usable = tk.StringVar(value="₹0 (0%)")
         self.max_lots = tk.StringVar(value="0 lots (0 shares)")
@@ -1221,6 +1261,198 @@ class UnifiedTradingGUI(tk.Tk):
         # Pack notebook
         self.notebook.pack(expand=1, fill="both")
 
+    def _build_backtest_tab(self):
+        """Build the backtest tab with all controls"""
+        frame = self.bt_tab
+        frame.columnconfigure(1, weight=1)
+        row = 0
+
+        # Data file selection
+        ttk.Label(frame, text="Data File (.csv, .log):").grid(row=row, column=0, sticky="e")
+        self.bt_data_file = tk.StringVar()
+        ttk.Entry(frame, textvariable=self.bt_data_file, width=55).grid(row=row, column=1, padx=5, pady=5)
+        ttk.Button(frame, text="Browse", command=self._bt_browse_csv).grid(row=row, column=2, padx=5, pady=5)
+        row += 1
+
+        # Run Backtest button
+        ttk.Button(frame, text="Run Backtest", command=self._bt_run_backtest, style="Accent.TButton").grid(row=row, column=0, columnspan=3, pady=10)
+        row += 1
+
+        # Strategy Configuration
+        ttk.Label(frame, text="Strategy Configuration", font=('Arial', 12, 'bold')).grid(row=row, column=0, columnspan=3, sticky="w", pady=(15,5))
+        row += 1
+
+        # Indicator Toggles
+        ttk.Label(frame, text="Indicators:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=2)
+        row += 1
+        bt_indicators_frame = ttk.Frame(frame)
+        bt_indicators_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        ttk.Checkbutton(bt_indicators_frame, text="EMA Crossover", variable=self.bt_use_ema_crossover).grid(row=0, column=0, sticky="w", padx=5)
+        ttk.Checkbutton(bt_indicators_frame, text="MACD", variable=self.bt_use_macd).grid(row=0, column=1, sticky="w", padx=5)
+        ttk.Checkbutton(bt_indicators_frame, text="VWAP", variable=self.bt_use_vwap).grid(row=0, column=2, sticky="w", padx=5)
+        ttk.Checkbutton(bt_indicators_frame, text="RSI Filter", variable=self.bt_use_rsi_filter).grid(row=0, column=3, sticky="w", padx=5)
+        ttk.Checkbutton(bt_indicators_frame, text="HTF Trend", variable=self.bt_use_htf_trend).grid(row=1, column=0, sticky="w", padx=5)
+        ttk.Checkbutton(bt_indicators_frame, text="Bollinger Bands", variable=self.bt_use_bollinger_bands).grid(row=1, column=1, sticky="w", padx=5)
+        ttk.Checkbutton(bt_indicators_frame, text="Stochastic", variable=self.bt_use_stochastic).grid(row=1, column=2, sticky="w", padx=5)
+        ttk.Checkbutton(bt_indicators_frame, text="ATR", variable=self.bt_use_atr).grid(row=1, column=3, sticky="w", padx=5)
+        row += 1
+
+        # Parameters
+        ttk.Label(frame, text="Parameters:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
+        row += 1
+        bt_params_frame = ttk.Frame(frame)
+        bt_params_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        # EMA Parameters
+        ttk.Label(bt_params_frame, text="Fast EMA:").grid(row=0, column=0, sticky="e", padx=2)
+        ttk.Entry(bt_params_frame, textvariable=self.bt_fast_ema, width=8).grid(row=0, column=1, padx=2)
+        ttk.Label(bt_params_frame, text="Slow EMA:").grid(row=0, column=2, sticky="e", padx=2)
+        ttk.Entry(bt_params_frame, textvariable=self.bt_slow_ema, width=8).grid(row=0, column=3, padx=2)
+        # MACD Parameters
+        ttk.Label(bt_params_frame, text="MACD Fast:").grid(row=1, column=0, sticky="e", padx=2)
+        ttk.Entry(bt_params_frame, textvariable=self.bt_macd_fast, width=8).grid(row=1, column=1, padx=2)
+        ttk.Label(bt_params_frame, text="MACD Slow:").grid(row=1, column=2, sticky="e", padx=2)
+        ttk.Entry(bt_params_frame, textvariable=self.bt_macd_slow, width=8).grid(row=1, column=3, padx=2)
+        ttk.Label(bt_params_frame, text="MACD Signal:").grid(row=1, column=4, sticky="e", padx=2)
+        ttk.Entry(bt_params_frame, textvariable=self.bt_macd_signal, width=8).grid(row=1, column=5, padx=2)
+        # RSI Parameters
+        ttk.Label(bt_params_frame, text="RSI Length:").grid(row=2, column=0, sticky="e", padx=2)
+        ttk.Entry(bt_params_frame, textvariable=self.bt_rsi_length, width=8).grid(row=2, column=1, padx=2)
+        ttk.Label(bt_params_frame, text="RSI Oversold:").grid(row=2, column=2, sticky="e", padx=2)
+        ttk.Entry(bt_params_frame, textvariable=self.bt_rsi_oversold, width=8).grid(row=2, column=3, padx=2)
+        ttk.Label(bt_params_frame, text="RSI Overbought:").grid(row=2, column=4, sticky="e", padx=2)
+        ttk.Entry(bt_params_frame, textvariable=self.bt_rsi_overbought, width=8).grid(row=2, column=5, padx=2)
+        # HTF Parameters
+        ttk.Label(bt_params_frame, text="HTF Period:").grid(row=3, column=0, sticky="e", padx=2)
+        ttk.Entry(bt_params_frame, textvariable=self.bt_htf_period, width=8).grid(row=3, column=1, padx=2)
+        row += 1
+
+        # Risk Management
+        ttk.Label(frame, text="Risk Management:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
+        row += 1
+        bt_risk_frame = ttk.Frame(frame)
+        bt_risk_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        ttk.Label(bt_risk_frame, text="Stop Loss Points:").grid(row=0, column=0, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_base_sl_points, width=8).grid(row=0, column=1, padx=2)
+        # TP Points
+        ttk.Label(bt_risk_frame, text="TP1 Points:").grid(row=0, column=2, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[0], width=8).grid(row=0, column=3, padx=2)
+        ttk.Label(bt_risk_frame, text="TP2 Points:").grid(row=0, column=4, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[1], width=8).grid(row=0, column=5, padx=2)
+        ttk.Label(bt_risk_frame, text="TP3 Points:").grid(row=1, column=0, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[2], width=8).grid(row=1, column=1, padx=2)
+        ttk.Label(bt_risk_frame, text="TP4 Points:").grid(row=1, column=2, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[3], width=8).grid(row=1, column=3, padx=2)
+        # Trailing Stop
+        ttk.Checkbutton(bt_risk_frame, text="Use Trailing Stop", variable=self.bt_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
+        
+        ttk.Label(bt_risk_frame, text="Trail Activation Points:").grid(row=2, column=0, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_trail_activation, width=8).grid(row=2, column=1, padx=2)
+        ttk.Label(bt_risk_frame, text="Trail Distance Points:").grid(row=2, column=2, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_trail_distance, width=8).grid(row=2, column=3, padx=2)
+        ttk.Label(bt_risk_frame, text="Risk % per Trade:").grid(row=2, column=4, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
+        row += 1
+
+        # --- Instrument Settings ---
+        ttk.Label(frame, text="Instrument Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
+        row += 1
+        instrument_frame = ttk.Frame(frame)
+        instrument_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        ttk.Label(instrument_frame, text="Symbol:").grid(row=0, column=0, sticky="e", padx=2)
+        ttk.Entry(instrument_frame, textvariable=self.bt_symbol, width=16).grid(row=0, column=1, padx=2)
+        ttk.Label(instrument_frame, text="Exchange:").grid(row=0, column=2, sticky="e", padx=2)
+        ttk.Entry(instrument_frame, textvariable=self.bt_exchange, width=10).grid(row=0, column=3, padx=2)
+        ttk.Label(instrument_frame, text="Lot Size:").grid(row=0, column=4, sticky="e", padx=2)
+        ttk.Entry(instrument_frame, textvariable=self.bt_lot_size, width=8).grid(row=0, column=5, padx=2)
+        row += 1
+
+        # --- Capital Settings ---
+        ttk.Label(frame, text="Capital Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
+        row += 1
+        capital_frame = ttk.Frame(frame)
+        capital_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        ttk.Label(capital_frame, text="Initial Capital:").grid(row=0, column=0, sticky="e", padx=2)
+        ttk.Entry(capital_frame, textvariable=self.bt_initial_capital, width=14).grid(row=0, column=1, padx=2)
+        row += 1
+
+        # --- Session Settings ---
+        ttk.Label(frame, text="Session Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
+        row += 1
+        session_frame = ttk.Frame(frame)
+        session_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        ttk.Label(session_frame, text="Start (HH:MM):").grid(row=0, column=0, sticky="e", padx=2)
+        ttk.Entry(session_frame, textvariable=self.bt_session_start_hour, width=4).grid(row=0, column=1, padx=1)
+        ttk.Label(session_frame, text=":").grid(row=0, column=2)
+        ttk.Entry(session_frame, textvariable=self.bt_session_start_min, width=4).grid(row=0, column=3, padx=1)
+        ttk.Label(session_frame, text="End (HH:MM):").grid(row=0, column=4, sticky="e", padx=2)
+        ttk.Entry(session_frame, textvariable=self.bt_session_end_hour, width=4).grid(row=0, column=5, padx=1)
+        ttk.Label(session_frame, text=":").grid(row=0, column=6)
+        ttk.Entry(session_frame, textvariable=self.bt_session_end_min, width=4).grid(row=0, column=7, padx=1)
+        ttk.Label(session_frame, text="Intraday:").grid(row=1, column=0, sticky="e", padx=2)
+        ttk.Checkbutton(session_frame, variable=self.bt_is_intraday).grid(row=1, column=1, sticky="w", padx=2)
+        row += 1
+
+        # Results area
+        self.bt_result_box = tk.Text(frame, height=20, state="disabled", wrap="word")
+        self.bt_result_box.grid(row=row, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
+        frame.rowconfigure(row, weight=1)
+
+    def _bt_browse_csv(self):
+        """Browse for CSV file"""
+        file = filedialog.askopenfilename(
+            title="Select Data File",
+            filetypes=[
+                ("CSV and LOG files", "*.csv;*.log"),
+                ("CSV files", "*.csv"),
+                ("LOG files", "*.log"),
+                ("All files", "*.*")
+            ]
+        )
+        if file:
+            self.bt_data_file.set(file)
+
+    def _bt_run_backtest(self):
+        """Run backtest with current configuration"""
+        if not hasattr(self, 'bt_data_file') or not self.bt_data_file.get():
+            messagebox.showerror("Error", "Please select a data file")
+            return
+
+        try:
+            # Build config from GUI
+            config = self.build_config_from_gui()
+            data_path = self.bt_data_file.get()  # <--- get the selected file
+
+            # Pass data_path explicitly!
+            backtest = BacktestRunner(config=config, data_path=data_path)
+            results = backtest.run()
+
+            # Display results
+            self.bt_result_box.config(state="normal")
+            self.bt_result_box.delete(1.0, tk.END)
+            self.bt_result_box.insert(tk.END, f"Backtest completed successfully!\n")
+            self.bt_result_box.insert(tk.END, f"Results: {results}\n")
+            self.bt_result_box.config(state="disabled")
+            
+        except Exception as e:
+            messagebox.showerror("Backtest Error", f"Failed to run backtest: {e}")
+
+    def _validate_nested_config(self, config):
+        """Validate the nested configuration structure"""
+        required_sections = ['strategy', 'risk', 'capital', 'instrument', 'session']
+        for section in required_sections:
+            if section not in config:
+                raise ValueError(f"Missing required configuration section: {section}")
+        logger.info("Configuration validation passed")
+
+    def display_backtest_results(self, results):
+        """Display backtest results in the results box"""
+        if hasattr(self, 'bt_result_box'):
+            self.bt_result_box.config(state="normal")
+            self.bt_result_box.delete(1.0, tk.END)
+            self.bt_result_box.insert(tk.END, f"Backtest Results:\n{results}\n")
+            self.bt_result_box.config(state="disabled")
+            
 if __name__ == "__main__":
     app = UnifiedTradingGUI()
+    app.protocol("WM_DELETE_WINDOW", app._on_close)
     app.mainloop()
