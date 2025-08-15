@@ -263,6 +263,10 @@ class UnifiedTradingGUI(tk.Tk):
         config['strategy']['macd_slow'] = int(self.bt_macd_slow.get())
         config['strategy']['macd_signal'] = int(self.bt_macd_signal.get())
         
+        # --- ADD THIS LINE ---
+        config['strategy']['strategy_version'] = DEFAULT_CONFIG['strategy'].get('strategy_version', 1)
+        # ---------------------
+        
         # Risk settings
         config['risk']['base_sl_points'] = float(self.bt_base_sl_points.get())
         config['risk']['use_trail_stop'] = self.bt_use_trail_stop.get()
@@ -382,18 +386,7 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Combobox(frame, textvariable=self.ft_feed_type, values=feed_types, width=12, state='readonly').grid(row=row, column=1, sticky="w", padx=5, pady=2)
         row += 1
 
-        # --- Strategy version selector ---------------------------------
-        ttk.Label(frame, text="Strategy Version:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-
-        self.ft_strategy_version = tk.StringVar(value="live")       # default for forward test
-        ttk.Combobox(frame,
-                     textvariable=self.ft_strategy_version,
-                     values=["research", "live"],
-                     width=12,
-                     state="readonly").grid(row=row, column=0, sticky="w", padx=5, pady=2)
-        row += 1
-
+       
         # Strategy Configuration
         ttk.Label(frame, text="Strategy Configuration", font=('Arial', 12, 'bold')).grid(row=row, column=0, columnspan=3, sticky="w", pady=(15,5))
         row += 1
@@ -716,7 +709,6 @@ class UnifiedTradingGUI(tk.Tk):
         gui_config = {
             # === STRATEGY SECTION ===
             'strategy': {
-                'strategy_version': self.ft_strategy_version.get(),
                 'use_ema_crossover': self.ft_use_ema_crossover.get(),
                 'use_macd': self.ft_use_macd.get(),
                 'use_vwap': self.ft_use_vwap.get(),
@@ -734,7 +726,10 @@ class UnifiedTradingGUI(tk.Tk):
                 'rsi_oversold': int(self.ft_rsi_oversold.get()),
                 'rsi_overbought': int(self.ft_rsi_overbought.get()),
                 'htf_period': int(self.ft_htf_period.get()),
-                'indicator_update_mode': 'tick'
+                'indicator_update_mode': 'tick',
+                # --- ADD THIS LINE ---
+                'strategy_version': DEFAULT_CONFIG['strategy'].get('strategy_version', 1)
+                # ---------------------
             },
 
             # === RISK MANAGEMENT SECTION ===

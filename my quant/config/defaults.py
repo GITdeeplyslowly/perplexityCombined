@@ -7,7 +7,6 @@ Any changes to defaults should be made here only.
 
 DEFAULT_CONFIG = {
     'strategy': {
-        'strategy_version': 'research',
         'use_ema_crossover': True,
         'use_macd': False,
         'use_vwap': False,

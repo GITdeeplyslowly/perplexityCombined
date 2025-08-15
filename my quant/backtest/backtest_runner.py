@@ -72,15 +72,9 @@ def get_strategy(config: dict):
     """
     Load strategy module with full configuration.
 
-    FIXED: Properly handles GUI's nested config structure
+    Hard-coded to use researchStrategy for backtesting.
     """
-    version = config.get("strategy", {}).get("strategy_version", "live").lower()
-
-    if version == "research":
-        strat_mod = importlib.import_module("core.researchStrategy")
-    else:
-        strat_mod = importlib.import_module("core.liveStrategy")
-     
+    strat_mod = importlib.import_module("core.researchStrategy")
     ind_mod = importlib.import_module("core.indicators")
     
     # FIXED: Keep nested structure, no more flattening

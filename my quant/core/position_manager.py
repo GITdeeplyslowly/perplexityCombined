@@ -203,10 +203,10 @@ class PositionManager:
                       lot_size: int = 1, tick_size: float = 0.05,
                       order_type: OrderType = OrderType.MARKET) -> Optional[str]:
         if order_type == OrderType.MARKET:
-            actual_entry_price = entry_price + self.slippage_points * tick_size
+            actual_entry_price = entry_price + self.slippage_points
         else:
             actual_entry_price = entry_price
-        stop_loss_price = actual_entry_price - self.base_sl_points * tick_size
+        stop_loss_price = actual_entry_price - self.base_sl_points
         quantity = self.calculate_position_size(actual_entry_price, stop_loss_price, lot_size)
         if quantity <= 0:
             logger.warning("Cannot open position: invalid quantity calculated")
@@ -217,7 +217,7 @@ class PositionManager:
             logger.warning(f"Insufficient capital: required {required_capital:,.2f}, available {self.current_capital:,.2f}")
             return None
         position_id = str(uuid.uuid4())[:8]
-        tp_levels = [actual_entry_price + (tp * tick_size) for tp in self.tp_points]
+        tp_levels = [actual_entry_price + tp for tp in self.tp_points]
         position = Position(
             position_id=position_id,
             symbol=symbol,
@@ -232,8 +232,8 @@ class PositionManager:
             tp_percentages=self.tp_percentages.copy(),
             tp_executed=[False] * len(self.tp_points),
             trailing_enabled=self.use_trailing_stop,
-            trailing_activation_points=self.trailing_activation_points * tick_size,
-            trailing_distance_points=self.trailing_distance_points * tick_size,
+            trailing_activation_points=self.trailing_activation_points,
+            trailing_distance_points=self.trailing_distance_points,
             highest_price=actual_entry_price,
             total_commission=entry_costs['total_costs']
         )

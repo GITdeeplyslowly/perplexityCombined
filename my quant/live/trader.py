@@ -21,11 +21,7 @@ def load_config(config_path: str):
         return yaml.safe_load(f)
 
 def get_strategy(params):
-    version = params.get("strategy_version", "live").lower()
-    if version == "research":
-        strat_module = importlib.import_module("core.researchStrategy")
-    else:
-        strat_module = importlib.import_module("core.liveStrategy")
+    strat_module = importlib.import_module("core.liveStrategy")
     ind_mod = importlib.import_module("core.indicators")
     return strat_module.ModularIntradayStrategy(params, ind_mod)
 
