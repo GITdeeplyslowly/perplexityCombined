@@ -170,12 +170,19 @@ class BacktestRunner:
             self._run_backtest_logic()
             
             # Calculate and return results
-            self.results = BacktestResults(
-                positions=self.position_manager.closed_positions,
-                data=self.data,
-                config=self.config
-            )
-            
+            self.results = BacktestResults(self.position_manager.initial_capital)
+            for trade in self.position_manager.get_trade_history():
+                self.results.add_trade({
+                    'entry_time': trade['entry_time'],
+                    'exit_time': trade['exit_time'],
+                    'entry_price': trade['entry_price'],
+                    'exit_price': trade['exit_price'],
+                    'quantity': trade['quantity'],
+                    'pnl': trade['net_pnl'],
+                    'commission': trade['commission'],
+                    'exit_reason': trade['exit_reason'],
+                })
+#
             # Save results if configured
             if self.config.get('backtest', {}).get('save_results', True):
                 self._save_results()
@@ -506,6 +513,15 @@ class BacktestRunner:
             trades_df = pd.DataFrame()
         
         return trades_df, performance
+
+    def _save_results(self):
+        """Save trades and equity curve to CSV using BacktestResults."""
+        if self.results is not None:
+            output_dir = "results"
+            self.results.export_to_csv(output_dir)
+            logger.info(f"Results exported to {output_dir}/")
+        else:
+            logger.warning("No results to save.")
 
 def run_backtest_debug(strategy, data, position_manager, risk_manager, start_date, end_date):
     """Enhanced backtest with production-level debugging."""

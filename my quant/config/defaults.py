@@ -28,13 +28,13 @@ DEFAULT_CONFIG = {
         'indicator_update_mode': 'tick'
     },
     'risk': {
-        'base_sl_points': 15.0,
+        'base_sl_points': 12.0,
         'tp_points': [10.0, 25.0, 50.0, 100.0],
         'tp_percents': [0.25, 0.25, 0.25, 0.25],
         'use_trail_stop': True,
-        'trail_activation_points': 25.0,
-        'trail_distance_points': 10.0,
-        'risk_per_trade_percent': 1.0,
+        'trail_activation_points': 5.0,
+        'trail_distance_points': 7.0,
+        'risk_per_trade_percent': 5.0,
         'commission_percent': 0.03,
         'commission_per_trade': 0.0,
         'max_position_value_percent': 95.0,

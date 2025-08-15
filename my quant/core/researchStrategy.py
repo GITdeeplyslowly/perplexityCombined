@@ -63,7 +63,7 @@ class ModularIntradayStrategy:
         self.is_initialized = False
         self.current_position = None
         self.last_signal_time = None
-        self.bars_processed = 0
+        
         
         # Session configuration
         self.session_params = config.get('session', {})
@@ -263,10 +263,7 @@ class ModularIntradayStrategy:
         if not self.can_enter_new_position(current_time):
             return TradingSignal('HOLD', current_time, row['close'], reason="Cannot enter new position")
         
-        # Check if minimum bars processed
-        if self.bars_processed < self.min_bars_required:
-            return TradingSignal('HOLD', current_time, row['close'], reason="Warming up indicators")
-        
+               
         # Collect all signal conditions
         signal_conditions = []
         signal_reasons = []
@@ -594,16 +591,7 @@ class ModularIntradayStrategy:
         # Let position manager handle stop loss, take profit, and trailing stops
         return False
     
-    def on_new_bar(self, row: pd.Series, current_time: datetime):
-        """
-        Called when a new bar is processed.
-        
-        Args:
-            row: New bar data
-            current_time: Bar timestamp
-        """
-        self.bars_processed += 1
-        
+            
         # Reset daily stats if new day
         if (self.daily_stats['session_start_time'] is None or 
             current_time.date() != self.daily_stats['session_start_time'].date()):
@@ -695,7 +683,6 @@ class ModularIntradayStrategy:
         self.is_initialized = False
         self.current_position = None
         self.last_signal_time = None
-        self.bars_processed = 0
         self.daily_stats = {
             'trades_today': 0,
             'pnl_today': 0.0,
