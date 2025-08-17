@@ -160,27 +160,28 @@ class BacktestRunner:
             self.strategy = ModularIntradayStrategy(self.config)
             self.position_manager = PositionManager(self.config)
             
-            # Run backtest logic
-            self._run_backtest_logic()
+            # Run backtest logic and get trades/performance
+            trades_df, performance = self._run_backtest_logic()
             
-            # Calculate and return results
+            # --- FIX: Populate Results with trades from trades_df ---
             self.results = BacktestResults(self.position_manager.initial_capital)
-            for trade in self.position_manager.get_trade_history():
-                self.results.add_trade({
-                    'entry_time': trade['entry_time'],
-                    'exit_time': trade['exit_time'],
-                    'entry_price': trade['entry_price'],
-                    'exit_price': trade['exit_price'],
-                    'quantity': trade['quantity'],
-                    'pnl': trade['net_pnl'],
-                    'commission': trade['commission'],
-                    'exit_reason': trade['exit_reason'],
-                })
-#
-            # Save results if configured
-            if self.config.get('backtest', {}).get('save_results', True):
-                self._save_results()
-                
+            if not trades_df.empty:
+                for _, trade in trades_df.iterrows():
+                    self.results.add_trade({
+                        'entry_time': trade['entry_time'],
+                        'exit_time': trade['exit_time'],
+                        'entry_price': trade['entry_price'],
+                        'exit_price': trade['exit_price'],
+                        'quantity': trade['quantity'],
+                        'pnl': trade['net_pnl'],
+                        'commission': trade['commission'],
+                        'exit_reason': trade['exit_reason'],
+                    })
+            # --- END FIX ---
+
+            # Now export results as before
+            # self.results.export_to_csv(output_dir="results")
+            self.results.export_to_excel(output_dir="results")
             logger.info("Backtest completed successfully")
             return self.results
             

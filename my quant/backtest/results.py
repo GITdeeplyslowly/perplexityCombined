@@ -15,6 +15,8 @@ from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass
 from utils.time_utils import format_timestamp
 import os
+from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
 
 # Optional helpers (safe_divide and drawdown logic)
 def safe_divide(numerator, denominator, default=0.0):
@@ -163,21 +165,39 @@ class Results:
         print(f"{'='*60}")
 
     def get_trade_summary(self) -> pd.DataFrame:
-        """Return DataFrame with trade entries summarised."""
         rows = []
+        capital = self.initial_capital
+
+        # Insert starting capital row
+        rows.append({
+            "Entry Time": "",
+            "Exit Time": "",
+            "Entry Price": "",
+            "Exit Price": "",
+            "Quantity": "",
+            "Gross P&L": "",
+            "Commission": "",
+            "Net P&L": "",
+            "Exit Reason": "Starting Capital",
+            "Duration (min)": "",
+            "Capital Outstanding": round(capital, 2)
+        })
+
         for t in self.trades:
-            net = t.pnl - t.commission
+            net_pnl = t.pnl - t.commission
+            capital += net_pnl
             rows.append({
-                "Entry Time": t.entry_time,
-                "Exit Time": t.exit_time,
-                "Entry": t.entry_price,
-                "Exit": t.exit_price,
-                "Qty": t.quantity,
-                "P&L": t.pnl,
-                "Commission": t.commission,
-                "Net": net,
-                "Reason": t.exit_reason,
-                "Duration": (t.exit_time - t.entry_time).total_seconds() / 60,
+                "Entry Time": t.entry_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "Exit Time": t.exit_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "Entry Price": round(t.entry_price, 2),
+                "Exit Price": round(t.exit_price, 2),
+                "Quantity": t.quantity,
+                "Gross P&L": round(t.pnl, 2),
+                "Commission": round(t.commission, 2),
+                "Net P&L": round(net_pnl, 2),
+                "Exit Reason": t.exit_reason,
+                "Duration (min)": round((t.exit_time - t.entry_time).total_seconds() / 60, 2),
+                "Capital Outstanding": round(capital, 2)
             })
         return pd.DataFrame(rows)
 
@@ -188,18 +208,50 @@ class Results:
         return pd.DataFrame(self.equity_curve, columns=["timestamp", "capital"])
 
     def export_to_csv(self, output_dir: str = "results") -> str:
-        """Dump trades and performance to CSVs."""
+        """Dump trades and performance to CSV. (No separate equity file)"""
         os.makedirs(output_dir, exist_ok=True)
         trades_df = self.get_trade_summary()
-        equity_df = self.get_equity_curve()
         timestamp = format_timestamp(datetime.now())
 
         trades_file = os.path.join(output_dir, f"trades_{timestamp}.csv")
-        equity_file = os.path.join(output_dir, f"equity_{timestamp}.csv")
 
         trades_df.to_csv(trades_file, index=False)
-        equity_df.to_csv(equity_file, index=False)
 
         return trades_file
+
+    def export_to_excel(self, output_dir: str = "results") -> str:
+        """Export trades to Excel with colored rows based on Gross P&L."""
+        os.makedirs(output_dir, exist_ok=True)
+        trades_df = self.get_trade_summary()
+        timestamp = format_timestamp(datetime.now())
+        excel_file = os.path.join(output_dir, f"trades_{timestamp}.xlsx")
+        trades_df.to_excel(excel_file, index=False)
+
+        # Apply color formatting
+        wb = load_workbook(excel_file)
+        ws = wb.active
+        gross_pnl_col = None
+        # Find the Gross P&L column index (1-based)
+        for idx, cell in enumerate(ws[1], 1):
+            if cell.value == "Gross P&L":
+                gross_pnl_col = idx
+                break
+
+        green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+        red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+
+        for row in ws.iter_rows(min_row=2, min_col=1, max_col=ws.max_column):
+            cell = row[gross_pnl_col - 1]
+            try:
+                value = float(cell.value)
+                fill = green_fill if value > 0 else red_fill if value < 0 else None
+                if fill:
+                    for c in row:
+                        c.fill = fill
+            except Exception:
+                continue
+
+        wb.save(excel_file)
+        return excel_file
 
 BacktestResults = Results
