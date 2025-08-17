@@ -434,8 +434,12 @@ class BacktestRunner:
                 in_position = position_id is not None
                 
                 if in_position:
+                    # FIXED: Log detailed trade execution info
+                    position = position_manager.positions.get(position_id)
+                    if position:
+                        lots = position.current_quantity // position.lot_size if position.lot_size > 0 else position.current_quantity
+                        logger.info(f"✅ TRADE EXECUTED: {lots} lots ({position.current_quantity} units) @ ₹{row['close']:.2f}")
                     trades_executed += 1
-                    logger.info(f"✅ TRADE EXECUTED: Position {position_id} opened @ {row['close']:.2f}")
                 else:
                     logger.warning(f"❌ TRADE FAILED: Signal detected but position not opened")
             

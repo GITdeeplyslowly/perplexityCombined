@@ -24,7 +24,8 @@ DEFAULT_CONFIG = {
         'rsi_overbought': 70,
         'rsi_oversold': 30,
         'htf_period': 20,
-        'indicator_update_mode': 'tick'
+        'indicator_update_mode': 'tick',
+        'consecutive_green_bars': 3  # Number of consecutive green bars required before re-entry
     },
     'risk': {
         'base_sl_points': 12.0,

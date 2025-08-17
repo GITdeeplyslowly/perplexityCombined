@@ -92,10 +92,62 @@ class ModularIntradayStrategy:
 
         # Trading constraints
         self.max_positions_per_day = config.get('max_trades_per_day', 10)
-        self.min_signal_gap = config.get('min_signal_gap_minutes', 5)
+        # --- NEW: Consecutive green bars for re-entry ---
+        self.consecutive_green_bars_required = self.config_accessor.get_strategy_param('consecutive_green_bars', 3)
         self.no_trade_start_minutes = config.get('no_trade_start_minutes', 5)
         self.no_trade_end_minutes = config.get('no_trade_end_minutes', 30)
-        
+
+        # --- REMOVED: Minimum signal gap configuration ---
+
+        # In __init__ (after your other initializations)
+        self.green_bars_count = 0
+        self.last_bar_data = None
+
+    def _update_green_bars_count(self, row: pd.Series):
+        """
+        Update the count of consecutive green bars based on current bar data.
+        A green bar is one where close > open.
+        """
+        try:
+            current_close = row.get('close', 0)
+            current_open = row.get('open', current_close)
+            # For tick data, compare with previous close if no open available
+            if current_open == current_close and self.last_bar_data is not None:
+                current_open = self.last_bar_data.get('close', current_close)
+            is_green_bar = current_close > current_open
+            if is_green_bar:
+                self.green_bars_count += 1
+            else:
+                self.green_bars_count = 0
+            # Store current bar for next comparison
+            self.last_bar_data = {
+                'open': current_open,
+                'close': current_close,
+                'timestamp': row.name if hasattr(row, 'name') else None
+            }
+        except Exception as e:
+            logger.error(f"Error updating green bars count: {e}")
+
+    def _check_consecutive_green_bars(self) -> bool:
+        """
+        Check if we have enough consecutive green bars for re-entry.
+        Returns True if enough consecutive green bars, False otherwise.
+        """
+        return self.green_bars_count >= self.consecutive_green_bars_required
+
+
+        # --- NEW: Consecutive green bars for re-entry ---
+        self.consecutive_green_bars_required = self.config_accessor.get_strategy_param('consecutive_green_bars', 3)
+
+        # Daily tracking
+        # --- NEW: Daily tracking state ---
+        self.daily_stats = {
+            'trades_today': 0,
+            'pnl_today': 0.0,
+            'last_trade_time': None,
+            'session_start_time': None
+        }
+
         # Indicator parameters - use config_accessor for consistent access
         self.use_ema_crossover = self.config_accessor.get_strategy_param('use_ema_crossover', True)
         self.use_macd = self.config_accessor.get_strategy_param('use_macd', False)
@@ -127,13 +179,29 @@ class ModularIntradayStrategy:
         self.base_sl_points = self.config_accessor.get_risk_param('base_sl_points', 15)
         self.risk_per_trade_percent = self.config_accessor.get_risk_param('risk_per_trade_percent', 1.0)
         
-        # Daily tracking
+                # --- NEW: Daily tracking state ---
         self.daily_stats = {
             'trades_today': 0,
             'pnl_today': 0.0,
             'last_trade_time': None,
             'session_start_time': None
         }
+
+    def reset(self):
+        """Reset strategy state."""
+        self.is_initialized = False
+        self.current_position = None
+        self.last_signal_time = None
+        # reset daily stats too
+        self.daily_stats = {
+            'trades_today': 0,
+            'pnl_today': 0.0,
+            'last_trade_time': None,
+            'session_start_time': None
+        }
+        logger.info("Strategy reset to initial state")
+
+        
 
         # --- Incremental indicator trackers ---
         self.ema_fast_tracker = IncrementalEMA(period=self.fast_ema)
@@ -240,11 +308,9 @@ class ModularIntradayStrategy:
         if current_time > session_end - timedelta(minutes=self.no_trade_end_minutes):
             return False
         
-        # Check minimum gap between trades
-        if self.last_signal_time:
-            time_gap = (current_time - self.last_signal_time).total_seconds() / 60
-            if time_gap < self.min_signal_gap:
-                return False
+        # --- NEW: Consecutive green bars requirement before re-entry ---
+        if self.last_signal_time and not self._check_consecutive_green_bars():
+            return False
         
         return True
     
@@ -259,6 +325,8 @@ class ModularIntradayStrategy:
         Returns:
             TradingSignal object
         """
+        # --- NEW: Update green bars count for this bar ---
+        self._update_green_bars_count(row)
         # Check if we can enter
         if not self.can_enter_new_position(current_time):
             return TradingSignal('HOLD', current_time, row['close'], reason="Cannot enter new position")
@@ -544,40 +612,32 @@ class ModularIntradayStrategy:
             return False
 
     def open_long(self, row: pd.Series, current_time: datetime, position_manager) -> Optional[str]:
-        """PRODUCTION INTERFACE: Position opening."""
-        try:
-            logger.info(f"Attempting to open long position at {current_time}")
+        entry_price = row['close']
+        instrument_config = self.config.get('instrument', {})
+        symbol = instrument_config.get('symbol', self.config.get('symbol', 'NIFTY'))
+        lot_size = instrument_config.get('lot_size', 1)
+        tick_size = instrument_config.get('tick_size', 0.05)
+        position_id = position_manager.open_position(
+            symbol=symbol,
+            entry_price=entry_price,
+            timestamp=current_time,
+            lot_size=lot_size,
+            tick_size=tick_size
+        )
+        
+        if position_id:
+            # Update strategy state
+            if hasattr(self, 'daily_stats'):
+                self.daily_stats['trades_today'] += 1
+            self.last_signal_time = current_time
             
-            entry_price = row['close']
-            
-            # Use strategy parameters or defaults
-            symbol = getattr(self, 'symbol', 'NIFTY')
-            lot_size = self.config.get('lot_size', 1)
-            tick_size = self.config.get('tick_size', 0.05)
-            
-            position_id = position_manager.open_position(
-                symbol=symbol,
-                entry_price=entry_price,
-                timestamp=current_time,
-                lot_size=lot_size,
-                tick_size=tick_size
-            )
-            
-            if position_id:
-                # Update strategy state
-                if hasattr(self, 'daily_stats'):
-                    self.daily_stats['trades_today'] += 1
-                self.last_signal_time = current_time
-                
-                logger.info(f"✅ Position opened: {position_id} @ {entry_price}")
-                return position_id
-            else:
-                logger.warning("❌ Position manager returned None")
-                return None
-                
-        except Exception as e:
-            logger.error(f"Error in open_long: {e}")
+            logger.info(f"✅ Position opened: {position_id} @ {entry_price}")
+            return position_id
+        else:
+            logger.warning("❌ Position manager returned None")
             return None
+            
+       
     
     def should_exit(self, row, timestamp, position_manager):
         """Check if we should close position"""
@@ -678,19 +738,7 @@ class ModularIntradayStrategy:
         
         return errors
     
-    def reset(self):
-        """Reset strategy state."""
-        self.is_initialized = False
-        self.current_position = None
-        self.last_signal_time = None
-        self.daily_stats = {
-            'trades_today': 0,
-            'pnl_today': 0.0,
-            'last_trade_time': None,
-            'session_start_time': None
-        }
-        logger.info("Strategy reset to initial state")
-    
+        
     def process_tick_or_bar(self, row: pd.Series):
         # For EMA
         fast_ema_val = self.ema_fast_tracker.update(row['close'])

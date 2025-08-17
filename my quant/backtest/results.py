@@ -174,7 +174,8 @@ class Results:
             "Exit Time": "",
             "Entry Price": "",
             "Exit Price": "",
-            "Quantity": "",
+            "Lots": "",
+            "Total Qty": "",
             "Gross P&L": "",
             "Commission": "",
             "Net P&L": "",
@@ -186,12 +187,14 @@ class Results:
         for t in self.trades:
             net_pnl = t.pnl - t.commission
             capital += net_pnl
+            lots_display = getattr(t, 'lots_traded', t.quantity // getattr(t, 'lot_size', 1)) if hasattr(t, 'lot_size') else 'N/A'
             rows.append({
                 "Entry Time": t.entry_time.strftime("%Y-%m-%d %H:%M:%S"),
                 "Exit Time": t.exit_time.strftime("%Y-%m-%d %H:%M:%S"),
                 "Entry Price": round(t.entry_price, 2),
                 "Exit Price": round(t.exit_price, 2),
-                "Quantity": t.quantity,
+                "Lots": lots_display,
+                "Total Qty": t.quantity,
                 "Gross P&L": round(t.pnl, 2),
                 "Commission": round(t.commission, 2),
                 "Net P&L": round(net_pnl, 2),

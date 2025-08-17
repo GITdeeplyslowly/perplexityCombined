@@ -118,6 +118,10 @@ class ModularIntradayStrategy:
             return False
         if self.daily_trade_count >= self.max_trades_per_day:
             return False
+        # --- NEW: Consecutive green bars requirement before re-entry ---
+        self._update_green_bars_count(row)
+        if self.last_signal_time is not None and not self._check_consecutive_green_bars():
+            return False
         if self.in_position:
             return False
         if not self.entry_signal(row):
@@ -202,6 +206,48 @@ class ModularIntradayStrategy:
         row['macd_histogram'] = macd_hist_val
         row['vwap'] = vwap_val
         row['atr'] = atr_val
+
+    # --- NEW: Consecutive green bars logic ---
+    def _check_consecutive_green_bars(self) -> bool:
+        """
+        Check if we have enough consecutive green bars for re-entry.
+        Returns True if enough consecutive green bars, False otherwise.
+        """
+        if self.green_bars_count >= self.consecutive_green_bars_required:
+            return True
+        else:
+            return False
+
+    def _update_green_bars_count(self, row: pd.Series):
+        """
+        Update the count of consecutive green bars based on current bar data.
+        A green bar is one where close > open.
+        """
+        try:
+            current_close = row.get('close', 0)
+            current_open = row.get('open', current_close)
+
+            # For tick data, compare with previous close if no open available
+            if current_open == current_close and self.last_bar_data is not None:
+                current_open = self.last_bar_data.get('close', current_close)
+
+            is_green_bar = current_close > current_open
+
+            if is_green_bar:
+                self.green_bars_count += 1
+            else:
+                self.green_bars_count = 0
+
+            # Store current bar for next comparison
+            self.last_bar_data = {
+                'open': current_open,
+                'close': current_close,
+                'timestamp': row.name if hasattr(row, 'name') else None
+            }
+
+        except Exception as e:
+            # Don't reset count on error, just log it
+            pass
 
 if __name__ == "__main__":
     # Minimal smoke test for development

@@ -92,6 +92,8 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_rsi_overbought = tk.StringVar(value=str(strategy_defaults.get('rsi_overbought', 70)))
         # HTF parameter
         self.bt_htf_period = tk.StringVar(value=str(strategy_defaults.get('htf_period', 20)))
+        # --- Consecutive Green Bars parameter ---
+        self.bt_consecutive_green_bars = tk.StringVar(value=str(strategy_defaults.get('consecutive_green_bars', 3)))
 
         # --- Risk management ---
         self.bt_base_sl_points = tk.StringVar(value=str(risk_defaults['base_sl_points']))
@@ -262,7 +264,9 @@ class UnifiedTradingGUI(tk.Tk):
         config['strategy']['macd_fast'] = int(self.bt_macd_fast.get())
         config['strategy']['macd_slow'] = int(self.bt_macd_slow.get())
         config['strategy']['macd_signal'] = int(self.bt_macd_signal.get())
-        
+        # Consecutive Green Bars
+        config['strategy']['consecutive_green_bars'] = int(self.bt_consecutive_green_bars.get())
+
         # --- ADD THIS LINE ---
         config['strategy']['strategy_version'] = DEFAULT_CONFIG['strategy'].get('strategy_version', 1)
         # ---------------------
@@ -466,6 +470,9 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Label(params_frame, text="HTF Period:").grid(row=3, column=0, sticky="e", padx=2)
         self.ft_htf_period = tk.StringVar(value="20")
         ttk.Entry(params_frame, textvariable=self.ft_htf_period, width=8).grid(row=3, column=1, padx=2)
+        # Consecutive Green Bars
+        ttk.Label(params_frame, text="Green Bars Req:").grid(row=3, column=2, sticky="e", padx=2)
+        ttk.Entry(params_frame, textvariable=self.bt_consecutive_green_bars, width=8).grid(row=3, column=3, padx=2)
         row += 1
 
         # Risk Management
@@ -480,20 +487,14 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Entry(risk_frame, textvariable=self.ft_base_sl_points, width=8).grid(row=0, column=1, padx=2)
         
         ttk.Label(risk_frame, text="TP1 Points:").grid(row=0, column=2, sticky="e", padx=2)
-        self.ft_tp1_points = tk.StringVar(value="10")
-        ttk.Entry(risk_frame, textvariable=self.ft_tp1_points, width=8).grid(row=0, column=3, padx=2)
-        
+        ttk.Entry(risk_frame, textvariable=self.bt_tp_points[0], width=8).grid(row=0, column=3, padx=2)
         ttk.Label(risk_frame, text="TP2 Points:").grid(row=0, column=4, sticky="e", padx=2)
-        self.ft_tp2_points = tk.StringVar(value="25")
-        ttk.Entry(risk_frame, textvariable=self.ft_tp2_points, width=8).grid(row=0, column=5, padx=2)
-        
+        ttk.Entry(risk_frame, textvariable=self.bt_tp_points[1], width=8).grid(row=0, column=5, padx=2)
         ttk.Label(risk_frame, text="TP3 Points:").grid(row=1, column=0, sticky="e", padx=2)
-        self.ft_tp3_points = tk.StringVar(value="50")
-        ttk.Entry(risk_frame, textvariable=self.ft_tp3_points, width=8).grid(row=1, column=1, padx=2)
+        ttk.Entry(risk_frame, textvariable=self.bt_tp_points[2], width=8).grid(row=1, column=1, padx=2)
         
         ttk.Label(risk_frame, text="TP4 Points:").grid(row=1, column=2, sticky="e", padx=2)
-        self.ft_tp4_points = tk.StringVar(value="100")
-        ttk.Entry(risk_frame, textvariable=self.ft_tp4_points, width=8).grid(row=1, column=3, padx=2)
+        ttk.Entry(risk_frame, textvariable=self.bt_tp_points[3], width=8).grid(row=1, column=3, padx=2)
         
         self.ft_use_trail_stop = tk.BooleanVar(value=True)
         ttk.Checkbutton(risk_frame, text="Use Trailing Stop", variable=self.ft_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
@@ -509,7 +510,8 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Label(risk_frame, text="Risk % per Trade:").grid(row=2, column=4, sticky="e", padx=2)
         self.ft_risk_per_trade_percent = tk.StringVar(value="1.0")
         ttk.Entry(risk_frame, textvariable=self.ft_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
-        
+        row += 1
+
         # --- Instrument Settings ---
         ttk.Label(frame, text="Instrument Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
         row += 1
@@ -767,13 +769,13 @@ class UnifiedTradingGUI(tk.Tk):
             # === SESSION SECTION ===
             'session': {
                 'is_intraday': True, 
-                'start_hour': int(self.session_start_hour.get()),
-                'start_min': int(self.session_start_min.get()),
-                'end_hour': int(self.session_end_hour.get()),
-                'end_min': int(self.session_end_min.get()),
-                'start_buffer_minutes': int(self.start_buffer.get()),
-                'end_buffer_minutes': int(self.end_buffer.get()),
-                'timezone': self.timezone.get()
+                'start_hour': int(self.ft_session_start_hour.get()),
+                'start_min': int(self.ft_session_start_min.get()),
+                'end_hour': int(self.ft_session_end_hour.get()),
+                'end_min': int(self.ft_session_end_min.get()),
+                'start_buffer_minutes': int(self.ft_start_buffer.get()),
+                'end_buffer_minutes': int(self.ft_end_buffer.get()),
+                'timezone': self.ft_timezone.get()
             },
 
             # === LIVE TRADING SECTION ===
@@ -899,44 +901,41 @@ class UnifiedTradingGUI(tk.Tk):
             self.destroy()
 
     def _update_capital_calculations(self, event=None):
-        """Update all capital calculations in real-time"""
+        """Update all capital calculations in real-time with lot-based display"""
         try:
-            # Get user inputs
-            available_capital = float(self.bt_available_capital.get().replace(',', ''))
-            risk_percentage = float(self.bt_risk_percentage.get())
+            available_capital = float(self.bt_initial_capital.get().replace(',', ''))
+            risk_percentage = float(self.bt_risk_per_trade_percent.get())
             lot_size = int(self.bt_lot_size.get())
+            # Remove default/fallback for current_price, as price comes from data in backtest/forward test
             current_price = float(self.bt_current_price.get())
             stop_loss_points = float(self.bt_base_sl_points.get())
-            
-            # Calculate usable capital (95% rule)
-            usable_capital = available_capital * 0.95
-            self.capital_usable.set(f"₹{usable_capital:,.0f} ({usable_capital/available_capital*100:.0f}%)")
-            
-            # Calculate maximum affordable lots
-            max_affordable_shares = int(usable_capital / current_price)
-            max_lots_count = max_affordable_shares // lot_size
-            max_lots_shares = max_lots_count * lot_size
-            self.max_lots.set(f"{max_lots_count} lots ({max_lots_shares:,} shares)")
-            
-            # Calculate risk-based position sizing
+
+            risk_per_unit = stop_loss_points
             max_risk_amount = available_capital * (risk_percentage / 100)
-            risk_per_share = stop_loss_points
-            risk_based_shares = int(max_risk_amount / risk_per_share) if risk_per_share > 0 else 0
-            risk_based_lots = risk_based_shares // lot_size
-            
-            # Choose the smaller (more conservative) approach
-            recommended_lots_count = min(max_lots_count, risk_based_lots)
-            recommended_shares = recommended_lots_count * lot_size
-            
-            self.max_risk.set(f"₹{max_risk_amount:,.0f} ({risk_percentage}%)")
-            self.recommended_lots.set(f"{recommended_lots_count} lots ({recommended_shares:,} shares)")
-            
-        except (ValueError, ZeroDivisionError):
-            # Handle invalid inputs gracefully
-            self.capital_usable.set("Invalid Input")
-            self.max_lots.set("Invalid Input")
-            self.max_risk.set("Invalid Input") 
-            self.recommended_lots.set("Invalid Input")
+            raw_quantity = int(max_risk_amount / risk_per_unit) if risk_per_unit > 0 else 0
+
+            if lot_size > 1:
+                max_affordable_lots = int((available_capital * 0.95) // (lot_size * current_price))
+                risk_based_lots = max(1, raw_quantity // lot_size) if raw_quantity > 0 else 0
+                recommended_lots = min(max_affordable_lots, risk_based_lots)
+                recommended_quantity = recommended_lots * lot_size
+            else:
+                recommended_lots = raw_quantity
+                recommended_quantity = raw_quantity
+                max_affordable_lots = recommended_lots
+
+            if hasattr(self, 'recommended_lots'):
+                self.recommended_lots.set(f"{recommended_lots} lots ({recommended_quantity:,} total units)")
+            if hasattr(self, 'max_lots'):
+                self.max_lots.set(f"{max_affordable_lots} lots max")
+            if hasattr(self, 'position_value'):
+                position_value = recommended_quantity * current_price
+                self.position_value.set(f"₹{position_value:,.0f}")
+
+            logger.info(f"💡 Position Sizing: {recommended_lots} lots = {recommended_quantity:,} units @ ₹{current_price:.2f}")
+
+        except (ValueError, ZeroDivisionError) as e:
+            logger.error(f"Position calculation error: {e}")
 
     def _validate_position_parameters(self) -> dict:
         """Validate all position parameters and provide feedback"""
@@ -1023,7 +1022,8 @@ class UnifiedTradingGUI(tk.Tk):
             "FINNIFTY": 25, 
             "SENSEX": 10,
             "BANKEX": 15,
-            "CUSTOM": 75  # Default for custom
+            "CUSTOM": 75, # Default for custom
+            "STOCK":1
         }
         
         lot_size = lot_sizes.get(instrument, 75)
@@ -1238,6 +1238,15 @@ class UnifiedTradingGUI(tk.Tk):
         self.timezone = tk.StringVar(value="Asia/Kolkata")
         self.session_status = tk.StringVar(value="⚠️ Not checked")
 
+        # Forward test session configuration variables
+        self.ft_session_start_hour = tk.StringVar(value="9")
+        self.ft_session_start_min = tk.StringVar(value="15")
+        self.ft_session_end_hour = tk.StringVar(value="15")
+        self.ft_session_end_min = tk.StringVar(value="30")
+        self.ft_start_buffer = tk.StringVar(value="5")
+        self.ft_end_buffer = tk.StringVar(value="20")
+        self.ft_timezone = tk.StringVar(value="Asia/Kolkata")
+
     def _create_gui_framework(self):
         """Create the core GUI framework - notebook and tabs"""
         # Create notebook for tabs
@@ -1319,6 +1328,9 @@ class UnifiedTradingGUI(tk.Tk):
         # HTF Parameters
         ttk.Label(bt_params_frame, text="HTF Period:").grid(row=3, column=0, sticky="e", padx=2)
         ttk.Entry(bt_params_frame, textvariable=self.bt_htf_period, width=8).grid(row=3, column=1, padx=2)
+        # Consecutive Green Bars
+        ttk.Label(bt_params_frame, text="Green Bars Req:").grid(row=3, column=2, sticky="e", padx=2)
+        ttk.Entry(bt_params_frame, textvariable=self.bt_consecutive_green_bars, width=8).grid(row=3, column=3, padx=2)
         row += 1
 
         # Risk Management
@@ -1335,9 +1347,11 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[1], width=8).grid(row=0, column=5, padx=2)
         ttk.Label(bt_risk_frame, text="TP3 Points:").grid(row=1, column=0, sticky="e", padx=2)
         ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[2], width=8).grid(row=1, column=1, padx=2)
+        
         ttk.Label(bt_risk_frame, text="TP4 Points:").grid(row=1, column=2, sticky="e", padx=2)
         ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[3], width=8).grid(row=1, column=3, padx=2)
-        # Trailing Stop
+        
+        self.ft_use_trail_stop = tk.BooleanVar(value=True)
         ttk.Checkbutton(bt_risk_frame, text="Use Trailing Stop", variable=self.bt_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
         
         ttk.Label(bt_risk_frame, text="Trail Activation Points:").grid(row=2, column=0, sticky="e", padx=2)

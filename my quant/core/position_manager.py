@@ -120,6 +120,13 @@ class Trade:
     exit_reason: str
     duration_minutes: int
     lot_size: int
+    lots_traded: int = 0
+
+    def __post_init__(self):
+        if self.lot_size > 0:
+            self.lots_traded = self.quantity // self.lot_size
+        else:
+            self.lots_traded = self.quantity
 
 class PositionManager:
     def __init__(self, config: Dict[str, Any], **kwargs):
@@ -182,6 +189,41 @@ class PositionManager:
             aligned_quantity = max(1, max_lots) * lot_size
         return aligned_quantity
 
+    def calculate_position_size_in_lots(self, entry_price: float, stop_loss_price: float, lot_size: int = 1) -> tuple:
+        """
+        Calculate position size and return both lots and total quantity.
+        Returns: (lots, total_quantity, lot_size)
+        """
+        if entry_price <= 0 or stop_loss_price <= 0:
+            return 0, 0, lot_size
+
+        risk_per_unit = abs(entry_price - stop_loss_price)
+        if risk_per_unit <= 0:
+            return 0, 0, lot_size
+
+        max_risk_amount = self.current_capital * (self.risk_per_trade_percent / 100)
+        raw_quantity = int(max_risk_amount / risk_per_unit)
+
+        if raw_quantity <= 0:
+            return 0, 0, lot_size
+
+        if lot_size <= 1:  # Equity trading
+            lots = raw_quantity
+            total_quantity = raw_quantity
+        else:  # F&O trading
+            lots = max(1, raw_quantity // lot_size)
+            total_quantity = lots * lot_size
+
+        position_value = total_quantity * entry_price
+        max_position_value = self.current_capital * (self.max_position_value_percent / 100)
+
+        if position_value > max_position_value:
+            max_lots = int(max_position_value / (lot_size * entry_price))
+            lots = max(1, max_lots)
+            total_quantity = lots * lot_size
+
+        return lots, total_quantity, lot_size
+
     def calculate_total_costs(self, price: float, quantity: int, is_buy: bool = True) -> Dict[str, float]:
         turnover = price * quantity
         commission = max(self.commission_per_trade, turnover * (self.commission_percent / 100))
@@ -207,10 +249,13 @@ class PositionManager:
         else:
             actual_entry_price = entry_price
         stop_loss_price = actual_entry_price - self.base_sl_points
-        quantity = self.calculate_position_size(actual_entry_price, stop_loss_price, lot_size)
-        if quantity <= 0:
-            logger.warning("Cannot open position: invalid quantity calculated")
+        lots, quantity, lot_size_used = self.calculate_position_size_in_lots(
+            actual_entry_price, stop_loss_price, lot_size)
+
+        if lots <= 0 or quantity <= 0:
+            logger.warning("Cannot open position: invalid lot size calculated")
             return None
+
         entry_costs = self.calculate_total_costs(actual_entry_price, quantity, is_buy=True)
         required_capital = entry_costs['turnover'] + entry_costs['total_costs']
         if required_capital > self.current_capital:
@@ -240,8 +285,12 @@ class PositionManager:
         self.current_capital -= required_capital
         self.reserved_margin += required_capital
         self.positions[position_id] = position
-        logger.info(f"Opened LONG position {position_id}: {quantity} {symbol} @ {actual_entry_price}")
-        logger.info(f"SL: {stop_loss_price}, TPs: {tp_levels}")
+        logger.info(f"🟢 OPENED POSITION {position_id}")
+        logger.info(f"   📊 Lots: {lots} ({quantity} total units)")
+        logger.info(f"   💰 Entry: ₹{actual_entry_price:.2f} per unit")
+        logger.info(f"   🛑 Stop Loss: ₹{stop_loss_price:.2f}")
+        logger.info(f"   🎯 Take Profits: {[f'₹{tp:.2f}' for tp in tp_levels]}")
+        logger.info(f"   💸 Position Value: ₹{quantity * actual_entry_price:,.2f}")
         return position_id
 
     def close_position_partial(self, position_id: str, exit_price: float,
@@ -263,6 +312,7 @@ class PositionManager:
         position.realized_pnl += net_pnl
         position.total_commission += exit_costs['total_costs']
         duration = int((timestamp - position.entry_time).total_seconds() / 60)
+        lots_closed = quantity_to_close // position.lot_size if position.lot_size > 0 else quantity_to_close
         trade = Trade(
             trade_id=str(uuid.uuid4())[:8],
             position_id=position_id,
@@ -277,7 +327,8 @@ class PositionManager:
             net_pnl=net_pnl,
             exit_reason=exit_reason,
             duration_minutes=duration,
-            lot_size=position.lot_size
+            lot_size=position.lot_size,
+            lots_traded=lots_closed
         )
         self.completed_trades.append(trade)
         position.exit_transactions.append({
@@ -296,6 +347,10 @@ class PositionManager:
             position.status = PositionStatus.PARTIALLY_CLOSED
             logger.info(f"Partially closed position {position_id}: {quantity_to_close} @ ₹{exit_price}")
         self.daily_pnl += net_pnl
+        logger.info(f"🔴 CLOSED POSITION {position_id}")
+        logger.info(f"   📊 Lots Closed: {lots_closed} ({quantity_to_close} units)")
+        logger.info(f"   💰 Exit: ₹{exit_price:.2f} per unit")
+        logger.info(f"   📈 P&L: ₹{net_pnl:.2f} ({exit_reason})")
         return True
 
     def close_position_full(self, position_id: str, exit_price: float,
@@ -320,8 +375,20 @@ class PositionManager:
         for i, (tp_level, tp_percentage, tp_executed) in enumerate(zip(position.tp_levels, position.tp_percentages, position.tp_executed)):
             if not tp_executed and current_price >= tp_level:
                 position.tp_executed[i] = True
-                exit_quantity = int(position.initial_quantity * tp_percentage) if i < len(position.tp_levels) - 1 else position.current_quantity
-                exit_quantity = min(exit_quantity, position.current_quantity)
+                # --- FIX: Lot-aligned TP exit calculation ---
+                if i < len(position.tp_levels) - 1:
+                    total_lots = position.initial_quantity // position.lot_size
+                    lots_to_exit = max(1, int(total_lots * tp_percentage))
+                    remaining_lots = position.current_quantity // position.lot_size
+                    if lots_to_exit > remaining_lots:
+                        lots_to_exit = remaining_lots
+                    exit_quantity = lots_to_exit * position.lot_size
+                else:
+                    exit_quantity = position.current_quantity  # Last TP: exit all remaining
+                # Logging for verification
+                exit_lots = exit_quantity // position.lot_size if position.lot_size > 0 else exit_quantity
+                logger.info(f"🎯 TP{i+1} Exit: {exit_lots} lots ({exit_quantity} units)")
+                # --- END FIX ---
                 if exit_quantity > 0:
                     reason = f"Take Profit {i+1}"
                     exits.append((exit_quantity, reason))
