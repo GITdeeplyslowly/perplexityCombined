@@ -49,7 +49,29 @@ class ModularIntradayStrategy:
         self.config = config
         
         self.config_accessor = ConfigAccessor(config)
+
+ # Indicator parameters - use config_accessor for consistent access
+        self.use_ema_crossover = self.config_accessor.get_strategy_param('use_ema_crossover', True)
+        self.use_macd = self.config_accessor.get_strategy_param('use_macd', False)
+        self.use_vwap = self.config_accessor.get_strategy_param('use_vwap', False)
+        self.use_rsi_filter = self.config_accessor.get_strategy_param('use_rsi_filter', False)
+        self.use_htf_trend = self.config_accessor.get_strategy_param('use_htf_trend', False)
+        self.use_bollinger_bands = self.config_accessor.get_strategy_param('use_bollinger_bands', False)
+        self.use_stochastic = self.config_accessor.get_strategy_param('use_stochastic', False)
+        self.use_atr = self.config_accessor.get_strategy_param('use_atr', False)
+        
+        self.base_sl_points = self.config_accessor.get_risk_param('base_sl_points')
+
+# --- Initialize daily_stats here ---
+        self.daily_stats = {
+            'trades_today': 0,
+            'pnl_today': 0.0,
+            'last_trade_time': None,
+            'session_start_time': None
+        }
+        
         # Validate configuration structure
+
         validation = self.config_accessor.validate_required_params()
         if not validation['valid']:
             logger.error(f"Configuration validation failed: {validation['errors']}")
@@ -139,25 +161,8 @@ class ModularIntradayStrategy:
         # --- NEW: Consecutive green bars for re-entry ---
         self.consecutive_green_bars_required = self.config_accessor.get_strategy_param('consecutive_green_bars', 3)
 
-        # Daily tracking
-        # --- NEW: Daily tracking state ---
-        self.daily_stats = {
-            'trades_today': 0,
-            'pnl_today': 0.0,
-            'last_trade_time': None,
-            'session_start_time': None
-        }
-
-        # Indicator parameters - use config_accessor for consistent access
-        self.use_ema_crossover = self.config_accessor.get_strategy_param('use_ema_crossover', True)
-        self.use_macd = self.config_accessor.get_strategy_param('use_macd', False)
-        self.use_vwap = self.config_accessor.get_strategy_param('use_vwap', False)
-        self.use_rsi_filter = self.config_accessor.get_strategy_param('use_rsi_filter', False)
-        self.use_htf_trend = self.config_accessor.get_strategy_param('use_htf_trend', False)
-        self.use_bollinger_bands = self.config_accessor.get_strategy_param('use_bollinger_bands', False)
-        self.use_stochastic = self.config_accessor.get_strategy_param('use_stochastic', False)
-        self.use_atr = self.config_accessor.get_strategy_param('use_atr', False)
         
+       
         # EMA parameters
         self.fast_ema = self.config_accessor.get_strategy_param('fast_ema', 9)
         self.slow_ema = self.config_accessor.get_strategy_param('slow_ema', 21)
@@ -179,14 +184,7 @@ class ModularIntradayStrategy:
         self.base_sl_points = self.config_accessor.get_risk_param('base_sl_points', 15)
         self.risk_per_trade_percent = self.config_accessor.get_risk_param('risk_per_trade_percent', 1.0)
         
-                # --- NEW: Daily tracking state ---
-        self.daily_stats = {
-            'trades_today': 0,
-            'pnl_today': 0.0,
-            'last_trade_time': None,
-            'session_start_time': None
-        }
-
+      
     def reset(self):
         """Reset strategy state."""
         self.is_initialized = False
