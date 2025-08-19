@@ -181,35 +181,47 @@ def calculate_all_indicators(df: pd.DataFrame, params: Dict, chunk_size=1000):
 
     # Log the parameters being used for transparency
     logger.info(f"Calculating indicators with: RSI={rsi_period}, FastEMA={fast_ema}, " +
-               f"SlowEMA={slow_ema}, VWAP={vwap_period}, " +
-               f"MACD={macd_fast}/{macd_slow}/{macd_signal}, VolMult={volume_multiplier}")
+                f"SlowEMA={slow_ema}, VWAP={vwap_period}, " +
+                f"MACD={macd_fast}/{macd_slow}/{macd_signal}, VolMult={volume_multiplier}")
+
+    # Get list of base data columns to preserve
+    base_columns = ['open', 'high', 'low', 'close', 'volume', 'price']
+    base_data = df[[col for col in base_columns if col in df.columns]].copy()
     
     # Calculate enabled indicators based on config
     if config_accessor.is_indicator_enabled('rsi') and len(df) >= rsi_period:
-        df['rsi'] = calculate_rsi(df['close'], period=rsi_period)
-        
+        base_data['rsi'] = calculate_rsi(base_data['close'], period=rsi_period)
+
     if config_accessor.is_indicator_enabled('ema_crossover'):
-        df['fast_ema'] = calculate_ema(df['close'], fast_ema)
-        df['slow_ema'] = calculate_ema(df['close'], slow_ema)
-        crossover_signals = calculate_ema_crossover_signals(df['fast_ema'], df['slow_ema'])
-        df['ema_bullish'] = crossover_signals['ema_bullish']
-        
+        base_data['fast_ema'] = calculate_ema(base_data['close'], fast_ema)
+        base_data['slow_ema'] = calculate_ema(base_data['close'], slow_ema)
+        crossover_signals = calculate_ema_crossover_signals(base_data['fast_ema'], base_data['slow_ema'])
+        base_data['ema_bullish'] = crossover_signals['ema_bullish']
+
     if config_accessor.is_indicator_enabled('macd'):
-        macd_df = calculate_macd(df['close'], macd_fast, macd_slow, macd_signal)
-        df = df.join(macd_df)
+        macd_df = calculate_macd(base_data['close'], macd_fast, macd_slow, macd_signal)
+        for col in macd_df.columns:
+            base_data[col] = macd_df[col]
         macd_signals = calculate_macd_signals(macd_df)
-        df = df.join(macd_signals.add_prefix('macd_'))
-        
-    if config_accessor.is_indicator_enabled('vwap') and all(col in df.columns for col in ['high', 'low', 'close', 'volume']):
-        df['vwap'] = calculate_vwap(df['high'], df['low'], df['close'], df['volume'])
-        vwap_signals = calculate_vwap_signals(df['close'], df['vwap'])
-        df = df.join(vwap_signals.add_prefix('vwap_'))
-        
+        for col in macd_signals.columns:
+            base_data[col] = macd_signals[col]
+
+    if config_accessor.is_indicator_enabled('vwap') and all(col in base_data.columns for col in ['high', 'low', 'close', 'volume']):
+        base_data['vwap'] = calculate_vwap(base_data['high'], base_data['low'], base_data['close'], base_data['volume'])
+        vwap_signals = calculate_vwap_signals(base_data['close'], base_data['vwap'])
+        for col in vwap_signals.columns:
+            base_data[col] = vwap_signals[col]
+
     if config_accessor.is_indicator_enabled('htf_trend'):
-        df['htf_ema'] = calculate_htf_trend(df['close'], config_accessor.get_strategy_param("htf_period", 20))
-        htf_signals = calculate_htf_signals(df['close'], df['htf_ema'])
-        df = df.join(htf_signals.add_prefix('htf_'))
-        
+        base_data['htf_ema'] = calculate_htf_trend(base_data['close'], config_accessor.get_strategy_param("htf_period", 20))
+        htf_signals = calculate_htf_signals(base_data['close'], base_data['htf_ema'])
+        for col in htf_signals.columns:
+            base_data[col] = htf_signals[col]
+
+    # Replace df with the newly constructed base_data
+    df = base_data
+
+    # Continue with other indicators...
     if config_accessor.is_indicator_enabled('bollinger_bands'):
         upper, mid, lower = calculate_bollinger_bands(df['close'], config_accessor.get_strategy_param("bb_period", 20), config_accessor.get_strategy_param("bb_std", 2))
         df["bb_upper"], df["bb_middle"], df["bb_lower"] = upper, mid, lower

@@ -757,9 +757,16 @@ def process_indicators_sequential(df_normalized: pd.DataFrame, strategy, chunk_s
         logger.info(f"Processing chunk {chunk_num}: rows {start_idx}-{end_idx}")
 
         try:
+            # Reset any existing indicator columns to prevent conflicts
+            base_columns = ['open', 'high', 'low', 'close', 'volume', 'price']
+            indicator_columns = [col for col in chunk_df.columns if col not in base_columns]
+            if indicator_columns:
+                chunk_df = chunk_df.drop(columns=indicator_columns)
+                logger.debug(f"Removed existing indicators from chunk: {indicator_columns}")
+
             # Use strategy's own indicator calculation method directly
             chunk_with_indicators = strategy.calculate_indicators(chunk_df)
-            
+
             # FIXED: Validate chunk integrity immediately
             if len(chunk_with_indicators) != len(chunk_df):
                 raise ValueError(f"Chunk {chunk_num} data corruption: {len(chunk_df)} -> {len(chunk_with_indicators)}")
@@ -789,9 +796,11 @@ def process_indicators_sequential(df_normalized: pd.DataFrame, strategy, chunk_s
         except Exception as e:
             logger.error(f"Error processing chunk {start_idx}-{end_idx}: {e}")
             # Use strategy.calculate_indicators as fallback instead of raw data
-            fallback_indicators = strategy.calculate_indicators(chunk_df)
+            # Clean the chunk first
+            base_columns = ['open', 'high', 'low', 'close', 'volume', 'price']
+            clean_chunk = chunk_df[[col for col in base_columns if col in chunk_df.columns]]
+            fallback_indicators = strategy.calculate_indicators(clean_chunk)
             processed_chunks.append(fallback_indicators)
-
     df_with_indicators = pd.concat(processed_chunks, axis=0, ignore_index=False)
     
     # FIXED: Comprehensive integrity validation
