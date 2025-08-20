@@ -165,6 +165,7 @@ class BacktestRunner:
             
             # --- FIX: Populate Results with trades from trades_df ---
             self.results = BacktestResults(self.position_manager.initial_capital)
+            self.results.set_config(self.config)  # Pass config for additional info
             if not trades_df.empty:
                 for _, trade in trades_df.iterrows():
                     self.results.add_trade({

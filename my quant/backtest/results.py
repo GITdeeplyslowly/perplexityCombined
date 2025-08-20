@@ -11,12 +11,13 @@ Compute trading performance metrics for backtests, including:
 
 import pandas as pd
 from datetime import datetime
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from dataclasses import dataclass
 from utils.time_utils import format_timestamp
 import os
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
+import logging
 
 # Optional helpers (safe_divide and drawdown logic)
 def safe_divide(numerator, denominator, default=0.0):
@@ -84,6 +85,7 @@ class Results:
         self.current_capital = initial_capital
         self.trades: List[TradeResult] = []
         self.equity_curve: List[Tuple[datetime, float]] = []
+        self.config: Optional[Dict[str, Any]] = None  # Add config attribute
 
     def add_trade(self, trade_data: Dict[str, Any]) -> None:
         """Appends a trade and updates capital/equity."""
@@ -100,6 +102,79 @@ class Results:
         self.trades.append(trade)
         self.current_capital += (trade.pnl - trade.commission)
         self.equity_curve.append((trade.exit_time, self.current_capital))
+
+    def set_config(self, config: Dict[str, Any]):
+        self.config = config
+
+    def _create_additional_info_table(self) -> pd.DataFrame:
+        """Create additional info table with indicators and parameters"""
+        if not hasattr(self, 'config') or not self.config:
+            return pd.DataFrame([{"Key": "Configuration", "Value": "Not Available"}])
+
+        rows = []
+        config = self.config
+        strategy_config = config.get('strategy', config)  # fallback if not nested
+        risk_config = config.get('risk', config)  # fallback if not nested
+
+        # Indicators activated
+        indicator_map = {
+            'use_ema_crossover': 'EMA Crossover',
+            'use_macd': 'MACD',
+            'use_vwap': 'VWAP',
+            'use_rsi_filter': 'RSI Filter',
+            'use_htf_trend': 'HTF Trend',
+            'use_bollinger_bands': 'Bollinger Bands',
+            'use_stochastic': 'Stochastic',
+            'use_atr': 'ATR'
+        }
+        active_indicators = [name for key, name in indicator_map.items()
+                             if strategy_config.get(key, False)]
+        rows.append({"Key": "Indicators Activated",
+                     "Value": ", ".join(active_indicators) if active_indicators else "None"})
+
+        # EMA parameters
+        if strategy_config.get('use_ema_crossover', False):
+            ema_params = f"Fast EMA: {strategy_config.get('fast_ema', 9)}, Slow EMA: {strategy_config.get('slow_ema', 21)}"
+            rows.append({"Key": "EMA Parameters", "Value": ema_params})
+
+        # MACD parameters
+        if strategy_config.get('use_macd', False):
+            macd_params = f"Fast: {strategy_config.get('macd_fast', 12)}, Slow: {strategy_config.get('macd_slow', 26)}, Signal: {strategy_config.get('macd_signal', 9)}"
+            rows.append({"Key": "MACD Parameters", "Value": macd_params})
+
+        # RSI parameters
+        if strategy_config.get('use_rsi_filter', False):
+            rsi_params = f"Period: {strategy_config.get('rsi_length', 14)}, Overbought: {strategy_config.get('rsi_overbought', 70)}, Oversold: {strategy_config.get('rsi_oversold', 30)}"
+            rows.append({"Key": "RSI Parameters", "Value": rsi_params})
+
+        # HTF Trend parameters
+        if strategy_config.get('use_htf_trend', False):
+            htf_params = f"HTF Period: {strategy_config.get('htf_period', 20)}"
+            rows.append({"Key": "HTF Trend Parameters", "Value": htf_params})
+
+        # SL points
+        rows.append({"Key": "SL Points", "Value": str(risk_config.get('base_sl_points', 15))})
+
+        # TP points
+        tp_points = risk_config.get('tp_points', config.get('tp_points', [10, 25, 50, 100]))
+        rows.append({"Key": "TP Points", "Value": ", ".join(map(str, tp_points))})
+
+        # Trail SL info
+        trail_enabled = risk_config.get('use_trail_stop', config.get('use_trail_stop', True))
+        trail_activation = risk_config.get('trail_activation_points', config.get('trail_activation_points', 25))
+        trail_distance = risk_config.get('trail_distance_points', config.get('trail_distance_points', 10))
+        trail_info = f"Enabled: {trail_enabled}, Activation: {trail_activation} points, Distance: {trail_distance} points"
+        rows.append({"Key": "Trailing Stop", "Value": trail_info})
+
+        # --- LOGGING FOR DEBUG ---
+        green_bars_req = strategy_config.get('consecutive_green_bars')
+        logging.warning(f"DEBUG: consecutive_green_bars in strategy_config: {green_bars_req}")
+        logging.warning(f"DEBUG: strategy_config keys: {list(strategy_config.keys())}")
+        logging.warning(f"DEBUG: config keys: {list(config.keys())}")
+
+        rows.append({"Key": "Green Bars Required for Entry", "Value": str(green_bars_req) })
+
+        return pd.DataFrame(rows)
 
     def calculate_metrics(self) -> TradingMetrics:
         if not self.trades:
@@ -215,27 +290,38 @@ class Results:
         os.makedirs(output_dir, exist_ok=True)
         trades_df = self.get_trade_summary()
         timestamp = format_timestamp(datetime.now())
-
         trades_file = os.path.join(output_dir, f"trades_{timestamp}.csv")
 
-        trades_df.to_csv(trades_file, index=False)
+        # Create additional info table with trading configuration
+        additional_info_df = self._create_additional_info_table()
+
+        # Write both tables to the same CSV file
+        with open(trades_file, 'w', newline='') as f:
+            additional_info_df.to_csv(f, index=False)
+            f.write('\n')  # Add empty line between tables
+            trades_df.to_csv(f, index=False)
 
         return trades_file
 
     def export_to_excel(self, output_dir: str = "results") -> str:
-        """Export trades to Excel with colored rows based on Gross P&L."""
+        """Export trades and config info to Excel with colored rows based on Gross P&L."""
         os.makedirs(output_dir, exist_ok=True)
         trades_df = self.get_trade_summary()
+        additional_info_df = self._create_additional_info_table()
         timestamp = format_timestamp(datetime.now())
         excel_file = os.path.join(output_dir, f"trades_{timestamp}.xlsx")
-        trades_df.to_excel(excel_file, index=False)
 
-        # Apply color formatting
+        # Write both tables to the same sheet: config table at top, then trades table below
+        with pd.ExcelWriter(excel_file, engine="openpyxl") as writer:
+            additional_info_df.to_excel(writer, sheet_name="Sheet1", index=False, startrow=0)
+            trades_df.to_excel(writer, sheet_name="Sheet1", index=False, startrow=len(additional_info_df) + 2)
+
+        # Apply color formatting to trades table only
         wb = load_workbook(excel_file)
         ws = wb.active
         gross_pnl_col = None
         # Find the Gross P&L column index (1-based)
-        for idx, cell in enumerate(ws[1], 1):
+        for idx, cell in enumerate(ws[1 + len(additional_info_df) + 2], 1):
             if cell.value == "Gross P&L":
                 gross_pnl_col = idx
                 break
@@ -243,11 +329,12 @@ class Results:
         green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
         red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
 
-        for row in ws.iter_rows(min_row=2, min_col=1, max_col=ws.max_column):
-            cell = row[gross_pnl_col - 1]
+        # Color only the trades table rows
+        for row in ws.iter_rows(min_row=len(additional_info_df) + 3, min_col=1, max_col=ws.max_column):
+            cell = row[gross_pnl_col - 1] if gross_pnl_col else None
             try:
-                value = float(cell.value)
-                fill = green_fill if value > 0 else red_fill if value < 0 else None
+                value = float(cell.value) if cell else None
+                fill = green_fill if value and value > 0 else red_fill if value and value < 0 else None
                 if fill:
                     for c in row:
                         c.fill = fill
