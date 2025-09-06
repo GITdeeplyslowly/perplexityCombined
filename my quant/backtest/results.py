@@ -304,42 +304,158 @@ class Results:
         return trades_file
 
     def export_to_excel(self, output_dir: str = "results") -> str:
-        """Export trades and config info to Excel with colored rows based on Gross P&L."""
+        """Export to Excel with gross P&L summary, config as a table, split trades and enhanced formatting."""
         os.makedirs(output_dir, exist_ok=True)
         trades_df = self.get_trade_summary()
         additional_info_df = self._create_additional_info_table()
+
+        # Compute gross P&L total
+        gross_pnl_total = trades_df["Gross P&L"].dropna().replace("", 0).sum()
+
+        # Config as wide table if possible
+        if not additional_info_df.empty and "Key" in additional_info_df.columns and "Value" in additional_info_df.columns:
+            config_wide_df = additional_info_df.set_index("Key").T.reset_index(drop=True)
+        else:
+            config_wide_df = pd.DataFrame([{"No Configuration": "Not Available"}])
+
+        # Trades split
+        trade_cols = trades_df.columns.tolist()
+        break_idx = 7
+        trades_df_1 = trades_df[trade_cols[:break_idx]]
+        trades_df_2 = trades_df[trade_cols[break_idx:]]
+
         timestamp = format_timestamp(datetime.now())
         excel_file = os.path.join(output_dir, f"trades_{timestamp}.xlsx")
 
-        # Write both tables to the same sheet: config table at top, then trades table below
         with pd.ExcelWriter(excel_file, engine="openpyxl") as writer:
-            additional_info_df.to_excel(writer, sheet_name="Sheet1", index=False, startrow=0)
-            trades_df.to_excel(writer, sheet_name="Sheet1", index=False, startrow=len(additional_info_df) + 2)
+            # Write config and trades tables starting from row 3 (Excel row 3, pandas startrow=2)
+            config_wide_df.to_excel(writer, sheet_name="Sheet1", index=False, startrow=2)
+            trades_df_1.to_excel(writer, sheet_name="Sheet1", index=False, startrow=5)
+            trades_df_2.to_excel(writer, sheet_name="Sheet1", index=False, startrow=5+len(trades_df_1)+2)
 
-        # Apply color formatting to trades table only
+        from openpyxl import load_workbook
+        from openpyxl.styles import Font, Alignment, PatternFill
+        from openpyxl.utils import get_column_letter
+
         wb = load_workbook(excel_file)
         ws = wb.active
-        gross_pnl_col = None
-        # Find the Gross P&L column index (1-based)
-        for idx, cell in enumerate(ws[1 + len(additional_info_df) + 2], 1):
-            if cell.value == "Gross P&L":
-                gross_pnl_col = idx
-                break
 
+        # Set font for all cells and wrap text for string cells
+        font16 = Font(size=16)
+        wrap_align = Alignment(wrap_text=True)
+        for row in ws.iter_rows():
+            for cell in row:
+                # Text font size/wrap
+                cell.font = font16
+                cell.alignment = Alignment(
+                    wrap_text=True,
+                    horizontal="left" if cell.row > 1 else "center",
+                    vertical="center"
+                )
+
+        # Set label and value in D1 and E1
+        ws['D1'] = 'Gross P&L Total'
+        ws['E1'] = f"{gross_pnl_total:,.2f}"
+
+        # Style D1 (label)
+        ws['D1'].font = Font(size=20, bold=True)
+        ws['D1'].alignment = Alignment(horizontal="center", vertical="center")
+
+        # Style E1 (value, colored)
+        ws['E1'].font = Font(size=25, bold=True)
+        ws['E1'].alignment = Alignment(horizontal="center", vertical="center")
+        if gross_pnl_total >= 0:
+            ws['E1'].fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")  # Green
+        else:
+            ws['E1'].fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")  # Red
+
+        # Style config and trade headers: bold, center
+        header_rows = [6, 6 + len(trades_df_1) + 2]
+        for header_row in header_rows:
+            for col in range(1, ws.max_column + 1):
+                cell = ws.cell(row=header_row, column=col)
+                cell.font = Font(bold=True, size=16)
+                cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+        # Column widths
+        for col in range(1, ws.max_column + 1):
+            max_length = 0
+            col_letter = get_column_letter(col)
+            for row in range(1, ws.max_row + 1):
+                cell = ws[f"{col_letter}{row}"]
+                if cell.value:
+                    try:
+                        length = len(str(cell.value))
+                        if length > max_length:
+                            max_length = length
+                    except:
+                        pass
+            ws.column_dimensions[col_letter].width = min(max(max_length + 2, 16), 50)
+
+        # Numeric and percent formatting
+        num_keywords = ["p&l", "gross", "net", "commission", "capital", "price", "qty", "lots", "trade", "duration"]
+        pct_keywords = ["rate", "return", "drawdown", "percent"]
+        def format_tables_headers(header_row):
+            num_cols = []
+            pct_cols = []
+            headers = [ws.cell(row=header_row, column=col).value for col in range(1, ws.max_column + 1)]
+            for idx, header in enumerate(headers, start=1):
+                if header and isinstance(header, str):
+                    h = header.lower()
+                    if any(keyword in h for keyword in num_keywords):
+                        num_cols.append(idx)
+                    if any(keyword in h for keyword in pct_keywords):
+                        pct_cols.append(idx)
+            return num_cols, pct_cols
+
+        # Find bounds
+        table1_start = 7
+        table1_end = table1_start + len(trades_df_1) - 1
+        table2_start = 7 + len(trades_df_1) + 2
+        table2_end = table2_start + len(trades_df_2) - 1
+
+        for header_row, data_start, data_end in [
+            (6, table1_start, table1_end),
+            (6 + len(trades_df_1) + 2, table2_start, table2_end)]:
+            num_cols, pct_cols = format_tables_headers(header_row)
+            for row_idx in range(data_start, data_end + 1):
+                for col in num_cols:
+                    cell = ws.cell(row=row_idx, column=col)
+                    try:
+                        if cell.value not in (None, ""):
+                            cell.number_format = "#,##0.00"
+                    except:
+                        pass
+                for col in pct_cols:
+                    cell = ws.cell(row=row_idx, column=col)
+                    try:
+                        if cell.value not in (None, ""):
+                            val = float(cell.value)
+                            if val > 1:
+                                cell.value = val / 100
+                            cell.number_format = "0.00%"
+                    except:
+                        pass
+
+        # Color coding for Gross P&L if present in first table
+        gross_pnl_cols = []
+        headers_1 = [ws.cell(row=6, column=col).value for col in range(1, ws.max_column + 1)]
+        for idx, header in enumerate(headers_1, start=1):
+            if header == "Gross P&L":
+                gross_pnl_cols.append(idx)
         green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
         red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
-
-        # Color only the trades table rows
-        for row in ws.iter_rows(min_row=len(additional_info_df) + 3, min_col=1, max_col=ws.max_column):
-            cell = row[gross_pnl_col - 1] if gross_pnl_col else None
-            try:
-                value = float(cell.value) if cell else None
-                fill = green_fill if value and value > 0 else red_fill if value and value < 0 else None
-                if fill:
-                    for c in row:
-                        c.fill = fill
-            except Exception:
-                continue
+        for row in ws.iter_rows(min_row=table1_start, max_row=table1_end, max_col=ws.max_column):
+            for gross_pnl_col in gross_pnl_cols:
+                cell = row[gross_pnl_col - 1] if gross_pnl_col else None
+                try:
+                    value = float(cell.value) if cell else None
+                    fill = green_fill if value and value > 0 else red_fill if value and value < 0 else None
+                    if fill:
+                        for c in row:
+                            c.fill = fill
+                except:
+                    continue
 
         wb.save(excel_file)
         return excel_file

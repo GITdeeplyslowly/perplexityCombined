@@ -209,8 +209,23 @@ class ModularIntradayStrategy:
         self.atr_tracker = IncrementalATR(period=self.config.get('atr_len', 14))
 
         logger.info(f"Strategy initialized: {self.name} v{self.version}")
-        logger.info(f"Indicators enabled: EMA={self.use_ema_crossover}, MACD={self.use_macd}, "
-                   f"VWAP={self.use_vwap}, HTF={self.use_htf_trend}, RSI={self.use_rsi_filter}")
+        logger.info(
+            f"[INIT] Indicator switches: EMA={self.use_ema_crossover}, MACD={self.use_macd}, VWAP={self.use_vwap}, "
+            f"RSI={self.use_rsi_filter}, HTF={self.use_htf_trend}, BB={self.use_bollinger_bands}, "
+            f"STOCH={self.use_stochastic}, ATR={self.use_atr}"
+        )
+        logger.info(
+            f"[INIT] Indicator params: fast_ema={self.fast_ema}, slow_ema={self.slow_ema}, "
+            f"MACD=({self.macd_fast}, {self.macd_slow}, {self.macd_signal}), "
+            f"RSI=({self.rsi_length}, OB={self.rsi_overbought}, OS={self.rsi_oversold}), "
+            f"HTF period={self.htf_period}, Green Bars Req={self.consecutive_green_bars_required}"
+        )
+        logger.info(
+            f"[INIT] Session: {self.session_start.strftime('%H:%M')}–{self.session_end.strftime('%H:%M')}, "
+            f"Buffers: +{self.start_buffer_minutes}/-{self.end_buffer_minutes}, "
+            f"no_trade_start={self.no_trade_start_minutes} no_trade_end={self.no_trade_end_minutes}, "
+            f"Max/day={self.max_positions_per_day}"
+        )
     
     def calculate_indicators(self, df):
         """Calculate all technical indicators."""
@@ -269,47 +284,27 @@ class ModularIntradayStrategy:
         Returns:
             True if can enter new position
         """
-        # Check if in trading session
+        gating_reasons = []
         if not self.is_trading_session(current_time):
-            logger.debug(f"❌ Cannot enter: Not in trading session {current_time}")
-            return False
-        
-        # Get effective session times
+            gating_reasons.append(f"Not in trading session (now={current_time.time()}, allowed={self.session_start}-{self.session_end})")
         buffer_start, buffer_end = self.get_effective_session_times()
-        
-        # Check if within buffer periods
         if current_time.time() < buffer_start:
-            logger.debug(f"❌ Cannot enter: Before buffer start {buffer_start}")
-            return False
-        
+            gating_reasons.append(f"Before buffer start ({current_time.time()} < {buffer_start})")
         if current_time.time() > buffer_end:
-            logger.debug(f"❌ Cannot enter: After buffer end {buffer_end}")
-            return False
-        
-        # Check daily trade limit
+            gating_reasons.append(f"After buffer end ({current_time.time()} > {buffer_end})")
         if self.daily_stats['trades_today'] >= self.max_positions_per_day:
-            return False
-        
-        # Check no-trade periods
-        session_start = datetime.combine(current_time.date(), self.session_start)
-        session_end = datetime.combine(current_time.date(), self.session_end)
-
-        # Ensure session_start and session_end are timezone-aware
-        session_start = ensure_tz_aware(session_start, current_time.tzinfo)
-        session_end = ensure_tz_aware(session_end, current_time.tzinfo)
-        
-        # No trades in first few minutes
+            gating_reasons.append(f"Exceeded max trades: {self.daily_stats['trades_today']} >= {self.max_positions_per_day}")
+        session_start = ensure_tz_aware(datetime.combine(current_time.date(), self.session_start), current_time.tzinfo)
+        session_end = ensure_tz_aware(datetime.combine(current_time.date(), self.session_end), current_time.tzinfo)
         if current_time < session_start + timedelta(minutes=self.no_trade_start_minutes):
-            return False
-            
-        # No trades in last few minutes
+            gating_reasons.append(f"In no-trade start period ({current_time.time()} < {session_start.time()} + {self.no_trade_start_minutes}m)")
         if current_time > session_end - timedelta(minutes=self.no_trade_end_minutes):
-            return False
-        
-        # --- NEW: Consecutive green bars requirement before re-entry ---
+            gating_reasons.append(f"In no-trade end period ({current_time.time()} > {session_end.time()} - {self.no_trade_end_minutes}m)")
         if self.last_signal_time and not self._check_consecutive_green_bars():
+            gating_reasons.append(f"Not enough green bars ({self.green_bars_count} < {self.consecutive_green_bars_required})")
+        if gating_reasons:
+            logger.info(f"[ENTRY BLOCKED] at {current_time}: {' | '.join(gating_reasons)}")
             return False
-        
         return True
     
     def generate_entry_signal(self, row: pd.Series, current_time: datetime) -> TradingSignal:
@@ -427,6 +422,18 @@ class ModularIntradayStrategy:
         
         # === FINAL SIGNAL DECISION ===
         # ALL enabled conditions must be True for BUY signal
+        # Logging per signal check
+        logger.info(
+            f"[SIGNAL] @ {current_time.strftime('%Y-%m-%d %H:%M:%S')} | Price={row.get('close', None)} | "
+            f"indicators: EMA={self.use_ema_crossover}, MACD={self.use_macd}, VWAP={self.use_vwap}, "
+            f"HTF={self.use_htf_trend}, RSI={self.use_rsi_filter}, BB={self.use_bollinger_bands} | "
+            f"condition_values={signal_conditions} | reasons={signal_reasons} | "
+            f"can_enter={self.can_enter_new_position(current_time)} | GreenBars={self.green_bars_count}/{self.consecutive_green_bars_required}"
+        )
+        if not (signal_conditions and all(signal_conditions) and self.can_enter_new_position(current_time)):
+            fail_reasons = [reason for i, reason in enumerate(signal_reasons) if i < len(signal_conditions) and not signal_conditions[i]]
+            logger.info(f"[ENTRY REJECTED] @ {current_time}: {'; '.join(fail_reasons)}")
+        
         if signal_conditions and all(signal_conditions):
             # Calculate stop loss
             stop_loss_price = row['close'] - self.base_sl_points
