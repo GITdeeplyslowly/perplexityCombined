@@ -24,6 +24,42 @@ from utils.time_utils import now_ist, is_within_session, apply_buffer_to_time
 
 logger = logging.getLogger(__name__)
 
+def compute_number_of_lots(cfg_accessor: ConfigAccessor, available_capital: float, price: float) -> int:
+    """
+    Compute number of lots (integer) using only available capital and instrument.lot_size (exchange fixed).
+    Formula:
+        lots = floor( available_capital / (lot_size * price) )
+
+    - cfg_accessor: strict accessor (GUI-validated, frozen config)
+    - available_capital: cash available to deploy (float)
+    - price: current price / LTP (float)
+
+    Returns int >= 0.
+    """
+    try:
+        if available_capital is None or price is None:
+            return 0
+        available_capital = float(available_capital)
+        price = float(price)
+        if available_capital <= 0 or price <= 0:
+            return 0
+
+        # instrument.lot_size is the single SSOT for contract size
+        units_per_lot = cfg_accessor.get_instrument_param('lot_size')
+        units_per_lot = int(units_per_lot)
+
+        units_value_per_lot = units_per_lot * price
+        if units_value_per_lot <= 0:
+            return 0
+
+        lots = int(available_capital // units_value_per_lot)
+        if lots < 0:
+            return 0
+        return lots
+    except Exception as e:
+        logger.exception("compute_number_of_lots failed")
+        return 0
+
 class PositionType(Enum):
     LONG = "LONG"  # Only long supported
 
@@ -133,23 +169,28 @@ class PositionManager:
         # Existing initialization...
         self.config = config
         self.config_accessor = ConfigAccessor(config)
-        self.initial_capital = self.config_accessor.get_capital_param('initial_capital', 100000)
-        self.current_capital = self.initial_capital
-        self.reserved_margin = 0.0
-        self.risk_per_trade_percent = self.config_accessor.get_risk_param('risk_per_trade_percent', 1.0)
-        self.max_position_value_percent = self.config_accessor.get_risk_param('max_position_value_percent', 95)
-        self.base_sl_points = self.config_accessor.get_risk_param('base_sl_points', 15)
-        self.tp_points = self.config_accessor.get_risk_param('tp_points', [10, 25, 50, 100])
-        self.tp_percentages = self.config_accessor.get_risk_param('tp_percents', [0.25, 0.25, 0.25, 0.25])
-        self.use_trailing_stop = self.config_accessor.get_risk_param('use_trail_stop', True)
-        self.trailing_activation_points = self.config_accessor.get_risk_param('trail_activation_points', 25)
-        self.trailing_distance_points = self.config_accessor.get_risk_param('trail_distance_points', 10)
-        self.commission_percent = self.config_accessor.get_risk_param('commission_percent', 0.03)
-        self.commission_per_trade = self.config_accessor.get_risk_param('commission_per_trade', 0.0)
-        self.stt_percent = self.config_accessor.get_risk_param('stt_percent', 0.025)
-        self.exchange_charges_percent = self.config_accessor.get_risk_param('exchange_charges_percent', 0.0019)
-        self.gst_percent = self.config_accessor.get_risk_param('gst_percent', 18.0)
-        self.slippage_points = self.config_accessor.get_risk_param('slippage_points', 1)
+        try:
+            self.initial_capital = self.config_accessor.get_capital_param('initial_capital')
+            self.current_capital = self.initial_capital
+            self.reserved_margin = 0.0
+            self.risk_per_trade_percent = self.config_accessor.get_risk_param('risk_per_trade_percent')
+            self.max_position_value_percent = self.config_accessor.get_risk_param('max_position_value_percent')
+            self.base_sl_points = self.config_accessor.get_risk_param('base_sl_points')
+            self.tp_points = self.config_accessor.get_risk_param('tp_points')
+            self.tp_percentages = self.config_accessor.get_risk_param('tp_percents')
+            self.use_trailing_stop = self.config_accessor.get_risk_param('use_trail_stop')
+            self.trailing_activation_points = self.config_accessor.get_risk_param('trail_activation_points')
+            self.trailing_distance_points = self.config_accessor.get_risk_param('trail_distance_points')
+            self.commission_percent = self.config_accessor.get_risk_param('commission_percent')
+            self.commission_per_trade = self.config_accessor.get_risk_param('commission_per_trade')
+            self.stt_percent = self.config_accessor.get_risk_param('stt_percent')
+            self.exchange_charges_percent = self.config_accessor.get_risk_param('exchange_charges_percent')
+            self.gst_percent = self.config_accessor.get_risk_param('gst_percent')
+            self.slippage_points = self.config_accessor.get_risk_param('slippage_points')
+        except KeyError as e:
+            logger.error(f"PositionManager config error: missing {e}")
+            raise
+
         self.positions: Dict[str, Position] = {}
         self.completed_trades: List[Trade] = []
         self.daily_pnl = 0.0
@@ -172,57 +213,40 @@ class PositionManager:
         return lots * lot_size
 
     def calculate_position_size(self, entry_price: float, stop_loss_price: float, lot_size: int = 1) -> int:
-        if entry_price <= 0 or stop_loss_price <= 0:
+        """
+        Capital-driven sizing (deterministic):
+        - Use self.current_capital as available capital.
+        - Use canonical instrument.lot_size (SSOT).
+        - Return total quantity (units), aligned to lot boundary.
+        """
+        try:
+            if entry_price <= 0:
+                return 0
+            canonical_lot = int(self.config_accessor.get_instrument_param('lot_size'))
+            lots = compute_number_of_lots(self.config_accessor, self.current_capital, entry_price)
+            total_quantity = int(lots) * canonical_lot
+            return total_quantity
+        except Exception:
+            logger.exception("calculate_position_size failed")
             return 0
-        risk_per_unit = abs(entry_price - stop_loss_price)
-        if risk_per_unit <= 0:
-            return 0
-        max_risk_amount = self.current_capital * (self.risk_per_trade_percent / 100)
-        raw_quantity = int(max_risk_amount / risk_per_unit)
-        if raw_quantity <= 0:
-            return 0
-        aligned_quantity = self.calculate_lot_aligned_quantity(raw_quantity, lot_size)
-        position_value = aligned_quantity * entry_price
-        max_position_value = self.current_capital * (self.max_position_value_percent / 100)
-        if position_value > max_position_value:
-            max_lots = int(max_position_value / (lot_size * entry_price))
-            aligned_quantity = max(1, max_lots) * lot_size
-        return aligned_quantity
 
     def calculate_position_size_in_lots(self, entry_price: float, stop_loss_price: float, lot_size: int = 1) -> tuple:
         """
-        Calculate position size and return both lots and total quantity.
-        Returns: (lots, total_quantity, lot_size)
+        Return (lots, total_quantity, lot_size) using canonical instrument.lot_size
+        and deterministic capital-driven sizing (100% available capital).
         """
-        if entry_price <= 0 or stop_loss_price <= 0:
-            return 0, 0, lot_size
-
-        risk_per_unit = abs(entry_price - stop_loss_price)
-        if risk_per_unit <= 0:
-            return 0, 0, lot_size
-
-        max_risk_amount = self.current_capital * (self.risk_per_trade_percent / 100)
-        raw_quantity = int(max_risk_amount / risk_per_unit)
-
-        if raw_quantity <= 0:
-            return 0, 0, lot_size
-
-        if lot_size <= 1:  # Equity trading
-            lots = raw_quantity
-            total_quantity = raw_quantity
-        else:  # F&O trading
-            lots = max(1, raw_quantity // lot_size)
-            total_quantity = lots * lot_size
-
-        position_value = total_quantity * entry_price
-        max_position_value = self.current_capital * (self.max_position_value_percent / 100)
-
-        if position_value > max_position_value:
-            max_lots = int(max_position_value / (lot_size * entry_price))
-            lots = max(1, max_lots)
-            total_quantity = lots * lot_size
-
-        return lots, total_quantity, lot_size
+        try:
+            if entry_price <= 0:
+                canonical_lot = int(self.config_accessor.get_instrument_param('lot_size'))
+                return 0, 0, canonical_lot
+            canonical_lot = int(self.config_accessor.get_instrument_param('lot_size'))
+            lots = compute_number_of_lots(self.config_accessor, self.current_capital, entry_price)
+            total_quantity = int(lots) * canonical_lot
+            return int(lots), int(total_quantity), int(canonical_lot)
+        except Exception:
+            logger.exception("calculate_position_size_in_lots failed")
+            canonical_lot = int(self.config_accessor.get_instrument_param('lot_size'))
+            return 0, 0, canonical_lot
 
     def calculate_total_costs(self, price: float, quantity: int, is_buy: bool = True) -> Dict[str, float]:
         turnover = price * quantity
@@ -285,12 +309,12 @@ class PositionManager:
         self.current_capital -= required_capital
         self.reserved_margin += required_capital
         self.positions[position_id] = position
-        logger.info(f"🟢 OPENED POSITION {position_id}")
-        logger.info(f"   📊 Lots: {lots} ({quantity} total units)")
-        logger.info(f"   💰 Entry: ₹{actual_entry_price:.2f} per unit")
-        logger.info(f"   🛑 Stop Loss: ₹{stop_loss_price:.2f}")
-        logger.info(f"   🎯 Take Profits: {[f'₹{tp:.2f}' for tp in tp_levels]}")
-        logger.info(f"   💸 Position Value: ₹{quantity * actual_entry_price:,.2f}")
+        logger.info("Opened position %s", position_id)
+        logger.info("Lots: %s (%s total units)", lots, quantity)
+        logger.info("Entry price: ₹%.2f per unit", actual_entry_price)
+        logger.info("Stop loss: ₹%.2f", stop_loss_price)
+        logger.info("Take profit levels: %s", [f'₹{tp:.2f}' for tp in tp_levels])
+        logger.info("Position value: ₹%,.2f", quantity * actual_entry_price)
         return position_id
 
     def close_position_partial(self, position_id: str, exit_price: float,
@@ -347,10 +371,10 @@ class PositionManager:
             position.status = PositionStatus.PARTIALLY_CLOSED
             logger.info(f"Partially closed position {position_id}: {quantity_to_close} @ ₹{exit_price}")
         self.daily_pnl += net_pnl
-        logger.info(f"🔴 CLOSED POSITION {position_id}")
-        logger.info(f"   📊 Lots Closed: {lots_closed} ({quantity_to_close} units)")
-        logger.info(f"   💰 Exit: ₹{exit_price:.2f} per unit")
-        logger.info(f"   📈 P&L: ₹{net_pnl:.2f} ({exit_reason})")
+        logger.info("Closed position %s", position_id)
+        logger.info("Lots closed: %s (%s units)", lots_closed, quantity_to_close)
+        logger.info("Exit price: ₹%.2f per unit", exit_price)
+        logger.info("P&L: ₹%.2f (%s)", net_pnl, exit_reason)
         return True
 
     def close_position_full(self, position_id: str, exit_price: float,
@@ -519,63 +543,54 @@ class PositionManager:
         if side.upper() != 'BUY':
             logger.warning("This system only supports LONG positions")
             return None
+        # Legacy entry: ignore external lot overrides and size deterministically from available capital
         symbol = kwargs.get('symbol', 'NIFTY')
-        lot_size = kwargs.get('lot_size', 1)
         tick_size = kwargs.get('tick_size', 0.05)
-        return self.open_position(symbol, price, timestamp, lot_size, tick_size)
+        canonical_lot = int(self.config_accessor.get_instrument_param('lot_size'))
+        return self.open_position(symbol, price, timestamp, canonical_lot, tick_size)
 
     def exit_position(self, position_id: str, price: float, timestamp: datetime, reason: str):
         self.close_position_full(position_id, price, timestamp, reason)
 
     def can_enter_position(self) -> bool:
-        return len(self.positions) < self.config_accessor.get_strategy_param('max_positions_per_day', 10)
+        try:
+            return len(self.positions) < self.config_accessor.get_strategy_param('max_positions_per_day')
+        except KeyError as e:
+            logger.error(f"PositionManager config error: missing {e}")
+            raise
 
     def calculate_position_size_gui_driven(self, entry_price: float, stop_loss_price: float, 
-                                     user_capital: float, user_risk_pct: float, 
-                                     user_lot_size: int) -> dict:
+                                           user_capital: float, user_risk_pct: float, 
+                                           user_lot_size: int) -> dict:
         """
         GUI-driven position sizing with comprehensive feedback
-        
+
         Returns:
             dict with position details and capital analysis
         """
-        
-        if entry_price <= 0 or stop_loss_price <= 0:
+        # Simplified GUI preview using 100% capital rule (consistent with runtime)
+        if entry_price <= 0:
             return {"error": "Invalid price inputs"}
-        
-        risk_per_unit = abs(entry_price - stop_loss_price)
-        
-        # Risk-based calculation
-        max_risk_amount = user_capital * (user_risk_pct / 100)
-        risk_based_quantity = int(max_risk_amount / risk_per_unit) if risk_per_unit > 0 else 0
-        
-        # Capital-constrained calculation  
-        usable_capital = user_capital * 0.95  # 95% utilization limit
-        max_affordable_shares = int(usable_capital / entry_price)
-        capital_based_quantity = (max_affordable_shares // user_lot_size) * user_lot_size
-        
-        # Hybrid selection (conservative approach)
-        final_quantity = min(risk_based_quantity, capital_based_quantity)
-        final_lots = final_quantity // user_lot_size
-        aligned_quantity = final_lots * user_lot_size
-        
-        # Calculate all metrics for GUI display
-        position_value = aligned_quantity * entry_price
-        actual_risk = aligned_quantity * risk_per_unit
-        actual_risk_pct = (actual_risk / user_capital) * 100 if user_capital > 0 else 0
-        capital_utilization = (position_value / user_capital) * 100 if user_capital > 0 else 0
-        
-        return {
-            "recommended_quantity": aligned_quantity,
-            "recommended_lots": final_lots,
-            "position_value": position_value,
-            "capital_utilization_pct": capital_utilization,
-            "actual_risk_amount": actual_risk,
-            "actual_risk_pct": actual_risk_pct,
-            "max_affordable_lots": max_affordable_shares // user_lot_size,
-            "risk_based_lots": risk_based_quantity // user_lot_size,
-            "approach_used": "risk_limited" if final_quantity == risk_based_quantity else "capital_limited"
-        }
+        try:
+            canonical_lot = int(self.config_accessor.get_instrument_param('lot_size'))
+            usable_capital = float(user_capital)
+            max_affordable_shares = int(usable_capital // entry_price)
+            final_lots = max_affordable_shares // canonical_lot
+            aligned_quantity = final_lots * canonical_lot
+
+            position_value = aligned_quantity * entry_price
+            capital_utilization = (position_value / usable_capital) * 100 if usable_capital > 0 else 0
+
+            return {
+                "recommended_quantity": aligned_quantity,
+                "recommended_lots": final_lots,
+                "position_value": position_value,
+                "capital_utilization_pct": capital_utilization,
+                "approach_used": "capital_limited"
+            }
+        except Exception:
+            logger.exception("calculate_position_size_gui_driven failed")
+            return {"error": "internal error"}
 
     def should_exit_for_session_end(self, current_time: datetime) -> bool:
         """
@@ -605,45 +620,4 @@ class PositionManager:
         # Simple comparison
         return current_time.time() >= effective_end
 
-if __name__ == "__main__":
-    # Example usage and testing
-    from datetime import datetime
-    test_config = {
-        'initial_capital': 500000,
-        'risk_per_trade_percent': 1.0,
-        'base_sl_points': 15,
-        'tp_points': [10, 25, 50, 100],
-        'tp_percents': [0.25, 0.25, 0.25, 0.25],
-        'use_trail_stop': True,
-        'trail_activation_points': 25,
-        'trail_distance_points': 10,
-        'commission_percent': 0.03,
-        'stt_percent': 0.025
-    }
-    pm = PositionManager(test_config)
-    position_id = pm.open_position("NIFTY24DECFUT", 22000.0, now_ist(), 15, 0.05)
-    print(f"Opened position ID: {position_id}")
-    # Simulate price move to hit take profit
-    pm.process_positions(pd.Series({'close': 22035.0, 'session_exit': False}), now_ist())
-    summary = pm.get_performance_summary()
-    print("Performance Summary:", summary)
-    print("✅ Position Manager test completed!")
-
-
-"""
-CONFIGURATION PARAMETER NAMING CONVENTION:
-- Constructor parameter: __init__(self, config: Dict[str, Any])
-- Internal storage: self.config = config
-- All parameter access: config.get('parameter_name', default)
-- Session parameters: self.session_params = config.get('session', {})
-
-PARAMETER STRUCTURE EXPECTATION:
-This class expects a consolidated configuration dictionary containing:
-- Strategy parameters (direct keys in config)
-- Risk management parameters (direct keys in config)
-- Instrument parameters (direct keys in config)
-- Capital parameters (direct keys in config)
-- Session parameters under 'session' key
-
-CRITICAL: Calling code must pass consolidated config, not separate parameter dictionaries
-"""
+# Configuration conventions should live in the module docstring at the top or in README.

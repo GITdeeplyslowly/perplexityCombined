@@ -88,57 +88,56 @@ class UnifiedTradingGUI(tk.Tk):
         # --- Strategy variables ---
         self.bt_use_ema_crossover = tk.BooleanVar(value=strategy_defaults.get('use_ema_crossover', False))
         self.bt_use_macd = tk.BooleanVar(value=strategy_defaults.get('use_macd', False))
-        self.bt_use_vwap = tk.BooleanVar(value=strategyDefaults.get('use_vwap', False))
-        self.bt_use_rsi_filter = tk.BooleanVar(value=strategyDefaults.get('use_rsi_filter', False))
-        self.bt_use_htf_trend = tk.BooleanVar(value=strategyDefaults.get('use_htf_trend', False))
-        self.bt_use_bollinger_bands = tk.BooleanVar(value=strategyDefaults.get('use_bollinger_bands', False))
-        self.bt_use_stochastic = tk.BooleanVar(value=strategyDefaults.get('use_stochastic', False))
-        self.bt_use_atr = tk.BooleanVar(value=strategyDefaults.get('use_atr', False))
+        self.bt_use_vwap = tk.BooleanVar(value=strategy_defaults.get('use_vwap', False))
+        self.bt_use_rsi_filter = tk.BooleanVar(value=strategy_defaults.get('use_rsi_filter', False))
+        self.bt_use_htf_trend = tk.BooleanVar(value=strategy_defaults.get('use_htf_trend', False))
+        self.bt_use_bollinger_bands = tk.BooleanVar(value=strategy_defaults.get('use_bollinger_bands', False))
+        self.bt_use_stochastic = tk.BooleanVar(value=strategy_defaults.get('use_stochastic', False))
+        self.bt_use_atr = tk.BooleanVar(value=strategy_defaults.get('use_atr', False))
 
         # EMA parameters
-        self.bt_fast_ema = tk.StringVar(value=str(strategyDefaults.get('fast_ema', '9')))
-        self.bt_slow_ema = tk.StringVar(value=str(strategyDefaults.get('slow_ema', '21')))
+        self.bt_fast_ema = tk.StringVar(value=str(strategy_defaults.get('fast_ema', '9')))
+        self.bt_slow_ema = tk.StringVar(value=str(strategy_defaults.get('slow_ema', '21')))
 
         # MACD parameters
-        self.bt_macd_fast = tk.StringVar(value=str(strategyDefaults.get('macd_fast', '12')))
-        self.bt_macd_slow = tk.StringVar(value=str(strategyDefaults.get('macd_slow', '26')))
-        self.bt_macd_signal = tk.StringVar(value=str(strategyDefaults.get('macd_signal', '9')))
+        self.bt_macd_fast = tk.StringVar(value=str(strategy_defaults.get('macd_fast', '12')))
+        self.bt_macd_slow = tk.StringVar(value=str(strategy_defaults.get('macd_slow', '26')))
+        self.bt_macd_signal = tk.StringVar(value=str(strategy_defaults.get('macd_signal', '9')))
 
         # RSI parameters
-        self.bt_rsi_length = tk.StringVar(value=str(strategyDefaults.get('rsi_length', 14)))
-        self.bt_rsi_oversold = tk.StringVar(value=str(strategyDefaults.get('rsi_oversold', 30)))
-        self.bt_rsi_overbought = tk.StringVar(value=str(strategyDefaults.get('rsi_overbought', 70)))
+        self.bt_rsi_length = tk.StringVar(value=str(strategy_defaults.get('rsi_length', 14)))
+        self.bt_rsi_oversold = tk.StringVar(value=str(strategy_defaults.get('rsi_oversold', 30)))
+        self.bt_rsi_overbought = tk.StringVar(value=str(strategy_defaults.get('rsi_overbought', 70)))
 
         # HTF parameter
-        self.bt_htf_period = tk.StringVar(value=str(strategyDefaults.get('htf_period', 20)))
+        self.bt_htf_period = tk.StringVar(value=str(strategy_defaults.get('htf_period', 20)))
 
         # --- Consecutive Green Bars parameter ---
-        self.bt_consecutive_green_bars = tk.StringVar(value=str(strategyDefaults.get('consecutive_green_bars', 3)))
+        self.bt_consecutive_green_bars = tk.StringVar(value=str(strategy_defaults.get('consecutive_green_bars', 3)))
 
         # --- Risk management ---
-        self.bt_base_sl_points = tk.StringVar(value=str(riskDefaults.get('base_sl_points', 12.0)))
-        self.bt_tp_points = [tk.StringVar(value=str(p)) for p in riskDefaults.get('tp_points', [10.0, 25.0, 50.0, 100.0])]
-        self.bt_tp_percents = [tk.StringVar(value=str(p*100)) for p in riskDefaults.get('tp_percents', [0.25,0.25,0.25,0.25])]
-        self.bt_use_trail_stop = tk.BooleanVar(value=riskDefaults.get('use_trail_stop', False))
-        self.bt_trail_activation = tk.StringVar(value=str(riskDefaults.get('trail_activation_points', 5.0)))
-        self.bt_trail_distance = tk.StringVar(value=str(riskDefaults.get('trail_distance_points', 7.0)))
-        self.bt_risk_per_trade_percent = tk.StringVar(value=str(riskDefaults.get('risk_per_trade_percent', 1.0)))
+        self.bt_base_sl_points = tk.StringVar(value=str(risk_defaults.get('base_sl_points', 12.0)))
+        self.bt_tp_points = [tk.StringVar(value=str(p)) for p in risk_defaults.get('tp_points', [10.0, 25.0, 50.0, 100.0])]
+        self.bt_tp_percents = [tk.StringVar(value=str(p*100)) for p in risk_defaults.get('tp_percents', [0.25,0.25,0.25,0.25])]
+        self.bt_use_trail_stop = tk.BooleanVar(value=risk_defaults.get('use_trail_stop', False))
+        self.bt_trail_activation = tk.StringVar(value=str(risk_defaults.get('trail_activation_points', 5.0)))
+        self.bt_trail_distance = tk.StringVar(value=str(risk_defaults.get('trail_distance_points', 7.0)))
+        self.bt_risk_per_trade_percent = tk.StringVar(value=str(risk_defaults.get('risk_per_trade_percent', 1.0)))
 
         # --- Capital settings ---
-        self.bt_initial_capital = tk.StringVar(value=str(capitalDefaults.get('initial_capital', 100000.0)))
+        self.bt_initial_capital = tk.StringVar(value=str(capital_defaults.get('initial_capital', 100000.0)))
 
         # --- Instrument settings ---
-        self.bt_symbol = tk.StringVar(value=instrumentDefaults.get('symbol', 'NIFTY'))
-        self.bt_exchange = tk.StringVar(value=instrumentDefaults.get('exchange', 'NSE_FO'))
-        self.bt_lot_size = tk.StringVar(value=str(instrumentDefaults.get('lot_size', 1)))
+        self.bt_symbol = tk.StringVar(value=instrument_defaults.get('symbol', 'NIFTY'))
+        self.bt_exchange = tk.StringVar(value=instrument_defaults.get('exchange', 'NSE_FO'))
+        self.bt_lot_size = tk.StringVar(value=str(instrument_defaults.get('lot_size', 1)))
 
         # --- Session settings ---
-        self.bt_is_intraday = tk.BooleanVar(value=sessionDefaults.get('is_intraday', True))
-        self.bt_session_start_hour = tk.StringVar(value=str(sessionDefaults.get('start_hour', 9)))
-        self.bt_session_start_min = tk.StringVar(value=str(sessionDefaults.get('start_min', 15)))
-        self.bt_session_end_hour = tk.StringVar(value=str(sessionDefaults.get('end_hour', 15)))
-        self.bt_session_end_min = tk.StringVar(value=str(sessionDefaults.get('end_min', 30)))
-
+        self.bt_is_intraday = tk.BooleanVar(value=session_defaults.get('is_intraday', True))
+        self.bt_session_start_hour = tk.StringVar(value=str(session_defaults.get('start_hour', 9)))
+        self.bt_session_start_min = tk.StringVar(value=str(session_defaults.get('start_min', 15)))
+        self.bt_session_end_hour = tk.StringVar(value=str(session_defaults.get('end_hour', 15)))
+        self.bt_session_end_min = tk.StringVar(value=str(session_defaults.get('end_min', 30)))
     def _load_user_preferences(self):
         """Load user preferences from saved file"""
         prefs_file = "user_preferences.json"
@@ -939,9 +938,9 @@ class UnifiedTradingGUI(tk.Tk):
                 self.max_lots.set(f"{max_affordable_lots} lots max")
             if hasattr(self, 'position_value'):
                 position_value = recommended_quantity * current_price
-                self.position_value.set(f"â‚¹{position_value:,.0f}")
+                self.position_value.set(f"₹{position_value:,.0f}")
 
-            logger.info(f"Position Sizing: {recommended_lots} lots = {recommended_quantity:,} units @ â‚¹{current_price:.2f}")
+            logger.info(f"Position Sizing: {recommended_lots} lots = {recommended_quantity:,} units @ ₹{current_price:.2f}")
 
         except (ValueError, ZeroDivisionError) as e:
             logger.error(f"Position calculation error: {e}")
@@ -961,7 +960,7 @@ class UnifiedTradingGUI(tk.Tk):
 
             # Capital validation
             if capital < 10000:
-                errors.append("Minimum capital requirement: â‚¹10,000")
+                errors.append("Minimum capital requirement: ₹10,000")
 
             # Risk validation
             if risk_pct < 0.1:
@@ -972,7 +971,7 @@ class UnifiedTradingGUI(tk.Tk):
             # Position size validation
             min_position_value = lot_size * price
             if min_position_value > capital * 0.95:
-                errors.append(f"Insufficient capital for even 1 lot (â‚¹{min_position_value:,.0f} required)")
+                errors.append(f"Insufficient capital for even 1 lot (₹{min_position_value:,.0f} required)")
 
             # Stop loss validation
             if sl_points <= 0:
@@ -1174,7 +1173,7 @@ class UnifiedTradingGUI(tk.Tk):
                 result = messagebox.askokcancel(
                     "Session Configuration Warnings",
                     "The following potential issues were found:\n\n" +
-                    "\n".join([f"â€¢ {w}" for w in warnings]) +
+                    "\n".join([f"• {w}" for w in warnings]) +
                     f"\n\nEffective trading window: {effective_minutes} minutes" +
                     "\n\nDo you want to use this configuration anyway?"
                 )
@@ -1192,7 +1191,7 @@ class UnifiedTradingGUI(tk.Tk):
 
         except ValueError:
             messagebox.showwarning("Input Error", "Please enter valid numbers")
-            self.session_status.set("âš ï¸ Invalid number format")
+            self.session_status.set("⚠️ Invalid number format")
 
     def _apply_session_config(self, start_hour, start_min, end_hour, end_min,
                          start_buffer, end_buffer):
@@ -1232,9 +1231,9 @@ class UnifiedTradingGUI(tk.Tk):
         self.symbol_token_map = {}
 
         # Capital management variables
-        self.capital_usable = tk.StringVar(value="â‚¹0 (0%)")
+        self.capital_usable = tk.StringVar(value="₹0 (0%)")
         self.max_lots = tk.StringVar(value="0 lots (0 shares)")
-        self.max_risk = tk.StringVar(value="â‚¹0 (0%)")
+        self.max_risk = tk.StringVar(value="₹0 (0%)")
         self.recommended_lots = tk.StringVar(value="0 lots (0 shares)")
 
         # Session configuration variables
@@ -1494,7 +1493,7 @@ class UnifiedTradingGUI(tk.Tk):
 
                 logger.info(f"User preferences merged into runtime config from {prefs_file}")
             except Exception:
-                logger.exception("Failed to merge)
+                logger.exception("Failed to merge user preferences into runtime config")
 def main():
     """Main entry point for the unified trading GUI"""
     try:
@@ -1504,4 +1503,4 @@ def main():
         print(f"Failed to start GUI application: {e}")
 
 if __name__ == "__main__":
-    main()              
+    main()

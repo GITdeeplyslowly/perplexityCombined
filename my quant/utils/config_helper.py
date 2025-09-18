@@ -1,138 +1,154 @@
 """
-config_helper.py - Simplified Configuration Access Helper
+config_helper.py - Configuration helpers (SSOT via config.defaults)
+
+Workflow enforced:
+- GUI: create_config_from_defaults() -> mutate -> validate_config(cfg) -> freeze_config(cfg)
+- Runners/strategies: receive frozen MappingProxyType and use ConfigAccessor(frozen_cfg)
+- No legacy adapter/wrapper present.
 """
 from typing import Dict, Any, Optional, List
 from copy import deepcopy
+from types import MappingProxyType
 import logging
 
 logger = logging.getLogger(__name__)
 
-class ConfigAccessor:
-    """
-    Helper class for accessing configuration parameters in a nested dictionary.
-    Simplifies access and provides consistent defaults.
-    """
-    def __init__(self, config: Dict[str, Any]):
-        self.config = config if config else {}
-        
-    def get(self, path: str, default: Any = None) -> Any:
-        """Get value from nested config using dot notation"""
-        parts = path.split('.')
-        current = self.config
-        
-        for part in parts:
-            if isinstance(current, dict) and part in current:
-                current = current[part]
-            else:
-                return default
-                
-        return current
-    
-    def get_strategy_param(self, param_name: str, default: Any = None) -> Any:
-        """
-        Get a strategy parameter with fallback to default.
-        
-        Args:
-            param_name: Parameter name
-            default: Default value if parameter is missing
-        
-        Returns:
-            Parameter value
-        """
-        if 'strategy' not in self.config:
-            return default
-            
-        return self.config['strategy'].get(param_name, default)
-    
-    def get_risk_param(self, param_name: str, default: Any = None) -> Any:
-        """
-        Get a risk parameter with fallback to default.
-        
-        Args:
-            param_name: Parameter name
-            default: Default value if parameter is missing
-        
-        Returns:
-            Parameter value
-        """
-        if 'risk' not in self.config:
-            return default
-            
-        return self.config['risk'].get(param_name, default)
-    
-    def get_capital_param(self, param_name: str, default: Any = None) -> Any:
-        """
-        Get a capital parameter from the nested config['capital'] section.
-        Warn if section is missing.
-        """
-        if 'capital' not in self.config:
-            logger.warning(f"Config missing 'capital' section. Please update your config to use nested structure: config['capital']['{param_name}']")
-            return default
-        return self.config['capital'].get(param_name, default)
-        
-    def validate_required_params(self) -> Dict[str, Any]:
-        """
-        Validate that required parameters exist in config.
-        
-        Returns:
-            Dict with validation status
-        """
-        missing = []
-        required_paths = [
-            'strategy.strategy_version',
-            'session.start_hour',
-            'session.end_hour'
-        ]
-        
-        for path in required_paths:
-            if self.get(path) is None:
-                missing.append(path)
-                
-        return {"valid": len(missing) == 0, "errors": missing}
+# Logging verbosity helpers (GUI dropdown + resolver)
+LOG_VERBOSITY_OPTIONS = ['minimal', 'normal', 'verbose', 'debug']
+LOG_VERBOSITY_MAP = {
+    'minimal': logging.WARNING,
+    'normal': logging.INFO,
+    'verbose': logging.DEBUG,
+    'debug': logging.DEBUG
+}
 
-    def is_indicator_enabled(self, indicator_name: str) -> bool:
-        """
-        Check if an indicator is enabled in the strategy config.
-        Example: is_indicator_enabled('rsi') checks 'use_rsi_filter'
-        """
-        # Map indicator names to config keys
-        indicator_map = {
-            'rsi': 'use_rsi_filter',
-            'ema_crossover': 'use_ema_crossover',
-            'macd': 'use_macd',
-            'vwap': 'use_vwap',
-            'htf_trend': 'use_htf_trend',
-            'bollinger_bands': 'use_bollinger_bands',
-            'stochastic': 'use_stochastic',
-            'atr': 'use_atr',
-            'ma': 'use_ma',
-            'volume_ma': 'use_volume_ma'
-        }
-        key = indicator_map.get(indicator_name, indicator_name)
-        return bool(self.config.get('strategy', {}).get(key, False))
+def get_logging_verbosity_options() -> List[str]:
+    return LOG_VERBOSITY_OPTIONS.copy()
 
-def create_config_from_defaults():
-    """
-    Create a new configuration object from defaults.
-    
-    Returns:
-        Fresh config dictionary
-    """
-    from config.defaults import DEFAULT_CONFIG
+def resolve_logging_level(verbosity: Optional[Any], default=logging.INFO) -> int:
+    if verbosity is None:
+        return default
+    try:
+        if isinstance(verbosity, (int, float)):
+            return int(verbosity)
+        vs = str(verbosity).lower()
+        if vs.isdigit():
+            return int(vs)
+        return LOG_VERBOSITY_MAP.get(vs, default)
+    except Exception:
+        return default
+
+def create_config_from_defaults() -> Dict[str, Any]:
+    """Return a deep copy of DEFAULT_CONFIG (SSOT)."""
+    try:
+        from config.defaults import DEFAULT_CONFIG
+    except Exception as e:
+        logger.exception("Could not import DEFAULT_CONFIG from config.defaults: %s", e)
+        return {}
     return deepcopy(DEFAULT_CONFIG)
 
-def create_nested_config_from_flat(flat: dict) -> dict:
+def validate_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Convert a flat config dict with keys like 'strategy_fast_ema' to a nested dict:
-    {'strategy': {'fast_ema': ...}, ...}
+    Authoritative, GUI-facing validation.
+    Returns: {'valid': bool, 'errors': [str,...]}
+    Keep checks explicit: presence of expected sections/keys. Extend checks as project stabilizes.
     """
-    nested = {}
-    for key, value in flat.items():
-        if '_' in key:
-            section, param = key.split('_', 1)
-            if section not in nested:
-                nested[section] = {}
-            nested[section][param] = value
-        else:
-            nested[key] = value
-    return nested
+    errors: List[str] = []
+    if not isinstance(cfg, dict):
+        return {'valid': False, 'errors': ['config must be a dict']}
+
+    required = {
+        'strategy': [
+            'fast_ema', 'slow_ema', 'macd_fast', 'macd_slow', 'macd_signal',
+            'atr_len', 'consecutive_green_bars', 'use_ema_crossover', 'use_macd',
+            'use_vwap', 'use_rsi_filter'
+        ],
+        'risk': [
+            'max_positions_per_day', 'base_sl_points', 'tp_points', 'tp_percents',
+            'use_trail_stop', 'trail_activation_points', 'trail_distance_points',
+            'risk_per_trade_percent', 'commission_percent', 'commission_per_trade',
+            'tick_size', 'max_position_value_percent', 'stt_percent',
+            'exchange_charges_percent', 'gst_percent', 'slippage_points'
+        ],
+        'capital': ['initial_capital'],
+        'instrument': ['symbol', 'lot_size', 'tick_size', 'product_type'],
+        'session': ['is_intraday', 'start_hour', 'start_min', 'end_hour', 'end_min', 'timezone'],
+        'logging': ['verbosity', 'log_to_file', 'log_file']
+    }
+
+    for section, keys in required.items():
+        if section not in cfg or not isinstance(cfg[section], dict):
+            errors.append(f"missing or invalid section: {section}")
+            continue
+        for k in keys:
+            if k not in cfg[section]:
+                errors.append(f"missing key: {section}.{k}")
+
+    return {'valid': len(errors) == 0, 'errors': errors}
+
+def freeze_config(cfg: Dict[str, Any]) -> MappingProxyType:
+    """
+    Return a read-only MappingProxyType view for the top-level config.
+    Shallow freeze: top-level mapping is read-only. GUI should not mutate nested dicts after freeze.
+    """
+    try:
+        return MappingProxyType(cfg)
+    except Exception:
+        logger.exception("freeze_config failed - returning original dict")
+        return cfg  # type: ignore
+
+class ConfigAccessor:
+    """
+    Strict accessor for a validated frozen config dict (MappingProxyType).
+    Raises KeyError on missing sections/keys (fail-fast).
+    """
+
+    def __init__(self, config: Optional[Dict[str, Any]]):
+        if not isinstance(config, MappingProxyType):
+            logger.error(
+                "ConfigAccessor requires a frozen MappingProxyType produced by freeze_config(). Received: %s",
+                type(config)
+            )
+            raise ValueError(
+                "Config must be a frozen MappingProxyType. Use create_config_from_defaults() -> validate_config(cfg) -> freeze_config(cfg)."
+            )
+        self.config = config
+
+    def get_section_param(self, section: str, key: str) -> Any:
+        sec = self.config.get(section)
+        if sec is None or not isinstance(sec, dict):
+            logger.error("Missing or invalid section in config: %s", section)
+            raise KeyError(section)
+        if key not in sec:
+            logger.error("Missing key in config: %s.%s", section, key)
+            raise KeyError(f"{section}.{key}")
+        return sec[key]
+
+    def get(self, path: str) -> Any:
+        """Support 'section.key' access or top-level keys."""
+        if '.' not in path:
+            if path in self.config:
+                return self.config[path]
+            logger.error("Missing top-level key in config: %s", path)
+            raise KeyError(path)
+        section, key = path.split('.', 1)
+        return self.get_section_param(section, key)
+
+    # Typed getters used across the codebase
+    def get_strategy_param(self, key: str) -> Any:
+        return self.get_section_param('strategy', key)
+
+    def get_risk_param(self, key: str) -> Any:
+        return self.get_section_param('risk', key)
+
+    def get_instrument_param(self, key: str) -> Any:
+        return self.get_section_param('instrument', key)
+
+    def get_session_param(self, key: str) -> Any:
+        return self.get_section_param('session', key)
+
+    def get_capital_param(self, key: str) -> Any:
+        return self.get_section_param('capital', key)
+
+    def get_logging_param(self, key: str) -> Any:
+        return self.get_section_param('logging', key)

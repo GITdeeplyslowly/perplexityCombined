@@ -7,6 +7,7 @@ core/strategy.py - Unified Long-Only, Intraday Strategy for Trading Bot and Back
 """
 
 import pandas as pd
+import numpy as np
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime, time, timedelta
 from utils.time_utils import now_ist, normalize_datetime_to_ist, is_time_to_exit, is_within_session, ensure_tz_aware, apply_buffer_to_time
@@ -67,22 +68,52 @@ class ModularIntradayStrategy:
             'session_start_time': None
         }
 
+        # --- Feature flags (read from validated config; GUI is SSOT) ---
+        # These should exist in config.defaults.DEFAULT_CONFIG and be validated by the GUI.
+        self.use_ema_crossover = self.config_accessor.get_strategy_param('use_ema_crossover')
+        self.use_macd = self.config_accessor.get_strategy_param('use_macd')
+        self.use_vwap = self.config_accessor.get_strategy_param('use_vwap')
+        self.use_rsi_filter = self.config_accessor.get_strategy_param('use_rsi_filter')
+        self.use_htf_trend = self.config_accessor.get_strategy_param('use_htf_trend')
+        self.use_bollinger_bands = self.config_accessor.get_strategy_param('use_bollinger_bands')
+        # optional toggles may be absent in older configs; GUI validation should add them,
+        # but keep a safe default here if desired:
+        try:
+            self.use_atr = self.config_accessor.get_strategy_param('use_atr')
+        except KeyError:
+            self.use_atr = False
+        
         # Validate configuration
-        validation = self.config_accessor.validate_required_params()
-        if not validation['valid']:
-            logger.error(f"Configuration validation failed: {validation['errors']}")
-            raise ValueError(f"Invalid configuration: {validation['errors']}")
-
-        # Extract feature flags
-        self.use_ema_crossover = self.config_accessor.get_strategy_param('use_ema_crossover', False)
-        self.use_macd = self.config_accessor.get_strategy_param('use_macd', False)
-        self.use_vwap = self.config_accessor.get_strategy_param('use_vwap', False)
-        self.use_htf_trend = self.config_accessor.get_strategy_param('use_htf_trend', False)
-        self.use_rsi_filter = self.config_accessor.get_strategy_param('use_rsi_filter', False)
-        self.use_bollinger_bands = self.config_accessor.get_strategy_param('use_bollinger_bands', False)
-
-        # Session/session exit config
-        self.session_params = self.config_accessor.get_session_params()
+        # Minimal fail-fast validation using the existing ConfigAccessor methods.
+        required_keys = [
+            ('strategy', 'fast_ema'),
+            ('strategy', 'slow_ema'),
+            ('strategy', 'macd_fast'),
+            ('strategy', 'macd_slow'),
+            ('strategy', 'macd_signal'),
+            ('session', 'start_hour'),
+            ('session', 'start_min'),
+            ('session', 'end_hour'),
+            ('session', 'end_min'),
+            ('risk', 'max_positions_per_day'),
+        ]
+        missing = []
+        for section, key in required_keys:
+            try:
+                # ConfigAccessor expects section/key accessors - use the explicit methods
+                if section == 'strategy':
+                    self.config_accessor.get_strategy_param(key)
+                elif section == 'session':
+                    self.config_accessor.get_session_param(key)
+                elif section == 'risk':
+                    self.config_accessor.get_risk_param(key)
+            except KeyError:
+                missing.append(f"{section}.{key}")
+        if missing:
+            logger.error(f"Missing required config entries: {missing}")
+            raise ValueError(f"Invalid configuration - missing: {missing}")
+ 
+        # Session/session exit config (populate using existing accessors)
         self.session_start = time(
             self.config_accessor.get_session_param('start_hour'),
             self.config_accessor.get_session_param('start_min')
@@ -98,14 +129,18 @@ class ModularIntradayStrategy:
         self.no_trade_start_minutes = self.config_accessor.get_session_param('no_trade_start_minutes')
         self.no_trade_end_minutes = self.config_accessor.get_session_param('no_trade_end_minutes')
 
-        # Get timezone setting
-        tz_name = self.config_accessor.get_session_param('timezone')
+        # Get timezone setting with fail-fast behavior
         try:
-            self.timezone = pytz.timezone(tz_name)
-        except:
-            self.timezone = pytz.timezone('Asia/Kolkata')
-            logger.warning(f"Invalid timezone {tz_name}, using Asia/Kolkata")
-            
+            tz_name = self.config_accessor.get_session_param('timezone')
+            try:
+                self.timezone = pytz.timezone(tz_name)
+            except Exception as e:
+                logger.error(f"Invalid timezone {tz_name}: {e}")
+                raise ValueError(f"Invalid timezone in config: {tz_name}")
+        except KeyError as e:
+            logger.error(f"Missing required session parameter: {e}")
+            raise
+
         logger.info(f"Session configured: {self.session_start.strftime('%H:%M')} to "
                    f"{self.session_end.strftime('%H:%M')} with "
                    f"buffers: +{self.start_buffer_minutes}/-{self.end_buffer_minutes} min")
@@ -130,10 +165,14 @@ class ModularIntradayStrategy:
         self.vwap_tracker = IncrementalVWAP()
         self.atr_tracker = IncrementalATR(period=self.config_accessor.get_strategy_param('atr_len'))
         
-        # --- NEW: Consecutive green bars for re-entry ---
-        self.consecutive_green_bars_required = self.config_accessor.get_strategy_param('consecutive_green_bars')
-        self.green_bars_count = 0
-        self.last_bar_data = None
+        # --- Consecutive green bars for re-entry ---
+        try:
+            self.consecutive_green_bars_required = self.config_accessor.get_strategy_param('consecutive_green_bars')
+            self.green_bars_count = 0
+            self.last_bar_data = None
+        except KeyError as e:
+            logger.error(f"Missing required strategy parameter: {e}")
+            raise
         
         # Set name and version
         self.name = "Modular Intraday Long-Only Strategy"
@@ -193,7 +232,7 @@ class ModularIntradayStrategy:
             gating_reasons.append(f"In no-trade start period ({current_time.time()} < {session_start.time()} + {self.no_trade_start_minutes}m)")
         if current_time > session_end - timedelta(minutes=self.no_trade_end_minutes):
             gating_reasons.append(f"In no-trade end period ({current_time.time()} > {session_end.time()} - {self.no_trade_end_minutes}m)")
-        if self.last_signal_time and not self._check_consecutive_green_bars():
+        if not self._check_consecutive_green_bars():
             gating_reasons.append(f"Not enough green bars ({self.green_bars_count} < {self.consecutive_green_bars_required})")
         if gating_reasons:
             logger.info(f"[ENTRY BLOCKED] at {current_time}: {' | '.join(gating_reasons)}")
@@ -239,12 +278,59 @@ class ModularIntradayStrategy:
         """
         return self.calculate_indicators(data)
 
+    def reset_incremental_trackers(self):
+        """Re-init incremental trackers for deterministic runs."""
+        self.ema_fast_tracker = IncrementalEMA(period=self.fast_ema)
+        self.ema_slow_tracker = IncrementalEMA(period=self.slow_ema)
+        self.macd_tracker = IncrementalMACD(
+            fast=self.macd_fast,
+            slow=self.macd_slow,
+            signal=self.macd_signal
+        )
+        self.vwap_tracker = IncrementalVWAP()
+        try:
+            atr_len = self.config_accessor.get_strategy_param('atr_len')
+        except Exception:
+            atr_len = 14
+        self.atr_tracker = IncrementalATR(period=atr_len)
+        # reset green-bars tracking
+        self.green_bars_count = 0
+        self.last_bar_data = None
+
+    def reset_session_indicators(self):
+        """Reset session-based indicators (like VWAP) for a new trading session."""
+        try:
+            self.vwap_tracker.reset()
+            logger.debug("Session indicators reset for new trading day")
+        except Exception as e:
+            logger.error(f"Failed to reset session indicators: {e}")
+
     def calculate_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Calculate all technical indicators."""
-        if self.indicators is None:
-            logger.warning("No indicators module provided, returning data unchanged")
+        """Incremental processing: update incremental trackers row-by-row and return DataFrame with indicator cols."""
+        if data is None or data.empty:
             return data
-        return self.indicators.calculate_all_indicators(data, self.config)
+
+        # prefer strategy's own incremental processing rather than calling legacy batch function
+        self.reset_incremental_trackers()
+
+        df = data.copy()
+        numeric_columns = ['fast_ema', 'slow_ema', 'macd', 'macd_signal', 'macd_histogram', 'vwap', 'htf_ema', 'rsi', 'atr']
+        boolean_columns = ['ema_bullish', 'macd_bullish', 'macd_histogram_positive', 'vwap_bullish', 'htf_bullish']
+
+        for col in numeric_columns:
+            if col not in df.columns:
+                df[col] = np.nan
+        for col in boolean_columns:
+            if col not in df.columns:
+                df[col] = False
+
+        for i, (idx, row) in enumerate(df.iterrows()):
+            updated = self.process_tick_or_bar(row.copy())
+            for col in numeric_columns + boolean_columns:
+                if col in updated and col in df.columns:
+                    df.iat[i, df.columns.get_loc(col)] = updated[col]
+
+        return df
 
     def entry_signal(self, row: pd.Series) -> bool:
         """
@@ -300,20 +386,27 @@ class ModularIntradayStrategy:
     def open_long(self, row: pd.Series, now: datetime, position_manager) -> Optional[str]:
         # For robust trade management, always use live/production-driven position config
         entry_price = row['close']
-        
-        # Use ConfigAccessor to get instrument config, but don't provide a default
-        # to ensure explicit configuration is required
-        instrument_config = self.config_accessor.get_param('instrument', {})
-        symbol = instrument_config.get('symbol')
-        
-        # No fallback - must have explicit symbol configuration
-        if not symbol:
-            logger.error("No instrument symbol configured - cannot open position")
+
+        # Get instrument config with fail-fast behavior
+        try:
+            instrument_config = self.config_accessor.get('instrument')
+            if not instrument_config:
+                raise KeyError('instrument')
+            symbol = instrument_config.get('symbol')
+            if not symbol:
+                raise KeyError('instrument.symbol')
+        except KeyError as e:
+            logger.error("Missing required parameter: %s", e)
             return None
-    
-        # lot size and tick size must be passed from config (for F&O)
-        lot_size = self.config_accessor.get_risk_param('lot_size')
-        tick_size = self.config_accessor.get_risk_param('tick_size')
+
+        # Use instrument SSOT for contract sizing (no risk.lot_size overrides)
+        try:
+            lot_size = int(self.config_accessor.get_instrument_param('lot_size'))
+            tick_size = float(self.config_accessor.get_instrument_param('tick_size'))
+        except KeyError as e:
+            logger.error("Missing instrument sizing parameter: %s", e)
+            return None
+
         position_id = position_manager.open_position(
             symbol=symbol,
             entry_price=entry_price,
@@ -321,6 +414,7 @@ class ModularIntradayStrategy:
             lot_size=lot_size,
             tick_size=tick_size
         )
+
         if position_id:
             self.in_position = True
             self.position_id = position_id
@@ -328,12 +422,12 @@ class ModularIntradayStrategy:
             self.position_entry_price = entry_price
             self.daily_stats['trades_today'] += 1
             self.last_signal_time = now
-            
-            logger.info(f"✅ Position opened: {position_id} @ {entry_price}")
+
+            logger.info("Position opened: %s @ %.2f", position_id, entry_price)
             return position_id
-        else:
-            logger.warning("❌ Position manager returned None")
-            return None
+
+        logger.warning("Position manager returned None")
+        return None
 
     def should_close(self, row: pd.Series, now: datetime, position_manager) -> bool:
         """
@@ -349,14 +443,14 @@ class ModularIntradayStrategy:
         try:
             success = position_manager.close_position_full(position_id, price, now, reason=reason)
             if success:
-                logger.info(f"✅ Strategy exit executed: {position_id} @ {price:.2f} - {reason}")
+                logger.info("Strategy exit executed: %s @ %.2f - %s", position_id, price, reason)
                 self.in_position = False
                 self.position_id = None
                 self.position_entry_time = None
                 self.position_entry_price = None
             return success
         except Exception as e:
-            logger.error(f"❌ Strategy exit failed: {e}")
+            logger.error("Strategy exit failed: %s", e)
             return False
 
     def should_exit_position(self, row: pd.Series, position_type: str, 
@@ -403,17 +497,33 @@ class ModularIntradayStrategy:
         Validate strategy parameters.
         
         Returns:
-ṇ            List of validation errors (empty if valid)
+            List of validation errors (empty if valid)
         """
         errors = []
+        
+        # Check for required parameters
+        required_params = [
+            'fast_ema', 'slow_ema', 'macd_fast', 'macd_slow', 'macd_signal',
+            'consecutive_green_bars', 'atr_len'
+        ]
+        
+        for param in required_params:
+            try:
+                self.config_accessor.get_strategy_param(param)
+            except KeyError:
+                errors.append(f"Missing required parameter: {param}")
+        
         # Typical validation rules
         if self.use_ema_crossover:
             if self.fast_ema >= self.slow_ema:
                 errors.append("fast_ema must be less than slow_ema")
         if self.use_htf_trend:
-            htf_period = self.config_accessor.get_strategy_param('htf_period')
-            if htf_period <= 0:
-                errors.append("htf_period must be positive")
+            try:
+                htf_period = self.config_accessor.get_strategy_param('htf_period')
+                if htf_period <= 0:
+                    errors.append("htf_period must be positive")
+            except KeyError:
+                errors.append("Missing required parameter: htf_period")
         
         # Validate risk parameters
         if self.max_positions_per_day <= 0:
@@ -478,292 +588,125 @@ class ModularIntradayStrategy:
 
     def process_tick_or_bar(self, row: pd.Series):
         """
-        Update all incremental indicators with the latest tick/bar data.
-        This is used for live trading where we get one data point at a time.
-        
-        Args:
-            row: Latest price data with OHLCV values
-        
-        Returns:
-            Updated row with indicator values
+        Defensive incremental processing for a single tick/bar.
+        Mirrors researchStrategy.process_tick_or_bar semantics but optimized for live use.
         """
         try:
-            # For EMA
-            fast_ema_val = self.ema_fast_tracker.update(row['close'])
-            slow_ema_val = self.ema_slow_tracker.update(row['close'])
-            # Calculate derived EMA values
-            row['ema_bullish'] = fast_ema_val > slow_ema_val
+            # Accept Series or single-row DataFrame
+            if isinstance(row, pd.DataFrame):
+                if len(row) == 1:
+                    row = row.iloc[0]
+                else:
+                    logger.error("process_tick_or_bar expects single-row input")
+                    return row
 
-            # For MACD
-            macd_val, macd_signal_val, macd_hist_val = self.macd_tracker.update(row['close'])
-            # Calculate derived MACD values
-            row['macd_bullish'] = macd_val > macd_signal_val
-            row['macd_histogram_positive'] = macd_hist_val > 0
+            def safe_extract(key, default=None):
+                val = row.get(key, default)
+                if isinstance(val, pd.Series):
+                    return val.iloc[0] if len(val) else default
+                return val
 
-            # For VWAP
-            vwap_val = self.vwap_tracker.update(
-                price=row['close'], volume=row['volume'],
-                high=row.get('high'), low=row.get('low'), close=row.get('close')
-            )
+            close_price = safe_extract('close', safe_extract('price', None))
+            if close_price is None:
+                logger.warning("Missing close/price in row; skipping indicator update")
+                return row
+            try:
+                close_price = float(close_price)
+            except Exception:
+                logger.warning("Invalid close price; skipping row")
+                return row
+            if close_price <= 0:
+                logger.warning("Non-positive close price; skipping row")
+                return row
 
-            # For ATR
-            atr_val = self.atr_tracker.update(
-                high=row['high'], low=row['low'], close=row['close']
-            )
+            volume = safe_extract('volume', 0) or 0
+            try:
+                volume = int(volume)
+            except Exception:
+                volume = 0
+            high_price = float(safe_extract('high', close_price))
+            low_price = float(safe_extract('low', close_price))
+            open_price = float(safe_extract('open', close_price))
 
-            # Update row/signal state as required
-            row['fast_ema'] = fast_ema_val
-            row['slow_ema'] = slow_ema_val
-            row['macd'] = macd_val
-            row['macd_signal'] = macd_signal_val
-            row['macd_histogram'] = macd_hist_val
-            row['vwap'] = vwap_val
-            row['atr'] = atr_val
-            
-            # Update green bars counter
-            self._update_green_bars_count(row)
-            
+            updated = row.copy()
+
+            # EMA
+            if getattr(self, 'use_ema_crossover', False):
+                fast_ema_val = self.ema_fast_tracker.update(close_price)
+                slow_ema_val = self.ema_slow_tracker.update(close_price)
+                updated['fast_ema'] = fast_ema_val
+                updated['slow_ema'] = slow_ema_val
+                updated['ema_bullish'] = False if pd.isna(fast_ema_val) or pd.isna(slow_ema_val) else (fast_ema_val > slow_ema_val)
+
+            # MACD
+            if getattr(self, 'use_macd', False):
+                macd_val, macd_signal_val, macd_hist_val = self.macd_tracker.update(close_price)
+                updated['macd'] = macd_val
+                updated['macd_signal'] = macd_signal_val
+                updated['macd_histogram'] = macd_hist_val
+                updated['macd_bullish'] = False if pd.isna(macd_val) or pd.isna(macd_signal_val) else (macd_val > macd_signal_val)
+                updated['macd_histogram_positive'] = False if pd.isna(macd_hist_val) else (macd_hist_val > 0)
+
+            # VWAP
+            if getattr(self, 'use_vwap', False):
+                vwap_val = self.vwap_tracker.update(price=close_price, volume=volume, high=high_price, low=low_price, close=close_price)
+                updated['vwap'] = vwap_val
+                updated['vwap_bullish'] = False if pd.isna(vwap_val) else (close_price > vwap_val)
+
+            # HTF EMA (lazy init)
+            if getattr(self, 'use_htf_trend', False):
+                if not hasattr(self, 'htf_ema_tracker'):
+                    self.htf_ema_tracker = IncrementalEMA(period=self.config_accessor.get_strategy_param('htf_period'))
+                htf_ema_val = self.htf_ema_tracker.update(close_price)
+                updated['htf_ema'] = htf_ema_val
+                updated['htf_bullish'] = False if pd.isna(htf_ema_val) else (close_price > htf_ema_val)
+
+            # ATR
+            if getattr(self, 'use_atr', False):
+                atr_val = self.atr_tracker.update(high=high_price, low=low_price, close=close_price)
+                updated['atr'] = atr_val
+
+            # Update green bars count and return
+            self._update_green_bars_count(updated)
+            return updated
+        except Exception as e:
+            logger.error(f"Error in process_tick_or_bar: {e}")
             return row
-        except Exception as e:
-            logger.error(f"Error processing tick/bar data: {e}")
-            return row
 
-    # --- NEW: Consecutive green bars logic ---
-    def _check_consecutive_green_bars(self) -> bool:
+    # Backwards-compatible aliases expected by backtest/other modules
+    def can_open_long(self, row: pd.Series, timestamp: datetime) -> bool:
         """
-        Check if we have enough consecutive green bars for re-entry.
-        Returns True if enough consecutive green bars, False otherwise.
-        """
-        return self.green_bars_count >= self.consecutive_green_bars_required
-
-    def _update_green_bars_count(self, row: pd.Series):
-        """
-        Update the count of consecutive green bars based on current bar data.
-        A green bar is one where close > open.
+        Backtest-compatible wrapper. For live use prefer can_enter_new_position(timestamp)
+        and entry_signal(row).
         """
         try:
-            current_close = row.get('close', 0)
-            current_open = row.get('open', current_close)
-
-            # For tick data, compare with previous close if no open available
-            if current_open == current_close and self.last_bar_data is not None:
-                current_open = self.last_bar_data.get('close', current_close)
-
-            is_green_bar = current_close > current_open
-
-            if is_green_bar:
-                self.green_bars_count += 1
-            else:
-                self.green_bars_count = 0
-
-            # Store current bar for next comparison
-            self.last_bar_data = {
-                'open': current_open,
-                'close': current_close,
-                'timestamp': row.name if hasattr(row, 'name') else None
-            }
-
-        except Exception as e:
-            logger.error(f"Error updating green bars count: {e}")
-
-    def should_exit(self, row, timestamp, position_manager):
-        """Check if we should close position"""
-        # Ensure timezone-aware timestamp
-        timestamp = ensure_tz_aware(timestamp)
-        
-        # Always exit at session end
-        if self.should_exit_for_session(timestamp):
-            return True
-        
-        # Let position manager handle stop loss, take profit, and trailing stops
-        return False
-
-    def generate_entry_signal(self, row: pd.Series, current_time: datetime) -> TradingSignal:
-        """
-        Port from researchStrategy - comprehensive signal generation with reasoning.
-        This is the CRITICAL method that was missing.
-        """
-        # --- NEW: Update green bars count for this bar ---
-        self._update_green_bars_count(row)
-
-        # Check if we can enter
-        if not self.can_enter_new_position(current_time):
-            return TradingSignal('HOLD', current_time, row['close'],
-                               reason="Cannot enter new position")
-
-        # Collect all signal conditions
-        signal_conditions = []
-        signal_reasons = []
-        confidence = 1.0
-
-        # === EMA CROSSOVER SIGNAL ===
-        if self.use_ema_crossover:
-            if 'ema_bullish' in row:
-                if row['ema_bullish']:
-                    signal_conditions.append(True)
-                    signal_reasons.append(f"EMA: Fast ({row.get('fast_ema', 0):.2f}) above Slow ({row.get('slow_ema', 0):.2f})")
-                else:
-                    signal_conditions.append(False)
-                    signal_reasons.append(f"EMA: Fast not above Slow EMA")
-            else:
-                signal_conditions.append(False)
-                signal_reasons.append("EMA Cross: Data not available")
-
-        # === MACD SIGNAL ===
-        if self.use_macd:
-            if ('macd_bullish' in row and 'macd_histogram_positive' in row):
-                macd_bullish = row.get('macd_bullish', False)
-                histogram_positive = row.get('macd_histogram_positive', False)
-                macd_signal = macd_bullish and histogram_positive
-                signal_conditions.append(macd_signal)
-                if macd_signal:
-                    signal_reasons.append("MACD: Bullish (line > signal & histogram > 0)")
-                else:
-                    signal_reasons.append(f"MACD: Not bullish")
-            else:
-                signal_conditions.append(False)
-                signal_reasons.append("MACD: Data not available")
-
-        # === VWAP SIGNAL ===
-        if self.use_vwap:
-            if 'vwap' in row and not pd.isna(row['vwap']):
-                vwap_bullish = row['close'] > row['vwap']
-                signal_conditions.append(vwap_bullish)
-                if vwap_bullish:
-                    signal_reasons.append(f"VWAP: Bullish ({row['close']:.2f} > {row['vwap']:.2f})")
-                else:
-                    signal_reasons.append(f"VWAP: Bearish ({row['close']:.2f} <= {row['vwap']:.2f})")
-            else:
-                signal_conditions.append(False)
-                signal_reasons.append("VWAP: Data not available")
-
-        # === HTF TREND SIGNAL ===
-        if self.use_htf_trend:
-            if 'htf_ema' in row and not pd.isna(row['htf_ema']):
-                htf_bullish = row['close'] > row['htf_ema']
-                signal_conditions.append(htf_bullish)
-                if htf_bullish:
-                    signal_reasons.append(f"HTF Trend: Bullish ({row['close']:.2f} > {row['htf_ema']:.2f})")
-                else:
-                    signal_reasons.append(f"HTF Trend: Bearish ({row['close']:.2f} <= {row['htf_ema']:.2f})")
-            else:
-                signal_conditions.append(False)
-                signal_reasons.append("HTF Trend: Data not available")
-
-        # === RSI FILTER ===
-        if self.use_rsi_filter:
-            if 'rsi' in row and not pd.isna(row['rsi']):
-                rsi = row['rsi']
-                rsi_ok = self.config_accessor.get_strategy_param('rsi_oversold') < rsi < self.config_accessor.get_strategy_param('rsi_overbought')
-                signal_conditions.append(rsi_ok)
-                if rsi_ok:
-                    signal_reasons.append(f"RSI: Neutral ({rsi:.1f})")
-                else:
-                    signal_reasons.append(f"RSI: Extreme ({rsi:.1f})")
-            else:
-                signal_conditions.append(False)
-                signal_reasons.append("RSI: Data not available")
-
-        # === BOLLINGER BANDS FILTER ===
-        if self.use_bollinger_bands:
-            if all(col in row for col in ['bb_upper', 'bb_lower', 'bb_middle']):
-                bb_ok = row['bb_lower'] < row['close'] < row['bb_upper']
-                signal_conditions.append(bb_ok)
-                if bb_ok:
-                    signal_reasons.append("BB: Price within bands")
-                else:
-                    signal_reasons.append("BB: Price outside bands")
-            else:
-                signal_conditions.append(False)
-                signal_reasons.append("Bollinger Bands: Data not available")
-
-        # === FINAL SIGNAL DECISION ===
-        if signal_conditions and all(signal_conditions):
-            # Calculate stop loss
-            stop_loss_price = row['close'] - self.config_accessor.get_risk_param('base_sl_points')
-
-            # Update tracking
-            self.last_signal_time = current_time
-
-            return TradingSignal(
-                action='BUY',
-                timestamp=current_time,
-                price=row['close'],
-                confidence=confidence,
-                reason="; ".join(signal_reasons),
-                stop_loss=stop_loss_price
-            )
-        else:
-            # Log why signal failed
-            failed_reasons = [reason for i, reason in enumerate(signal_reasons)
-                            if i < len(signal_conditions) and not signal_conditions[i]]
-            return TradingSignal(
-                action='HOLD',
-                timestamp=current_time,
-                price=row['close'],
-                confidence=0.0,
-                reason=f"Entry blocked: {'; '.join(failed_reasons[:3])}"
-            )
-
-    def get_signal_description(self, row: pd.Series) -> str:
-        """Port from research strategy - debugging method"""
-        descriptions = []
-
-        if self.use_ema_crossover and 'fast_ema' in row and 'slow_ema' in row:
-            fast_ema = row['fast_ema']
-            slow_ema = row['slow_ema']
-            if not pd.isna(fast_ema) and not pd.isna(slow_ema):
-                descriptions.append(f"EMA {self.fast_ema}/{self.slow_ema}: {fast_ema:.2f}/{slow_ema:.2f}")
-
-        if self.use_macd and 'macd' in row and 'macd_signal' in row:
-            macd = row['macd']
-            signal = row['macd_signal']
-            if not pd.isna(macd) and not pd.isna(signal):
-                descriptions.append(f"MACD: {macd:.3f}/{signal:.3f}")
-
-        if self.use_vwap and 'vwap' in row:
-            vwap = row['vwap']
-            if not pd.isna(vwap):
-                descriptions.append(f"VWAP: {row['close']:.2f} vs {vwap:.2f}")
-
-        return "; ".join(descriptions) if descriptions else "No indicators"
-
-    def validate_parameters(self) -> list:
-        errors = []
-        # Typical validation rules
-        if self.use_ema_crossover:
-            if self.fast_ema >= self.slow_ema:
-                errors.append("fast_ema must be less than slow_ema")
-        if self.use_htf_trend:
-            htf_period = self.config_accessor.get_strategy_param('htf_period')
-            if htf_period <= 0:
-                errors.append("htf_period must be positive")
-        return errors
-
-    def can_open_long(self, row: pd.Series, now: datetime) -> bool:
-        """PRODUCTION INTERFACE: Entry signal detection."""
-        try:
-            # Ensure timezone awareness
-            now = ensure_tz_aware(now)
-            
-            # Update green bars count
-            self._update_green_bars_count(row)
-            
-            # Check session timing and other constraints
-            can_enter = self.can_enter_new_position(now)
-            
-            # In position check
-            if self.in_position:
-                return False
-                
-            # Check signal conditions
-            should_enter = self.entry_signal(row)
-            
-            return can_enter and should_enter
-            
-        except Exception as e:
-            logger.error(f"Error in can_open_long: {e}")
+            # ensure timestamp is tz-aware if possible
+            if timestamp is not None:
+                timestamp = ensure_tz_aware(timestamp)
+            # Combine session gating and entry signal
+            return self.can_enter_new_position(timestamp) and bool(self.entry_signal(row))
+        except Exception:
+            logger.exception("can_open_long check failed")
             return False
+
+    def should_exit(self, row: pd.Series, timestamp: datetime, position_manager=None) -> bool:
+        """
+        Backtest-compatible exit check. Delegate to session-exit (and leave position manager
+        to apply SL/TP/trailing logic).
+        """
+        try:
+            timestamp = ensure_tz_aware(timestamp)
+            # Exit at session buffer end or when session gating requires exit
+            if self.should_exit_for_session(timestamp):
+                return True
+            return False
+        except Exception:
+            logger.exception("should_exit check failed")
+            return True  # safe default: ask runner to close positions
+
+    # alias for any callers expecting should_close
+    def should_close(self, row: pd.Series, timestamp: datetime, position_manager=None) -> bool:
+        return self.should_exit(row, timestamp, position_manager)
 
 if __name__ == "__main__":
     # Minimal smoke test for development

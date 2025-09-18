@@ -18,23 +18,25 @@ from datetime import datetime
 import logging
 import numpy as np
 import pytz
+from datetime import datetime
 from utils.cache_manager import refresh_symbol_cache, load_symbol_cache
 from live.trader import LiveTrader
 
-# Add import for defaults
+# Add import for defaults and strict config helpers
 from config.defaults import DEFAULT_CONFIG
-from utils.config_helper import ConfigAccessor, create_config_from_defaults
+from utils.config_helper import (
+    create_config_from_defaults,
+    get_logging_verbosity_options,
+    validate_config,
+    freeze_config
+)
 from utils.logger_setup import setup_logger, setup_logging_from_config
-import logging
-import json
-import os
 from backtest.backtest_runner import BacktestRunner
+from types import MappingProxyType
 
 LOG_FILENAME = "unified_gui.log"
-# Minimal fallback logger until runtime logging is configured in __init__
 logger = setup_logger(log_file=LOG_FILENAME, log_level=logging.INFO)
 
-# Add now_ist function
 def now_ist():
     """Return current time in India Standard Time"""
     return datetime.now(pytz.timezone('Asia/Kolkata'))
@@ -88,57 +90,56 @@ class UnifiedTradingGUI(tk.Tk):
         # --- Strategy variables ---
         self.bt_use_ema_crossover = tk.BooleanVar(value=strategy_defaults.get('use_ema_crossover', False))
         self.bt_use_macd = tk.BooleanVar(value=strategy_defaults.get('use_macd', False))
-        self.bt_use_vwap = tk.BooleanVar(value=strategyDefaults.get('use_vwap', False))
-        self.bt_use_rsi_filter = tk.BooleanVar(value=strategyDefaults.get('use_rsi_filter', False))
-        self.bt_use_htf_trend = tk.BooleanVar(value=strategyDefaults.get('use_htf_trend', False))
-        self.bt_use_bollinger_bands = tk.BooleanVar(value=strategyDefaults.get('use_bollinger_bands', False))
-        self.bt_use_stochastic = tk.BooleanVar(value=strategyDefaults.get('use_stochastic', False))
-        self.bt_use_atr = tk.BooleanVar(value=strategyDefaults.get('use_atr', False))
+        self.bt_use_vwap = tk.BooleanVar(value=strategy_defaults.get('use_vwap', False))
+        self.bt_use_rsi_filter = tk.BooleanVar(value=strategy_defaults.get('use_rsi_filter', False))
+        self.bt_use_htf_trend = tk.BooleanVar(value=strategy_defaults.get('use_htf_trend', False))
+        self.bt_use_bollinger_bands = tk.BooleanVar(value=strategy_defaults.get('use_bollinger_bands', False))
+        self.bt_use_stochastic = tk.BooleanVar(value=strategy_defaults.get('use_stochastic', False))
+        self.bt_use_atr = tk.BooleanVar(value=strategy_defaults.get('use_atr', False))
 
         # EMA parameters
-        self.bt_fast_ema = tk.StringVar(value=str(strategyDefaults.get('fast_ema', '9')))
-        self.bt_slow_ema = tk.StringVar(value=str(strategyDefaults.get('slow_ema', '21')))
+        self.bt_fast_ema = tk.StringVar(value=str(strategy_defaults.get('fast_ema', '9')))
+        self.bt_slow_ema = tk.StringVar(value=str(strategy_defaults.get('slow_ema', '21')))
 
         # MACD parameters
-        self.bt_macd_fast = tk.StringVar(value=str(strategyDefaults.get('macd_fast', '12')))
-        self.bt_macd_slow = tk.StringVar(value=str(strategyDefaults.get('macd_slow', '26')))
-        self.bt_macd_signal = tk.StringVar(value=str(strategyDefaults.get('macd_signal', '9')))
+        self.bt_macd_fast = tk.StringVar(value=str(strategy_defaults.get('macd_fast', '12')))
+        self.bt_macd_slow = tk.StringVar(value=str(strategy_defaults.get('macd_slow', '26')))
+        self.bt_macd_signal = tk.StringVar(value=str(strategy_defaults.get('macd_signal', '9')))
 
         # RSI parameters
-        self.bt_rsi_length = tk.StringVar(value=str(strategyDefaults.get('rsi_length', 14)))
-        self.bt_rsi_oversold = tk.StringVar(value=str(strategyDefaults.get('rsi_oversold', 30)))
-        self.bt_rsi_overbought = tk.StringVar(value=str(strategyDefaults.get('rsi_overbought', 70)))
+        self.bt_rsi_length = tk.StringVar(value=str(strategy_defaults.get('rsi_length', 14)))
+        self.bt_rsi_oversold = tk.StringVar(value=str(strategy_defaults.get('rsi_oversold', 30)))
+        self.bt_rsi_overbought = tk.StringVar(value=str(strategy_defaults.get('rsi_overbought', 70)))
 
         # HTF parameter
-        self.bt_htf_period = tk.StringVar(value=str(strategyDefaults.get('htf_period', 20)))
+        self.bt_htf_period = tk.StringVar(value=str(strategy_defaults.get('htf_period', 20)))
 
         # --- Consecutive Green Bars parameter ---
-        self.bt_consecutive_green_bars = tk.StringVar(value=str(strategyDefaults.get('consecutive_green_bars', 3)))
+        self.bt_consecutive_green_bars = tk.StringVar(value=str(strategy_defaults.get('consecutive_green_bars', 3)))
 
         # --- Risk management ---
-        self.bt_base_sl_points = tk.StringVar(value=str(riskDefaults.get('base_sl_points', 12.0)))
-        self.bt_tp_points = [tk.StringVar(value=str(p)) for p in riskDefaults.get('tp_points', [10.0, 25.0, 50.0, 100.0])]
-        self.bt_tp_percents = [tk.StringVar(value=str(p*100)) for p in riskDefaults.get('tp_percents', [0.25,0.25,0.25,0.25])]
-        self.bt_use_trail_stop = tk.BooleanVar(value=riskDefaults.get('use_trail_stop', False))
-        self.bt_trail_activation = tk.StringVar(value=str(riskDefaults.get('trail_activation_points', 5.0)))
-        self.bt_trail_distance = tk.StringVar(value=str(riskDefaults.get('trail_distance_points', 7.0)))
-        self.bt_risk_per_trade_percent = tk.StringVar(value=str(riskDefaults.get('risk_per_trade_percent', 1.0)))
+        self.bt_base_sl_points = tk.StringVar(value=str(risk_defaults.get('base_sl_points', 12.0)))
+        self.bt_tp_points = [tk.StringVar(value=str(p)) for p in risk_defaults.get('tp_points', [10.0, 25.0, 50.0, 100.0])]
+        self.bt_tp_percents = [tk.StringVar(value=str(p*100)) for p in risk_defaults.get('tp_percents', [0.25,0.25,0.25,0.25])]
+        self.bt_use_trail_stop = tk.BooleanVar(value=risk_defaults.get('use_trail_stop', False))
+        self.bt_trail_activation = tk.StringVar(value=str(risk_defaults.get('trail_activation_points', 5.0)))
+        self.bt_trail_distance = tk.StringVar(value=str(risk_defaults.get('trail_distance_points', 7.0)))
+        self.bt_risk_per_trade_percent = tk.StringVar(value=str(risk_defaults.get('risk_per_trade_percent', 1.0)))
 
         # --- Capital settings ---
-        self.bt_initial_capital = tk.StringVar(value=str(capitalDefaults.get('initial_capital', 100000.0)))
+        self.bt_initial_capital = tk.StringVar(value=str(capital_defaults.get('initial_capital', 100000.0)))
 
         # --- Instrument settings ---
-        self.bt_symbol = tk.StringVar(value=instrumentDefaults.get('symbol', 'NIFTY'))
-        self.bt_exchange = tk.StringVar(value=instrumentDefaults.get('exchange', 'NSE_FO'))
-        self.bt_lot_size = tk.StringVar(value=str(instrumentDefaults.get('lot_size', 1)))
+        self.bt_symbol = tk.StringVar(value=instrument_defaults.get('symbol', 'NIFTY'))
+        self.bt_exchange = tk.StringVar(value=instrument_defaults.get('exchange', 'NSE_FO'))
+        self.bt_lot_size = tk.StringVar(value=str(instrument_defaults.get('lot_size', 1)))
 
         # --- Session settings ---
-        self.bt_is_intraday = tk.BooleanVar(value=sessionDefaults.get('is_intraday', True))
-        self.bt_session_start_hour = tk.StringVar(value=str(sessionDefaults.get('start_hour', 9)))
-        self.bt_session_start_min = tk.StringVar(value=str(sessionDefaults.get('start_min', 15)))
-        self.bt_session_end_hour = tk.StringVar(value=str(sessionDefaults.get('end_hour', 15)))
-        self.bt_session_end_min = tk.StringVar(value=str(sessionDefaults.get('end_min', 30)))
-
+        self.bt_is_intraday = tk.BooleanVar(value=session_defaults.get('is_intraday', True))
+        self.bt_session_start_hour = tk.StringVar(value=str(session_defaults.get('start_hour', 9)))
+        self.bt_session_start_min = tk.StringVar(value=str(session_defaults.get('start_min', 15)))
+        self.bt_session_end_hour = tk.StringVar(value=str(session_defaults.get('end_hour', 15)))
+        self.bt_session_end_min = tk.StringVar(value=str(session_defaults.get('end_min', 30)))
     def _load_user_preferences(self):
         """Load user preferences from saved file"""
         prefs_file = "user_preferences.json"
@@ -307,14 +308,44 @@ class UnifiedTradingGUI(tk.Tk):
         # flow from GUI/defaults into the runner. Later expose GUI controls to edit these.
         #        from config.defaults import DEFAULT_CONFIG
         config['logging'] = DEFAULT_CONFIG.get('logging', {}).copy()
+ 
+        # FINAL: authoritative validation + freeze (GUI SSOT)
+        try:
+            validation = validate_config(config)
+        except Exception as e:
+            logger.exception("validate_config raised unexpected exception: %s", e)
+            messagebox.showerror("Validation Error", f"Unexpected error during validation: {e}")
+            return None
 
-        return config
+        if not validation.get('valid', False):
+            errs = validation.get('errors', []) or ["Unknown validation failure"]
+            messagebox.showerror("Configuration Validation Failed",
+                                 "Please fix configuration issues:\n\n" + "\n".join(errs))
+            return None
+
+        # Freeze config to make it immutable for the run
+        try:
+            frozen = freeze_config(config)
+        except Exception as e:
+            logger.exception("freeze_config failed: %s", e)
+            messagebox.showerror("Configuration Error", "Failed to freeze configuration. Aborting run.")
+            return None
+
+        # Ensure we actually received a MappingProxyType
+        if not isinstance(frozen, MappingProxyType):
+            logger.error("freeze_config did not return MappingProxyType; aborting run")
+            messagebox.showerror("Configuration Error", "Configuration could not be frozen. Aborting run.")
+            return None
+
+        return frozen
 
     def run_backtest(self):
         """Run backtest with GUI configuration"""
         try:
-            # Get configuration directly from GUI
+            # Get validated and frozen config from GUI (returns None on validation failure)
             config = self.build_config_from_gui()
+            if config is None:
+                return
 
             # Log the actual configuration used
             logger.info("====== BACKTEST CONFIGURATION ======")
@@ -806,18 +837,21 @@ class UnifiedTradingGUI(tk.Tk):
             }
         }
 
-        # Validate configuration structure
-        self._validate_nested_config(gui_config)
-        logger.info("Using nested configuration structure for forward test")
-        logger.info(f"Forward test config: {gui_config}")
+        # Validate and freeze GUI-built config using authoritative validator
+        config = self.build_config_from_gui()
+        if config is None:
+            return
+
+        logger.info("Using nested, validated & frozen configuration for forward test")
+        logger.debug(f"Forward test config: {dict(config) if not isinstance(config, dict) else config}")
 
         try:
             self.ft_result_box.config(state="normal")
             self.ft_result_box.delete("1.0", "end")
-            self.ft_result_box.insert("end", f"Starting forward test for {gui_config['instrument']['symbol']}...\n")
+            self.ft_result_box.insert("end", f"Starting forward test for {config['instrument']['symbol']}...\n")
             self.ft_result_box.config(state="disabled")
 
-            trader = LiveTrader(config_dict=gui_config)
+            trader = LiveTrader(config_dict=config)
             self._forward_thread = threading.Thread(target=trader.start)
             self._forward_thread.start()
         except Exception as e:
@@ -1439,29 +1473,32 @@ class UnifiedTradingGUI(tk.Tk):
             self.bt_data_file.set(file)
 
     def _bt_run_backtest(self):
-        """Run backtest with current configuration"""
-        if not hasattr(self, 'bt_data_file') or not self.bt_data_file.get():
-            messagebox.showerror("Error", "Please select a data file")
-            return
-
+        """Run backtest with GUI configuration (enforces frozen config)"""
         try:
-            # Build config from GUI
-            config = self.build_config_from_gui()
-            data_path = self.bt_data_file.get()  # <--- get the selected file
+            frozen_cfg = self.build_config_from_gui()
+            if frozen_cfg is None:
+                logger.warning("Backtest aborted: invalid or unfrozen configuration")
+                return
 
-            # Pass data_path explicitly!
-            backtest = BacktestRunner(config=config, data_path=data_path)
-            results = backtest.run()
+            # Data path: prefer backtest.data_path in config, fallback to file chooser input
+            data_path = None
+            try:
+                data_path = frozen_cfg.get('backtest', {}).get('data_path') or self.bt_data_file.get()
+            except Exception:
+                # frozen_cfg is MappingProxyType; use dict() to inspect if needed
+                data_path = dict(frozen_cfg).get('backtest', {}).get('data_path') or self.bt_data_file.get()
 
-            # Display results
-            self.bt_result_box.config(state="normal")
-            self.bt_result_box.delete(1.0, tk.END)
-            self.bt_result_box.insert(tk.END, f"Backtest completed successfully (incremental processing)!\n")
-            self.bt_result_box.insert(tk.END, f"Results: {results}\n")
-            self.bt_result_box.config(state="disabled")
+            if not data_path:
+                messagebox.showerror("Missing Data", "Please select a data file for backtest.")
+                return
 
+            # Construct runner with frozen config (strict)
+            runner = BacktestRunner(config=frozen_cfg, data_path=data_path)
+            results = runner.run()
+            self.display_backtest_results(results)
         except Exception as e:
-            messagebox.showerror("Backtest Error", f"Failed to run backtest: {e}")
+            logger.exception("Backtest run failed: %s", e)
+            messagebox.showerror("Backtest Error", f"Backtest failed: {e}")
 
     def _validate_nested_config(self, config):
         """Validate the nested configuration structure"""
@@ -1494,7 +1531,8 @@ class UnifiedTradingGUI(tk.Tk):
 
                 logger.info(f"User preferences merged into runtime config from {prefs_file}")
             except Exception:
-                logger.exception("Failed to merge)
+                logger.exception("Failed to merge user preferences into runtime config")
+
 def main():
     """Main entry point for the unified trading GUI"""
     try:
@@ -1504,4 +1542,4 @@ def main():
         print(f"Failed to start GUI application: {e}")
 
 if __name__ == "__main__":
-    main()              
+    main()

@@ -43,55 +43,28 @@ def calculate_macd(series: pd.Series, fast: int = 12, slow: int = 26, signal: in
 
 def calculate_vwap(high: pd.Series, low: pd.Series, close: pd.Series, volume: pd.Series) -> pd.Series:
     typical_price = (high + low + close) / 3
-    cum_vol = volume.cumsum()
-    cum_tpv = (typical_price * volume).cumsum()
-    return cum_tpv / cum_vol
-
-def calculate_atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
-    high_low = high - low
-    high_close = np.abs(high - close.shift())
-    low_close = np.abs(low - close.shift())
-    tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-    return tr.rolling(window=period).mean()
-
-def calculate_htf_trend(close: pd.Series, period: int) -> pd.Series:
-    return calculate_ema(close, period)
-
-def calculate_stochastic(high, low, close, k_period: int, d_period: int) -> Tuple[pd.Series, pd.Series]:
-    lowest_low = low.rolling(window=k_period).min()
-    highest_high = high.rolling(window=k_period).max()
-    k = 100 * (close - lowest_low) / (highest_high - lowest_low)
-    d = k.rolling(window=d_period).mean()
-    return k, d
-
-def calculate_bollinger_bands(series: pd.Series, period: int = 20, std: float = 2.0) -> Tuple[pd.Series, pd.Series, pd.Series]:
-    ma = series.rolling(window=period).mean()
-    sd = series.rolling(window=period).std()
-    upper = ma + (sd * std)
-    lower = ma - (sd * std)
-    return upper, ma, lower
+    vwap = (typical_price * volume).cumsum() / volume.cumsum()
+    return vwap
 
 def calculate_ema_crossover_signals(fast_ema: pd.Series, slow_ema: pd.Series) -> pd.DataFrame:
-    """Calculate EMA crossover signals.
-    
-    Returns:
-        pd.DataFrame with 'ema_bullish' column only (continuous state where fast > slow)
-    """
-    crossover = (fast_ema > slow_ema).fillna(False)
-    # Only return the continuous state signal
-    return pd.DataFrame({
-        'ema_bullish': crossover  # Continuous state (fast > slow)
-    })
-
-def calculate_macd_signals(macd_df: pd.DataFrame) -> pd.DataFrame:
-    above = (macd_df['macd'] > macd_df['signal']).fillna(False)
-    prev = above.shift().fillna(False)
+    above = fast_ema > slow_ema
+    prev = above.shift(1, fill_value=False)
     return pd.DataFrame({
         'macd_buy_signal': above & (~prev),
         'macd_sell_signal': (~above) & prev,
-        'macd_bullish': above,
-        'macd_histogram_positive': (macd_df['histogram'] > 0).fillna(False)
+        'macd_bullish': above
     })
+
+def calculate_macd_signals(macd_df: pd.DataFrame) -> pd.DataFrame:
+    """Calculate signal conditions from MACD dataframe"""
+    return pd.DataFrame({
+        'macd_bullish': macd_df['macd'] > macd_df['signal'],
+        'macd_histogram_positive': macd_df['histogram'] > 0
+    })
+
+def calculate_htf_trend(close: pd.Series, period: int = 50) -> pd.Series:
+    """Calculate higher timeframe trend using EMA"""
+    return calculate_ema(close, period)
 
 def calculate_htf_signals(close: pd.Series, htf_ema: pd.Series) -> pd.DataFrame:
     bullish = (close > htf_ema).fillna(False)
@@ -114,140 +87,35 @@ def calculate_rsi_signals(rsi: pd.Series, overbought: float = 70, oversold: floa
         'rsi_neutral': ((rsi > oversold) & (rsi < overbought)).fillna(False)
     })
 
-def calculate_all_indicators(df: pd.DataFrame, params: Dict, chunk_size=1000):
-    """
-    Calculate all indicators based on the provided configuration.
-    Handles both flat and nested parameter formats.
-    """
-    # Create a consistent ConfigAccessor regardless of input format
-    from utils.config_helper import create_nested_config_from_flat
-    
-    # Determine if we have nested or flat config
-    is_nested = 'strategy' in params or any(isinstance(params.get(k), dict) for k in params)
-    
-    # Create consistent nested structure
-    if is_nested:
-        nested_params = params
-    else:
-        nested_params = create_nested_config_from_flat(params)
-        
-    # Create a single config accessor for all parameter access
-    config_accessor = ConfigAccessor(nested_params)
+def calculate_bollinger_bands(series: pd.Series, period: int = 20, std_dev: float = 2.0) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    """Calculate Bollinger Bands for a price series"""
+    middle = calculate_sma(series, period)
+    std = series.rolling(window=period).std()
+    upper = middle + (std * std_dev)
+    lower = middle - (std * std_dev)
+    return upper, middle, lower
 
-    # Clone the dataframe to avoid modifying the original
-    df = df.copy()
-    
-    # Get indicator periods from configuration
-    rsi_period = config_accessor.get_strategy_param('rsi_period', 14)
-    fast_ema = config_accessor.get_strategy_param('fast_ema', 20)
-    slow_ema = config_accessor.get_strategy_param('slow_ema', 50)
-    vwap_period = config_accessor.get_strategy_param('vwap_period', 15)
-    macd_fast = config_accessor.get_strategy_param('macd_fast', 12)
-    macd_slow = config_accessor.get_strategy_param('macd_slow', 26)
-    macd_signal = config_accessor.get_strategy_param('macd_signal', 9)
+def calculate_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, k_period: int = 14, d_period: int = 3) -> Tuple[pd.Series, pd.Series]:
+    """Calculate Stochastic Oscillator"""
+    lowest_low = low.rolling(window=k_period).min()
+    highest_high = high.rolling(window=k_period).max()
+    k = 100 * ((close - lowest_low) / (highest_high - lowest_low))
+    d = k.rolling(window=d_period).mean()
+    return k, d
 
-    # Additional parameters that might be directly accessed
-    atr_period = config_accessor.get_strategy_param('atr_period', 14)
-    bollinger_period = config_accessor.get_strategy_param('bollinger_period', 20)
-    bollinger_std = config_accessor.get_strategy_param('bollinger_std', 2.0)
+def calculate_atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
+    """Calculate Average True Range"""
+    tr1 = high - low
+    tr2 = abs(high - close.shift())
+    tr3 = abs(low - close.shift())
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    atr = tr.rolling(window=period).mean()
+    return atr
 
-    # Any conditional logic using strategy_params
-    if config_accessor.get_strategy_param('use_custom_indicators', False):
-        # Custom indicator setup
-        custom_period = config_accessor.get_strategy_param('custom_period', 10)
-        # Custom indicator logic...
-
-    # Any visualization settings
-    show_signals = config_accessor.get_strategy_param('show_signals', True)
-    signal_line_style = config_accessor.get_strategy_param('signal_line_style', '-')
-
-    # Any direct dictionary access without defaults
-    threshold = config_accessor.get_strategy_param('custom_threshold', None)
-    if threshold is not None:
-        # Custom threshold logic...
-        pass  # Add actual logic or use pass as placeholder
-
-    # Any nested parameter access
-    # Handle nested parameters safely
-    try:
-        advanced_config = config_accessor.config.get('strategy', {}).get('advanced', {})
-        filter_settings = advanced_config.get('filter_settings', {})
-        filter_type = filter_settings.get('type', 'simple')
-    except (AttributeError, KeyError):
-        filter_type = 'simple'  # Default fallback
-    
-    # Set volume threshold scaling factor
-    volume_multiplier = config_accessor.get_strategy_param('volume_multiplier', 1.0)
-
-    # Log the parameters being used for transparency
-    logger.info(f"Calculating indicators with: RSI={rsi_period}, FastEMA={fast_ema}, " +
-                f"SlowEMA={slow_ema}, VWAP={vwap_period}, " +
-                f"MACD={macd_fast}/{macd_slow}/{macd_signal}, VolMult={volume_multiplier}")
-
-    # Get list of base data columns to preserve
-    base_columns = ['open', 'high', 'low', 'close', 'volume', 'price']
-    base_data = df[[col for col in base_columns if col in df.columns]].copy()
-    
-    # Calculate enabled indicators based on config
-    if config_accessor.is_indicator_enabled('rsi') and len(df) >= rsi_period:
-        base_data['rsi'] = calculate_rsi(base_data['close'], period=rsi_period)
-
-    if config_accessor.is_indicator_enabled('ema_crossover'):
-        base_data['fast_ema'] = calculate_ema(base_data['close'], fast_ema)
-        base_data['slow_ema'] = calculate_ema(base_data['close'], slow_ema)
-        crossover_signals = calculate_ema_crossover_signals(base_data['fast_ema'], base_data['slow_ema'])
-        base_data['ema_bullish'] = crossover_signals['ema_bullish']
-
-    if config_accessor.is_indicator_enabled('macd'):
-        macd_df = calculate_macd(base_data['close'], macd_fast, macd_slow, macd_signal)
-        for col in macd_df.columns:
-            base_data[col] = macd_df[col]
-        macd_signals = calculate_macd_signals(macd_df)
-        for col in macd_signals.columns:
-            base_data[col] = macd_signals[col]
-
-    if config_accessor.is_indicator_enabled('vwap') and all(col in base_data.columns for col in ['high', 'low', 'close', 'volume']):
-        base_data['vwap'] = calculate_vwap(base_data['high'], base_data['low'], base_data['close'], base_data['volume'])
-        vwap_signals = calculate_vwap_signals(base_data['close'], base_data['vwap'])
-        for col in vwap_signals.columns:
-            base_data[col] = vwap_signals[col]
-
-    if config_accessor.is_indicator_enabled('htf_trend'):
-        base_data['htf_ema'] = calculate_htf_trend(base_data['close'], config_accessor.get_strategy_param("htf_period", 20))
-        htf_signals = calculate_htf_signals(base_data['close'], base_data['htf_ema'])
-        for col in htf_signals.columns:
-            base_data[col] = htf_signals[col]
-
-    # Replace df with the newly constructed base_data
-    df = base_data
-
-    # Continue with other indicators...
-    if config_accessor.is_indicator_enabled('bollinger_bands'):
-        upper, mid, lower = calculate_bollinger_bands(df['close'], config_accessor.get_strategy_param("bb_period", 20), config_accessor.get_strategy_param("bb_std", 2))
-        df["bb_upper"], df["bb_middle"], df["bb_lower"] = upper, mid, lower
-        
-    if config_accessor.is_indicator_enabled('stochastic'):
-        k, d = calculate_stochastic(df['high'], df['low'], df['close'], config_accessor.get_strategy_param("stoch_k", 14), config_accessor.get_strategy_param("stoch_d", 3))
-        df["stoch_k"], df["stoch_d"] = k, d
-        
-    if config_accessor.is_indicator_enabled('atr'):
-        df["atr"] = calculate_atr(df["high"], df["low"], df["close"], config_accessor.get_strategy_param("atr_len", 14))
-        
-    if config_accessor.is_indicator_enabled('ma'):
-        df["ma_short"] = calculate_sma(df["close"], config_accessor.get_strategy_param("ma_short", 20))
-        df["ma_long"] = calculate_sma(df["close"], config_accessor.get_strategy_param("ma_long", 50))
-        
-    if config_accessor.is_indicator_enabled('volume_ma') and "volume" in df.columns:
-        df["volume_ma"] = calculate_sma(df["volume"], config_accessor.get_strategy_param("volume_ma_period", 20))
-        df["volume_ratio"] = safe_divide(df["volume"], df["volume_ma"])
-    
-    # Log the total indicators calculated
-    calculated_indicators = [col for col in df.columns if col not in ['open', 'high', 'low', 'close', 'volume', 'datetime']]
-    logger.info(f"Calculated {len(calculated_indicators)} indicators: {calculated_indicators[:5]}...")
-
-    return df
-
-from typing import Tuple
+# Removed legacy batch wrapper.
+# calculate_all_indicators(df, config) has been intentionally removed to enforce
+# incremental-only indicator calculation. Use incremental trackers (IncrementalEMA,
+# IncrementalMACD, IncrementalVWAP, IncrementalATR) from this module.
 
 # --- Incremental EMA ---
 def update_ema(price: float, prev_ema: float, period: int) -> float:
@@ -264,12 +132,36 @@ class IncrementalEMA:
     def __init__(self, period: int, first_price: float = None):
         self.period = period
         self.ema = first_price
+        self.alpha = 2.0 / (period + 1)
+        self.current_value = first_price if first_price is not None else None
+        self.initialized = first_price is not None
+
+    def reset(self):
+        """Reset the EMA to uninitialized state"""
+        self.ema = None
+        self.current_value = None
+        self.initialized = False
+     
     def update(self, price: float) -> float:
-        if self.ema is None:
-            self.ema = price
-        else:
-            self.ema = update_ema(price, self.ema, self.period)
-        return self.ema
+        """
+        Update EMA with new price
+        """
+        try:
+            # Validate input
+            if price is None or (isinstance(price, float) and np.isnan(price)):
+                return self.current_value  # Return last value if available
+
+            if self.ema is None:
+                self.ema = price
+            else:
+                self.ema = update_ema(price, self.ema, self.period)
+            # keep current_value in sync for callers that use that attribute
+            self.current_value = self.ema
+            self.initialized = True
+            return self.ema
+        except Exception as e:
+            logger.error(f"EMA calculation error: {str(e)}")
+            return self.current_value if self.current_value is not None else price
 
 # --- Incremental MACD as previously integrated ---
 class IncrementalMACD:
@@ -280,22 +172,37 @@ class IncrementalMACD:
         self.fast = fast
         self.slow = slow
         self.signal = signal
-        self.fast_ema = first_price
-        self.slow_ema = first_price
-        self.macd = 0.0
-        self.signal_line = 0.0
+        self.initialized = False
+        self.fast_ema = IncrementalEMA(fast, first_price)
+        self.slow_ema = IncrementalEMA(slow, first_price)
+        self.signal_ema = IncrementalEMA(signal, first_price)
+ 
+    def reset(self):
+        """Reset all MACD components"""
+        self.fast_ema.reset()
+        self.slow_ema.reset()
+        self.signal_ema.reset()
+        self.initialized = False
+        
     def update(self, price: float) -> Tuple[float, float, float]:
-        if self.fast_ema is None or self.slow_ema is None:
-            self.fast_ema = self.slow_ema = price
-            self.macd = 0.0
-            self.signal_line = 0.0
-        else:
-            self.fast_ema = update_ema(price, self.fast_ema, self.fast)
-            self.slow_ema = update_ema(price, self.slow_ema, self.slow)
-            self.macd = self.fast_ema - self.slow_ema
-            self.signal_line = update_ema(self.macd, self.signal_line, self.signal)
-        histogram = self.macd - self.signal_line
-        return self.macd, self.signal_line, histogram
+        """
+        Update MACD with new price
+        """
+        try:
+            # Validate input
+            if pd.isna(price):
+                return 0.0, 0.0, 0.0
+                
+            fast_ema_val = self.fast_ema.update(price)
+            slow_ema_val = self.slow_ema.update(price)
+            macd_val = fast_ema_val - slow_ema_val
+            signal_val = self.signal_ema.update(macd_val)
+            histogram = macd_val - signal_val
+                
+            return macd_val, signal_val, histogram
+        except Exception as e:
+            logger.error(f"MACD calculation error: {str(e)}")
+            return 0.0, 0.0, 0.0
 
 # --- Incremental VWAP (per session/day) ---
 class IncrementalVWAP:
@@ -303,46 +210,39 @@ class IncrementalVWAP:
     Incremental VWAP for intraday/session use with robust error handling.
     """
     def __init__(self):
-        self.cum_tpv = 0.0
-        self.cum_vol = 0.0
-        self.last_vwap = None  # Store last valid VWAP for fallback
+        self.volume_sum = 0.0
+        self.pv_sum = 0.0
+        self.initialized = False
         
-    def update(self, price, volume, high=None, low=None, close=None):
-        try:
-            # Validate inputs
-            if pd.isna(price) or price <= 0:
-                return self.last_vwap if self.last_vwap is not None else price
-                
-            # Handle invalid volume
-            if pd.isna(volume) or volume < 0:
-                volume = 0
-                
-            if high is not None and low is not None and close is not None:
-                if not (pd.isna(high) or pd.isna(low) or pd.isna(close)):
-                    typical_price = (high + low + close) / 3
-                else:
-                    typical_price = price
-            else:
-                typical_price = price
-                
-            self.cum_tpv += typical_price * volume
-            self.cum_vol += volume
-            
-            # Safe calculation with fallback
-            if self.cum_vol > 0:
-                self.last_vwap = self.cum_tpv / self.cum_vol
-            else:
-                self.last_vwap = typical_price
-                
-            return self.last_vwap
-        except Exception as e:
-            logger.error(f"VWAP calculation error: {str(e)}")
-            return self.last_vwap if self.last_vwap is not None else price
-            
     def reset(self):
-        self.cum_tpv = 0.0
-        self.cum_vol = 0.0
-        # Don't reset last_vwap to maintain a value during transitions
+        """Reset VWAP to initial state"""
+        self.volume_sum = 0.0
+        self.pv_sum = 0.0
+        self.initialized = False
+     
+    def update(self, price: float, volume: int, **kwargs) -> float:
+        """
+        Update VWAP with new price and volume
+        """
+        try:
+            if volume is None or volume <= 0:
+                # nothing to accumulate; return last VWAP if available
+                if not self.initialized:
+                    return float('nan')
+                return (self.pv_sum / self.volume_sum) if self.volume_sum > 0 else float('nan')
+
+            if not self.initialized:
+                self.volume_sum = float(volume)
+                self.pv_sum = float(price) * float(volume)
+                self.initialized = True
+            else:
+                self.volume_sum += float(volume)
+                self.pv_sum += float(price) * float(volume)
+
+            return self.pv_sum / self.volume_sum
+        except Exception as e:
+            logger.error(f"VWAP update error: {e}")
+            return (self.pv_sum / self.volume_sum) if self.volume_sum > 0 else float('nan')
 
 class IncrementalATR:
     """
@@ -350,102 +250,36 @@ class IncrementalATR:
     """
     def __init__(self, period=14, first_close=None):
         self.period = period
-        self.atr = None
+        self.true_range_ema = IncrementalEMA(period)
         self.prev_close = first_close
+        self.initialized = first_close is not None
+        
+    def reset(self):
+        """Reset ATR to initial state"""
+        self.true_range_ema.reset()
+        self.prev_close = None
         self.initialized = False
-        self.tr_queue = []
-        
-    def update(self, high, low, close):
+     
+    def update(self, high: float, low: float, close: float) -> float:
+        """
+        Update ATR with new high, low, close
+        """
         try:
-            # Validate inputs
-            if pd.isna(high) or pd.isna(low) or pd.isna(close):
-                return self.atr if self.atr is not None else 0.0
-                
-            # Ensure high >= low (data consistency)
-            if high < low:
-                high, low = low, high  # Swap if inverted
-                
             if self.prev_close is None:
+                # On first call set prev_close and return NaN (no TR history)
                 tr = high - low
-            else:
-                tr = max(
-                    high - low,
-                    abs(high - self.prev_close),
-                    abs(low - self.prev_close)
-                )
-                
-            if not self.initialized:
-                self.tr_queue.append(tr)
-                if len(self.tr_queue) == self.period:
-                    self.atr = sum(self.tr_queue) / self.period
-                    self.initialized = True
-            else:
-                self.atr = (self.atr * (self.period - 1) + tr) / self.period
-                
+                val = self.true_range_ema.update(tr)
+                self.prev_close = close
+                self.initialized = True
+                return val
+            tr = max(high - low, abs(high - self.prev_close), abs(low - self.prev_close))
+            val = self.true_range_ema.update(tr)
             self.prev_close = close
-            return self.atr if self.atr is not None else tr
+            return val
         except Exception as e:
-            logger.error(f"ATR calculation error: {str(e)}")
-            return self.atr if self.atr is not None else 0.0
-
-class IncrementalEMA:
-    """
-    Incremental EMA tracker with robust error handling.
-    """
-    def __init__(self, period: int, first_price: float = None):
-        self.period = period
-        self.ema = first_price
-        
-    def update(self, price: float) -> float:
-        try:
-            # Validate input
-            if pd.isna(price):
-                return self.ema  # Return last value if available
-                
-            if self.ema is None:
-                self.ema = price
-            else:
-                self.ema = update_ema(price, self.ema, self.period)
-            return self.ema
-        except Exception as e:
-            logger.error(f"EMA calculation error: {str(e)}")
-            return self.ema if self.ema is not None else price
-
-class IncrementalMACD:
-    """
-    Incremental MACD with robust error handling.
-    """
-    def __init__(self, fast=12, slow=26, signal=9, first_price=None):
-        self.fast = fast
-        self.slow = slow
-        self.signal = signal
-        self.fast_ema = first_price
-        self.slow_ema = first_price
-        self.macd = 0.0
-        self.signal_line = 0.0
-        
-    def update(self, price: float) -> Tuple[float, float, float]:
-        try:
-            # Validate input
-            if pd.isna(price):
-                return self.macd, self.signal_line, (self.macd - self.signal_line)
-                
-            if self.fast_ema is None or self.slow_ema is None:
-                self.fast_ema = self.slow_ema = price
-                self.macd = 0.0
-                self.signal_line = 0.0
-            else:
-                self.fast_ema = update_ema(price, self.fast_ema, self.fast)
-                self.slow_ema = update_ema(price, self.slow_ema, self.slow)
-                self.macd = self.fast_ema - self.slow_ema
-                self.signal_line = update_ema(self.macd, self.signal_line, self.signal)
-                
-            histogram = self.macd - self.signal_line
-            return self.macd, self.signal_line, histogram
-        except Exception as e:
-            logger.error(f"MACD calculation error: {str(e)}")
-            return self.macd, self.signal_line, (self.macd - self.signal_line)
-
+            logger.error(f"ATR update error: {e}")
+            # best-effort return
+            return self.true_range_ema.current_value if getattr(self.true_range_ema, "current_value", None) is not None else float('nan')
 
 """
 PARAMETER NAMING CONVENTION:
