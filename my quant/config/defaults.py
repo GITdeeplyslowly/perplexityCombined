@@ -97,6 +97,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "log_progress": True,
         "max_signal_reasons": 5,
         "log_to_file": True,
-        "log_file": "unified_gui.log"
+        "log_file": "unified_gui.log",
+        "log_level_overrides": {},
+        # Number of ticks between verbose per-tick debug messages.
+        # Controlled only via DEFAULTS -> GUI -> frozen config (SSOT).
+        "tick_log_interval": 100
     }
 }

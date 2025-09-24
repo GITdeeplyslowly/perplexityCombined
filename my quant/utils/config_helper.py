@@ -73,7 +73,7 @@ def validate_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
         'capital': ['initial_capital'],
         'instrument': ['symbol', 'lot_size', 'tick_size', 'product_type'],
         'session': ['is_intraday', 'start_hour', 'start_min', 'end_hour', 'end_min', 'timezone'],
-        'logging': ['verbosity', 'log_to_file', 'log_file']
+        'logging': ['verbosity', 'log_to_file', 'log_file', 'log_level_overrides']
     }
 
     for section, keys in required.items():

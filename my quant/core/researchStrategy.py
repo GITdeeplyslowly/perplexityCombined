@@ -68,15 +68,15 @@ class ModularIntradayStrategy:
     Unified long-only intraday strategy supporting multiple indicators.
     """
     
-    def __init__(self, config: Dict[str, Any], indicators_module=None):
-        """
-        Initialize strategy with parameters.
-        
-        Args:
-            config: Strategy parameters from config
-        """
-        self.config = config
-        self.config_accessor = ConfigAccessor(config)
+    def __init__(self, frozen_config):
+        # frozen_config is expected to be MappingProxyType produced by GUI (SSOT)
+        # Use ConfigAccessor to read canonical config values (no hard-coded literals)
+        self.config_accessor = ConfigAccessor(frozen_config)
+        # Read tick logging interval from the logging section (SSOT)
+        # This controls how frequently per-tick verbose debug messages are emitted
+        self.tick_log_interval = int(self.config_accessor.get_logging_param('tick_log_interval'))
+        # Per-run tick counter used to rate-limit per-tick debug logs
+        self.tick_counter = 0
 
         # --- Strategy section (use values from defaults.py only) ---
         # Use strict API: no 'cast' keyword on accessor; do explicit conversion where needed.
@@ -269,10 +269,13 @@ class ModularIntradayStrategy:
         except Exception:
             atr_len = 14
         self.atr_tracker = IncrementalATR(period=atr_len)
-        
+    
         # Reset green bars tracking
         self.green_bars_count = 0
         self.last_bar_data = None
+        
+        # NEW: Initialize tick-to-tick price tracking
+        self.prev_tick_price = None
 
     def reset_session_indicators(self):
         """Reset session-based indicators (like VWAP) for new trading session."""
@@ -421,8 +424,8 @@ class ModularIntradayStrategy:
             gating_reasons.append(f"In no-trade start period ({current_time.time()} < {session_start.time()} + {self.no_trade_start_minutes}m)")
         if current_time > session_end - timedelta(minutes=self.no_trade_end_minutes):
             gating_reasons.append(f"In no-trade end period ({current_time.time()} > {session_end.time()} - {self.no_trade_end_minutes}m)")
-        if not self._check_consecutive_green_bars():
-            gating_reasons.append(f"Not enough green bars ({self.green_bars_count} < {self.consecutive_green_bars_required})")
+        if not self._check_consecutive_green_ticks():
+            gating_reasons.append(f"Need {self.consecutive_green_bars_required} green ticks, have {self.green_bars_count}")
         if gating_reasons:
             logger.info(f"[ENTRY BLOCKED] at {current_time}: {' | '.join(gating_reasons)}")
             return False
@@ -993,41 +996,44 @@ class ModularIntradayStrategy:
             if self.use_atr:
                 atr_val = self.atr_tracker.update(high=high_price, low=low_price, close=close_price)
                 updated_row['atr'] = atr_val
-    
-            # Update green-bars and return updated row
-            self._update_green_bars_count(updated_row)
+
+            # Update green-tick count and return updated row
+            self._update_green_tick_count(close_price)
             return updated_row
     
         except Exception as e:
             logger.error(f"Error in incremental processing: {e}")
             return row
     
-    def _update_green_bars_count(self, row: pd.Series):
+    def _update_green_tick_count(self, current_price: float):
         """
-        Update consecutive green bars counter based on current bar data.
-        A green bar is defined as close > open.
+        Update consecutive green ticks counter based on tick-to-tick price movement.
+        A green tick is defined as current_price > prev_tick_price.
         """
         try:
-            if 'open' in row and 'close' in row:
-                # Current bar is green if close > open
-                is_green_bar = row['close'] > row['open']
-                
-                # Reset counter if red bar detected
-                if not is_green_bar:
-                    self.green_bars_count = 0
-                else:
-                    # Increment counter for green bar
+            if self.prev_tick_price is None:
+                # First tick of session or after reset
+                self.green_bars_count = 0
+                logger.debug(f"First tick: price={current_price:.2f}, green_count=0")
+            else:
+                # Compare with previous tick
+                if current_price > self.prev_tick_price:
                     self.green_bars_count += 1
-                    
-                # Store current bar for reference
-                self.last_bar_data = row.copy()
-                
-                logger.debug(f"Green bars count updated: {self.green_bars_count}/{self.consecutive_green_bars_required}")
-        except Exception as e:
-            logger.error(f"Error updating green bars count: {e}")
+                    logger.debug(f"Green tick: {self.prev_tick_price:.2f} -> {current_price:.2f}, count={self.green_bars_count}")
+                else:
+                    # Reset counter on price decrease or equal
+                    self.green_bars_count = 0
+                    logger.debug(f"Red tick: {self.prev_tick_price:.2f} -> {current_price:.2f}, count reset to 0")
+        
+            # Update previous price for next comparison
+            self.prev_tick_price = current_price
             
-    def _check_consecutive_green_bars(self) -> bool:
-        """Check if we have enough consecutive green bars for re-entry."""
+            logger.debug(f"Green tick count: {self.green_bars_count}/{self.consecutive_green_bars_required}")
+        except Exception as e:
+            logger.error(f"Error updating green tick count: {e}")
+
+    def _check_consecutive_green_ticks(self) -> bool:
+        """Check if we have enough consecutive green ticks for entry."""
         return self.green_bars_count >= self.consecutive_green_bars_required
         
     def process_tick_or_bar_legacy(self, row: pd.Series):

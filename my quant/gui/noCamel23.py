@@ -154,32 +154,27 @@ class UnifiedTradingGUI(tk.Tk):
 
 
     def _apply_preferences_to_gui(self, preferences):
-        """Apply saved preferences to GUI controls - Complete implementation"""
+        """Apply saved preferences to GUI controls"""
+        # Map JSON preferences to GUI variables
+        # Process only preferences that differ from defaults
+
         # Strategy parameters
         if 'strategy' in preferences:
-            strategy_prefs = preferences['strategy']
-            self._set_if_exists(self.bt_use_ema_crossover, 'use_ema_crossover', strategy_prefs)
-            self._set_if_exists(self.bt_use_macd, 'use_macd', strategy_prefs)
-            self._set_if_exists(self.bt_use_vwap, 'use_vwap', strategy_prefs)
-            self._set_if_exists(self.bt_use_rsi_filter, 'use_rsi_filter', strategy_prefs)
-            self._set_if_exists(self.bt_use_htf_trend, 'use_htf_trend', strategy_prefs)
-            self._set_if_exists(self.bt_fast_ema, 'fast_ema', strategy_prefs)
-            self._set_if_exists(self.bt_slow_ema, 'slow_ema', strategy_prefs)
-            self._set_if_exists(self.bt_macd_fast, 'macd_fast', strategy_prefs)
-            self._set_if_exists(self.bt_macd_slow, 'macd_slow', strategy_prefs)
-            self._set_if_exists(self.bt_macd_signal, 'macd_signal', strategy_prefs)
-    
-        # Risk parameters - Complete implementation
+            try:
+                for k, v in preferences['strategy'].items():
+                    self._set_if_exists(getattr(self, f"bt_{k}", None) or getattr(self, f"ft_{k}", None), k, preferences['strategy'])
+            except Exception:
+                pass
+
+
+        # Risk parameters
         if 'risk' in preferences:
-            risk_prefs = preferences['risk']
-            self._set_if_exists(self.bt_base_sl_points, 'base_sl_points', risk_prefs)
-            self._set_if_exists(self.bt_use_trail_stop, 'use_trail_stop', risk_prefs)
-            self._set_if_exists(self.bt_trail_activation, 'trail_activation_points', risk_prefs)
-            self._set_if_exists(self.bt_trail_distance, 'trail_distance_points', risk_prefs)
-            # Handle TP points array
-            if 'tp_points' in risk_prefs and len(risk_prefs['tp_points']) >= 4:
-                for i, tp_var in enumerate(self.bt_tp_points[:4]):
-                    tp_var.set(str(risk_prefs['tp_points'][i]))
+            try:
+                for k, v in preferences['risk'].items():
+                    # apply where relevant
+                    pass
+            except Exception:
+                pass
 
         # Capital settings
         if 'capital' in preferences:
@@ -218,14 +213,8 @@ class UnifiedTradingGUI(tk.Tk):
         """Set tkinter variable if key exists in preferences"""
         if key in prefs_dict:
             try:
-                if isinstance(var, tk.StringVar):
+                if isinstance(var, tk.StringVar) or isinstance(var, tk.BooleanVar):
                     var.set(str(prefs_dict[key]))
-                elif isinstance(var, tk.BooleanVar):
-                    var.set(bool(prefs_dict[key]))
-                elif isinstance(var, tk.IntVar):
-                    var.set(int(prefs_dict[key]))
-                elif isinstance(var, tk.DoubleVar):
-                    var.set(float(prefs_dict[key]))
             except Exception:
                 pass
 
@@ -315,24 +304,10 @@ class UnifiedTradingGUI(tk.Tk):
         config['backtest']['data_path'] = self.bt_data_file.get()
 
         # --- Ensure logging config is propagated to backtest config ---
-        # Include logging defaults from DEFAULT_CONFIG
+        # Include logging defaults so the enable_smart_logger flag and verbosity
+        # flow from GUI/defaults into the runner. Later expose GUI controls to edit these.
+        #        from config.defaults import DEFAULT_CONFIG
         config['logging'] = DEFAULT_CONFIG.get('logging', {}).copy()
- 
-        # Add logger level overrides from GUI
-        log_level_overrides = {}
-        if hasattr(self, 'logger_levels'):
-            for logger_name, level_var in self.logger_levels.items():
-                level = level_var.get()
-                if level != "DEFAULT":  # Only add non-default values
-                    log_level_overrides[logger_name] = level
- 
-        config['logging']['log_level_overrides'] = log_level_overrides
-        # Include the tick logging interval from GUI (SSOT entry)
-        try:
-            config['logging']['tick_log_interval'] = int(self.logger_tick_interval.get())
-        except Exception:
-            # fall back to defaults if GUI value malformed (should not happen if GUI validates)
-            config['logging']['tick_log_interval'] = DEFAULT_CONFIG.get('logging', {}).get('tick_log_interval', 100)
  
         # FINAL: authoritative validation + freeze (GUI SSOT)
         try:
@@ -884,24 +859,7 @@ class UnifiedTradingGUI(tk.Tk):
             messagebox.showerror("Forward Test Error", f"Failed to start forward test: {str(e)}")
 
     def _ft_stop_forward_test(self):
-        """Stop the running forward test"""
-        try:
-            if self._forward_thread and self._forward_thread.is_alive():
-                # Set a stop flag if the trader has one
-                if hasattr(self, '_stop_forward_test_flag'):
-                    self._stop_forward_test_flag = True
-            
-                self.ft_result_box.config(state="normal")
-                self.ft_result_box.insert("end", "Stopping forward test...\n")
-                self.ft_result_box.config(state="disabled")
-            
-                logger.info("Forward test stop requested")
-                messagebox.showinfo("Stop", "Stop signal sent to forward test.")
-            else:
-                messagebox.showinfo("Stop", "No forward test is currently running.")
-        except Exception as e:
-            logger.error(f"Error stopping forward test: {e}")
-            messagebox.showerror("Error", f"Failed to stop forward test: {e}")
+        messagebox.showinfo("Stop", "Forward test stop functionality not yet implemented.")
 
     # --- Status Tab ---
     def _build_log_tab(self):
@@ -912,42 +870,6 @@ class UnifiedTradingGUI(tk.Tk):
         row += 1
 
         ttk.Label(frame, text=f"Log File: {LOG_FILENAME}").grid(row=row, column=0, sticky="w", pady=2)
-        row += 1
-
-        # Add log level overrides section
-        ttk.Label(frame, text="Logger Level Overrides", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        
-        log_levels_frame = ttk.Frame(frame)
-        log_levels_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        row += 1
-        
-        # Add some common loggers that users might want to override
-        common_loggers = [
-            "core.indicators", 
-            "core.researchStrategy",
-            "backtest.backtest_runner",
-            "utils.simple_loader"
-        ]
-        
-        # Create controls for each logger
-        for i, logger_name in enumerate(common_loggers):
-            ttk.Label(log_levels_frame, text=f"{logger_name}:").grid(row=i//2, column=(i%2)*2, sticky="e", padx=5)
-            if not hasattr(self, 'logger_levels'):
-                self.logger_levels = {}
-            if logger_name not in self.logger_levels:
-                self.logger_levels[logger_name] = tk.StringVar(value="DEFAULT")
-            ttk.Combobox(
-                log_levels_frame,
-                textvariable=self.logger_levels[logger_name],
-                values=["DEFAULT", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-                width=10,
-                state='readonly'
-            ).grid(row=i//2, column=(i%2)*2+1, sticky="w", padx=5, pady=2)
-
-        # Tick log interval control (SSOT editable via GUI only)
-        ttk.Label(frame, text="Tick Log Interval (ticks):").grid(row=row, column=0, sticky="e", padx=5, pady=(8,2))
-        ttk.Entry(frame, textvariable=self.logger_tick_interval, width=10).grid(row=row, column=1, sticky="w", padx=5, pady=(8,2))
         row += 1
 
         ttk.Button(frame, text="View Log File", command=self._open_log_file).grid(row=row, column=0, sticky="w", pady=5)
@@ -1342,7 +1264,7 @@ class UnifiedTradingGUI(tk.Tk):
         self._backtest_thread = None
         self._forward_thread = None
         self.symbol_token_map = {}
-        
+
         # Capital management variables
         self.capital_usable = tk.StringVar(value="â‚¹0 (0%)")
         self.max_lots = tk.StringVar(value="0 lots (0 shares)")
@@ -1365,29 +1287,10 @@ class UnifiedTradingGUI(tk.Tk):
         self.ft_session_end_hour = tk.StringVar(value="15")
         self.ft_session_end_min = tk.StringVar(value="30")
         # Missing forward-test buffer/timezone variables (previously caused NameError)
-        session_config = self.runtime_config.get('session', {})
-        risk_config = self.runtime_config.get('risk', {})
+        self.ft_start_buffer = tk.StringVar(value="5")
+        self.ft_end_buffer = tk.StringVar(value="20")
+        self.ft_timezone = tk.StringVar(value="Asia/Kolkata")
 
-        self.ft_start_buffer = tk.StringVar(value=str(session_config['start_buffer_minutes']))
-        self.ft_end_buffer = tk.StringVar(value=str(session_config['end_buffer_minutes']))
-        self.ft_timezone = tk.StringVar(value=session_config['timezone'])
-
-        # Add missing forward test TP variables (fixes NameError in _ft_run_forward_test)
-        tp_points = risk_config['tp_points']
-        self.ft_tp1_points = tk.StringVar(value=str(tp_points[0]))
-        self.ft_tp2_points = tk.StringVar(value=str(tp_points[1]))
-        self.ft_tp3_points = tk.StringVar(value=str(tp_points[2]))
-        self.ft_tp4_points = tk.StringVar(value=str(tp_points[3]))
-
-        # Logger level overrides - ADD THIS SECTION
-        self.logger_levels = {}
-        for logger_name in ["core.indicators", "core.researchStrategy", "backtest.backtest_runner", "utils.simple_loader"]:
-            self.logger_levels[logger_name] = tk.StringVar(value="DEFAULT")
-        # Tick logging interval (SSOT-controlled value shown/edited in GUI)
-        # Stored as stringvar for the widget; converted to int when building config
-        self.logger_tick_interval = tk.StringVar(
-            value=str(DEFAULT_CONFIG.get('logging', {}).get('tick_log_interval', 100))
-        )
     def _create_gui_framework(self):
         """Create the core GUI framework - notebook and tabs"""
         # Create notebook for tabs
@@ -1619,11 +1522,7 @@ class UnifiedTradingGUI(tk.Tk):
         if os.path.exists(prefs_file):
             try:
                 with open(prefs_file, 'r') as f:
-                    content = f.read().strip()
-                    if not content:
-                        logger.warning(f"Empty preferences file: {prefs_file}")
-                        return
-                    user_prefs = json.loads(content)
+                    user_prefs = json.load(f)
 
                 # Shallow merge per-section (preserve keys not represented in prefs)
                 for section, params in user_prefs.items():
@@ -1634,95 +1533,6 @@ class UnifiedTradingGUI(tk.Tk):
             except Exception:
                 logger.exception("Failed to merge user preferences into runtime config")
 
-    def _initialize_variables_from_runtime_config(self):
-        """Initialize GUI variables systematically from runtime_config (replaces _initialize_variables_from_defaults)"""
-        # This method is called in __init__ but was missing
-        strategy_config = self.runtime_config.get('strategy', {})
-        risk_config = self.runtime_config.get('risk', {})
-        capital_config = self.runtime_config.get('capital', {})
-        instrument_config = self.runtime_config.get('instrument', {})
-        session_config = self.runtime_config.get('session', {})
-        
-        # Strategy variables - systematic initialization from runtime config
-        self.bt_use_ema_crossover = tk.BooleanVar(value=strategy_config.get('use_ema_crossover', True))
-        self.bt_use_macd = tk.BooleanVar(value=strategy_config.get('use_macd', True))
-        self.bt_use_vwap = tk.BooleanVar(value=strategy_config.get('use_vwap', True))
-        self.bt_use_rsi_filter = tk.BooleanVar(value=strategy_config.get('use_rsi_filter', False))
-        self.bt_use_htf_trend = tk.BooleanVar(value=strategy_config.get('use_htf_trend', False))
-        self.bt_use_bollinger_bands = tk.BooleanVar(value=strategy_config.get('use_bollinger_bands', False))
-        self.bt_use_stochastic = tk.BooleanVar(value=strategy_config.get('use_stochastic', False))
-        self.bt_use_atr = tk.BooleanVar(value=strategy_config.get('use_atr', True))
-        
-        # EMA parameters
-        self.bt_fast_ema = tk.StringVar(value=str(strategy_config.get('fast_ema', 9)))
-        self.bt_slow_ema = tk.StringVar(value=str(strategy_config.get('slow_ema', 21)))
-        
-        # MACD parameters
-        self.bt_macd_fast = tk.StringVar(value=str(strategy_config.get('macd_fast', 12)))
-        self.bt_macd_slow = tk.StringVar(value=str(strategy_config.get('macd_slow', 26)))
-        self.bt_macd_signal = tk.StringVar(value=str(strategy_config.get('macd_signal', 9)))
-        
-        # RSI parameters
-        self.bt_rsi_length = tk.StringVar(value=str(strategy_config.get('rsi_length', 14)))
-        self.bt_rsi_oversold = tk.StringVar(value=str(strategy_config.get('rsi_oversold', 30)))
-        self.bt_rsi_overbought = tk.StringVar(value=str(strategy_config.get('rsi_overbought', 70)))
-        
-        # HTF parameter
-        self.bt_htf_period = tk.StringVar(value=str(strategy_config.get('htf_period', 20)))
-        self.bt_consecutive_green_bars = tk.StringVar(value=str(strategy_config.get('consecutive_green_bars', 3)))
-        
-        # Risk management
-        self.bt_base_sl_points = tk.StringVar(value=str(risk_config.get('base_sl_points', 15.0)))
-        tp_points = risk_config.get('tp_points', [10.0, 25.0, 50.0, 100.0])
-        self.bt_tp_points = [tk.StringVar(value=str(p)) for p in tp_points]
-        tp_percents = risk_config.get('tp_percents', [0.25, 0.25, 0.25, 0.25])
-        self.bt_tp_percents = [tk.StringVar(value=str(p*100)) for p in tp_percents]
-        self.bt_use_trail_stop = tk.BooleanVar(value=risk_config.get('use_trail_stop', False))
-        self.bt_trail_activation = tk.StringVar(value=str(risk_config.get('trail_activation_points', 5.0)))
-        self.bt_trail_distance = tk.StringVar(value=str(risk_config.get('trail_distance_points', 7.0)))
-        self.bt_risk_per_trade_percent = tk.StringVar(value=str(risk_config.get('risk_per_trade_percent', 1.0)))
-        
-        # Capital settings
-        self.bt_initial_capital = tk.StringVar(value=str(capital_config.get('initial_capital', 100000.0)))
-        
-        # Instrument settings
-        self.bt_symbol = tk.StringVar(value=instrument_config.get('symbol', 'NIFTY'))
-        self.bt_exchange = tk.StringVar(value=instrument_config.get('exchange', 'NSE_FO'))
-        self.bt_lot_size = tk.StringVar(value=str(instrument_config.get('lot_size', 75)))
-        
-        # Session settings
-        self.bt_is_intraday = tk.BooleanVar(value=session_config.get('is_intraday', True))
-        self.bt_session_start_hour = tk.StringVar(value=str(session_config.get('start_hour', 9)))
-        self.bt_session_start_min = tk.StringVar(value=str(session_config.get('start_min', 15)))
-        self.bt_session_end_hour = tk.StringVar(value=str(session_config.get('end_hour', 15)))
-        self.bt_session_end_min = tk.StringVar(value=str(session_config.get('end_min', 30)))
-
-    def _validate_data_columns(self, data_file, required_columns):
-        """Validate that CSV file has required columns"""
-        try:
-            import pandas as pd
-            df = pd.read_csv(data_file, nrows=1)  # Read just header
-            available_columns = [col.lower() for col in df.columns]
-            missing_columns = []
-            
-            for col in required_columns:
-                if col.lower() not in available_columns:
-                    missing_columns.append(col)
-            
-            if missing_columns:
-                raise ValueError(f"Missing required columns: {missing_columns}")
-            
-            logger.info(f"Data validation passed for {data_file}")
-            return True
-        except Exception as e:
-            logger.error(f"Data validation failed: {e}")
-            raise
-
-    def _update_refresh_status(self, status_message):
-        """Update refresh status for symbol cache operations"""
-        if hasattr(self, 'ft_cache_status'):
-            self.ft_cache_status.set(status_message)
-        logger.info(f"Symbol cache status: {status_message}")
 def main():
     """Main entry point for the unified trading GUI"""
     try:

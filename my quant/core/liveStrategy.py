@@ -232,8 +232,8 @@ class ModularIntradayStrategy:
             gating_reasons.append(f"In no-trade start period ({current_time.time()} < {session_start.time()} + {self.no_trade_start_minutes}m)")
         if current_time > session_end - timedelta(minutes=self.no_trade_end_minutes):
             gating_reasons.append(f"In no-trade end period ({current_time.time()} > {session_end.time()} - {self.no_trade_end_minutes}m)")
-        if not self._check_consecutive_green_bars():
-            gating_reasons.append(f"Not enough green bars ({self.green_bars_count} < {self.consecutive_green_bars_required})")
+        if not self._check_consecutive_green_ticks():
+            gating_reasons.append(f"Need {self.consecutive_green_bars_required} green ticks, have {self.green_bars_count}")
         if gating_reasons:
             logger.info(f"[ENTRY BLOCKED] at {current_time}: {' | '.join(gating_reasons)}")
             return False
@@ -296,6 +296,9 @@ class ModularIntradayStrategy:
         # reset green-bars tracking
         self.green_bars_count = 0
         self.last_bar_data = None
+        
+        # NEW: Initialize tick-to-tick price tracking
+        self.prev_tick_price = None
 
     def reset_session_indicators(self):
         """Reset session-based indicators (like VWAP) for a new trading session."""
@@ -666,8 +669,8 @@ class ModularIntradayStrategy:
                 atr_val = self.atr_tracker.update(high=high_price, low=low_price, close=close_price)
                 updated['atr'] = atr_val
 
-            # Update green bars count and return
-            self._update_green_bars_count(updated)
+            # Update green tick count and return
+            self._update_green_tick_count(close_price)
             return updated
         except Exception as e:
             logger.error(f"Error in process_tick_or_bar: {e}")
@@ -707,6 +710,37 @@ class ModularIntradayStrategy:
     # alias for any callers expecting should_close
     def should_close(self, row: pd.Series, timestamp: datetime, position_manager=None) -> bool:
         return self.should_exit(row, timestamp, position_manager)
+
+    def _update_green_tick_count(self, current_price: float):
+        """
+        Update consecutive green ticks counter based on tick-to-tick price movement.
+        A green tick is defined as current_price > prev_tick_price.
+        """
+        try:
+            if self.prev_tick_price is None:
+                # First tick of session or after reset
+                self.green_bars_count = 0
+                logger.debug(f"First tick: price={current_price:.2f}, green_count=0")
+            else:
+                # Compare with previous tick
+                if current_price > self.prev_tick_price:
+                    self.green_bars_count += 1
+                    logger.debug(f"Green tick: {self.prev_tick_price:.2f} -> {current_price:.2f}, count={self.green_bars_count}")
+                else:
+                    # Reset counter on price decrease or equal
+                    self.green_bars_count = 0
+                    logger.debug(f"Red tick: {self.prev_tick_price:.2f} -> {current_price:.2f}, count reset to 0")
+            
+            # Update previous price for next comparison
+            self.prev_tick_price = current_price
+            
+            logger.debug(f"Green tick count: {self.green_bars_count}/{self.consecutive_green_bars_required}")
+        except Exception as e:
+            logger.error(f"Error updating green tick count: {e}")
+
+    def _check_consecutive_green_ticks(self) -> bool:
+        """Check if we have enough consecutive green ticks for entry."""
+        return self.green_bars_count >= self.consecutive_green_bars_required
 
 if __name__ == "__main__":
     # Minimal smoke test for development

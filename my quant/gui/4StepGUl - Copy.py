@@ -210,90 +210,67 @@ class UnifiedTradingGUI(tk.Tk):
         self.session_frame = None
 
     def _initialize_variables_from_config(self, config):
-        """Initialize all GUI variables from a provided config (single source for widgets).
+        """Initialize all GUI variables from a provided config (single source for widgets)"""
+        # sections from provided config
+        strategy_defaults = config.get('strategy', {})
+        risk_defaults = config.get('risk', {})
+        capital_defaults = config.get('capital', {})
+        instrument_defaults = config.get('instrument', {})
+        session_defaults = config.get('session', {})
 
-        Merge DEFAULT_CONFIG (SSOT) with provided `config` so no literals are introduced here.
-        Set values on the pre-created tk.Variable instances (do NOT reassign them).
-        """
-        # Merge per-section defaults: provided config overrides DEFAULT_CONFIG
-        def merged_section(section):
-            base = DEFAULT_CONFIG.get(section, {}) or {}
-            overlay = config.get(section, {}) or {}
-            merged = base.copy()
-            merged.update(overlay)
-            return merged
-
-        strategy_defaults = merged_section('strategy')
-        risk_defaults = merged_section('risk')
-        capital_defaults = merged_section('capital')
-        instrument_defaults = merged_section('instrument')
-        session_defaults = merged_section('session')
-
-        # --- Strategy variables: set values on pre-created tk.Variable instances ---
-        self.bt_use_ema_crossover.set(bool(strategy_defaults.get('use_ema_crossover', False)))
-        self.bt_use_macd.set(bool(strategy_defaults.get('use_macd', False)))
-        self.bt_use_vwap.set(bool(strategy_defaults.get('use_vwap', False)))
-        self.bt_use_rsi_filter.set(bool(strategy_defaults.get('use_rsi_filter', False)))
-        self.bt_use_htf_trend.set(bool(strategy_defaults.get('use_htf_trend', False)))
-        self.bt_use_bollinger_bands.set(bool(strategy_defaults.get('use_bollinger_bands', False)))
-        self.bt_use_stochastic.set(bool(strategy_defaults.get('use_stochastic', False)))
-        self.bt_use_atr.set(bool(strategy_defaults.get('use_atr', False)))
+        # --- Strategy variables ---
+        self.bt_use_ema_crossover = tk.BooleanVar(value=strategy_defaults.get('use_ema_crossover', False))
+        self.bt_use_macd = tk.BooleanVar(value=strategy_defaults.get('use_macd', False))
+        self.bt_use_vwap = tk.BooleanVar(value=strategy_defaults.get('use_vwap', False))
+        self.bt_use_rsi_filter = tk.BooleanVar(value=strategy_defaults.get('use_rsi_filter', False))
+        self.bt_use_htf_trend = tk.BooleanVar(value=strategy_defaults.get('use_htf_trend', False))
+        self.bt_use_bollinger_bands = tk.BooleanVar(value=strategy_defaults.get('use_bollinger_bands', False))
+        self.bt_use_stochastic = tk.BooleanVar(value=strategy_defaults.get('use_stochastic', False))
+        self.bt_use_atr = tk.BooleanVar(value=strategy_defaults.get('use_atr', False))
 
         # EMA parameters
-        self.bt_fast_ema.set(str(strategy_defaults.get('fast_ema', '')))
-        self.bt_slow_ema.set(str(strategy_defaults.get('slow_ema', '')))
+        self.bt_fast_ema = tk.StringVar(value=str(strategy_defaults.get('fast_ema', '9')))
+        self.bt_slow_ema = tk.StringVar(value=str(strategy_defaults.get('slow_ema', '21')))
 
         # MACD parameters
-        self.bt_macd_fast.set(str(strategy_defaults.get('macd_fast', '')))
-        self.bt_macd_slow.set(str(strategy_defaults.get('macd_slow', '')))
-        self.bt_macd_signal.set(str(strategy_defaults.get('macd_signal', '')))
+        self.bt_macd_fast = tk.StringVar(value=str(strategy_defaults.get('macd_fast', '12')))
+        self.bt_macd_slow = tk.StringVar(value=str(strategy_defaults.get('macd_slow', '26')))
+        self.bt_macd_signal = tk.StringVar(value=str(strategy_defaults.get('macd_signal', '9')))
 
         # RSI parameters
-        self.bt_rsi_length.set(str(strategy_defaults.get('rsi_length', '')))
-        self.bt_rsi_oversold.set(str(strategy_defaults.get('rsi_oversold', '')))
-        self.bt_rsi_overbought.set(str(strategy_defaults.get('rsi_overbought', '')))
+        self.bt_rsi_length = tk.StringVar(value=str(strategy_defaults.get('rsi_length', 14)))
+        self.bt_rsi_oversold = tk.StringVar(value=str(strategy_defaults.get('rsi_oversold', 30)))
+        self.bt_rsi_overbought = tk.StringVar(value=str(strategy_defaults.get('rsi_overbought', 70)))
 
-        # HTF and consecutive green bars
-        self.bt_htf_period.set(str(strategy_defaults.get('htf_period', '')))
-        self.bt_consecutive_green_bars.set(str(strategy_defaults.get('consecutive_green_bars', '')))
+        # HTF parameter
+        self.bt_htf_period = tk.StringVar(value=str(strategy_defaults.get('htf_period', 20)))
+
+        # --- Consecutive Green Bars parameter ---
+        self.bt_consecutive_green_bars = tk.StringVar(value=str(strategy_defaults.get('consecutive_green_bars', 3)))
 
         # --- Risk management ---
-        self.bt_base_sl_points.set(str(risk_defaults.get('base_sl_points', '')))
-        tp_points = risk_defaults.get('tp_points', [])
-        for i in range(len(self.bt_tp_points)):
-            if i < len(tp_points):
-                self.bt_tp_points[i].set(str(tp_points[i]))
-            else:
-                # if DEFAULT_CONFIG has fewer entries, set to empty so GUI stays driven by SSOT
-                self.bt_tp_points[i].set('')
-
-        tp_percents = risk_defaults.get('tp_percents', [])
-        for i in range(len(self.bt_tp_percents)):
-            if i < len(tp_percents):
-                # present in percent in GUI
-                self.bt_tp_percents[i].set(str(tp_percents[i] * 100))
-            else:
-                self.bt_tp_percents[i].set('')
-
-        self.bt_use_trail_stop.set(bool(risk_defaults.get('use_trail_stop', False)))
-        self.bt_trail_activation.set(str(risk_defaults.get('trail_activation_points', '')))
-        self.bt_trail_distance.set(str(risk_defaults.get('trail_distance_points', '')))
-        self.bt_risk_per_trade_percent.set(str(risk_defaults.get('risk_per_trade_percent', '')))
+        self.bt_base_sl_points = tk.StringVar(value=str(risk_defaults.get('base_sl_points', 12.0)))
+        self.bt_tp_points = [tk.StringVar(value=str(p)) for p in risk_defaults.get('tp_points', [10.0, 25.0, 50.0, 100.0])]
+        self.bt_tp_percents = [tk.StringVar(value=str(p*100)) for p in risk_defaults.get('tp_percents', [0.25,0.25,0.25,0.25])]
+        self.bt_use_trail_stop = tk.BooleanVar(value=risk_defaults.get('use_trail_stop', False))
+        self.bt_trail_activation = tk.StringVar(value=str(risk_defaults.get('trail_activation_points', 5.0)))
+        self.bt_trail_distance = tk.StringVar(value=str(risk_defaults.get('trail_distance_points', 7.0)))
+        self.bt_risk_per_trade_percent = tk.StringVar(value=str(risk_defaults.get('risk_per_trade_percent', 1.0)))
 
         # --- Capital settings ---
-        self.bt_initial_capital.set(str(capital_defaults.get('initial_capital', '')))
+        self.bt_initial_capital = tk.StringVar(value=str(capital_defaults.get('initial_capital', 100000.0)))
 
         # --- Instrument settings ---
-        self.bt_symbol.set(str(instrument_defaults.get('symbol', '')))
-        self.bt_exchange.set(str(instrument_defaults.get('exchange', '')))
-        self.bt_lot_size.set(str(instrument_defaults.get('lot_size', '')))
+        self.bt_symbol = tk.StringVar(value=instrument_defaults.get('symbol', 'NIFTY'))
+        self.bt_exchange = tk.StringVar(value=instrument_defaults.get('exchange', 'NSE_FO'))
+        self.bt_lot_size = tk.StringVar(value=str(instrument_defaults.get('lot_size', 1)))
 
         # --- Session settings ---
-        self.bt_is_intraday.set(bool(session_defaults.get('is_intraday', False)))
-        self.bt_session_start_hour.set(str(session_defaults.get('start_hour', '')))
-        self.bt_session_start_min.set(str(session_defaults.get('start_min', '')))
-        self.bt_session_end_hour.set(str(session_defaults.get('end_hour', '')))
-        self.bt_session_end_min.set(str(session_defaults.get('end_min', '')))
+        self.bt_is_intraday = tk.BooleanVar(value=session_defaults.get('is_intraday', True))
+        self.bt_session_start_hour = tk.StringVar(value=str(session_defaults.get('start_hour', 9)))
+        self.bt_session_start_min = tk.StringVar(value=str(session_defaults.get('start_min', 15)))
+        self.bt_session_end_hour = tk.StringVar(value=str(session_defaults.get('end_hour', 15)))
+        self.bt_session_end_min = tk.StringVar(value=str(session_defaults.get('end_min', 30)))
     # persistence helpers removed per simplified 4-stage workflow (no user_preferences.json)
     # (Removed incomplete method stubs and stray hyphens that produced syntax errors)
     def run_backtest(self):
@@ -349,7 +326,15 @@ class UnifiedTradingGUI(tk.Tk):
         indicators_frame = ttk.Frame(frame)
         indicators_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
 
-        # Use Variables already created/initialized in _initialize_all_variables/_initialize_variables_from_config
+        self.bt_use_ema_crossover = tk.BooleanVar(value=True)
+        self.bt_use_macd = tk.BooleanVar(value=True)
+        self.bt_use_vwap = tk.BooleanVar(value=True)
+        self.bt_use_rsi_filter = tk.BooleanVar(value=False)
+        self.bt_use_htf_trend = tk.BooleanVar(value=True)
+        self.bt_use_bollinger_bands = tk.BooleanVar(value=False)
+        self.bt_use_stochastic = tk.BooleanVar(value=False)
+        self.bt_use_atr = tk.BooleanVar(value=True)
+
         ttk.Checkbutton(indicators_frame, text="EMA Crossover", variable=self.bt_use_ema_crossover).grid(row=0, column=0, sticky="w", padx=5)
         ttk.Checkbutton(indicators_frame, text="MACD", variable=self.bt_use_macd).grid(row=0, column=1, sticky="w", padx=5)
         ttk.Checkbutton(indicators_frame, text="VWAP", variable=self.bt_use_vwap).grid(row=0, column=2, sticky="w", padx=5)
@@ -367,39 +352,47 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_param_frame = ttk.LabelFrame(self.bt_tab, text="Parameters")
         self.bt_param_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
 
-        # Make params_frame a child of the LabelFrame so its widgets appear inside the labelled box
-        params_frame = ttk.Frame(self.bt_param_frame)
-        params_frame.grid(row=0, column=0, sticky="w", padx=5, pady=2)
+        params_frame = ttk.Frame(frame)
+        params_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
 
         # EMA Parameters
         ttk.Label(params_frame, text="Fast EMA:").grid(row=0, column=0, sticky="e", padx=2)
+        self.bt_fast_ema = tk.StringVar(value="9")
         ttk.Entry(params_frame, textvariable=self.bt_fast_ema, width=8).grid(row=0, column=1, padx=2)
 
         ttk.Label(params_frame, text="Slow EMA:").grid(row=0, column=2, sticky="e", padx=2)
+        self.bt_slow_ema = tk.StringVar(value="21")
         ttk.Entry(params_frame, textvariable=self.bt_slow_ema, width=8).grid(row=0, column=3, padx=2)
 
         # MACD Parameters
         ttk.Label(params_frame, text="MACD Fast:").grid(row=1, column=0, sticky="e", padx=2)
+        self.bt_macd_fast = tk.StringVar(value="12")
         ttk.Entry(params_frame, textvariable=self.bt_macd_fast, width=8).grid(row=1, column=1, padx=2)
- 
+
         ttk.Label(params_frame, text="MACD Slow:").grid(row=1, column=2, sticky="e", padx=2)
+        self.bt_macd_slow = tk.StringVar(value="26")
         ttk.Entry(params_frame, textvariable=self.bt_macd_slow, width=8).grid(row=1, column=3, padx=2)
- 
+
         ttk.Label(params_frame, text="MACD Signal:").grid(row=1, column=4, sticky="e", padx=2)
+        self.bt_macd_signal = tk.StringVar(value="9")
         ttk.Entry(params_frame, textvariable=self.bt_macd_signal, width=8).grid(row=1, column=5, padx=2)
- 
+
         # RSI Parameters
         ttk.Label(params_frame, text="RSI Length:").grid(row=2, column=0, sticky="e", padx=2)
+        self.bt_rsi_length = tk.StringVar(value="14")
         ttk.Entry(params_frame, textvariable=self.bt_rsi_length, width=8).grid(row=2, column=1, padx=2)
- 
+
         ttk.Label(params_frame, text="RSI Oversold:").grid(row=2, column=2, sticky="e", padx=2)
+        self.bt_rsi_oversold = tk.StringVar(value="30")
         ttk.Entry(params_frame, textvariable=self.bt_rsi_oversold, width=8).grid(row=2, column=3, padx=2)
- 
+
         ttk.Label(params_frame, text="RSI Overbought:").grid(row=2, column=4, sticky="e", padx=2)
+        self.bt_rsi_overbought = tk.StringVar(value="70")
         ttk.Entry(params_frame, textvariable=self.bt_rsi_overbought, width=8).grid(row=2, column=5, padx=2)
- 
+
         # HTF Parameters
         ttk.Label(params_frame, text="HTF Period:").grid(row=3, column=0, sticky="e", padx=2)
+        self.bt_htf_period = tk.StringVar(value="20")
         ttk.Entry(params_frame, textvariable=self.bt_htf_period, width=8).grid(row=3, column=1, padx=2)
         # Consecutive Green Bars
         ttk.Label(params_frame, text="Green Bars Req:").grid(row=3, column=2, sticky="e", padx=2)
@@ -412,8 +405,9 @@ class UnifiedTradingGUI(tk.Tk):
 
         risk_frame = ttk.Frame(frame)
         risk_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
- 
+
         ttk.Label(risk_frame, text="Stop Loss Points:").grid(row=0, column=0, sticky="e", padx=2)
+        self.bt_base_sl_points = tk.StringVar(value="15")
         ttk.Entry(risk_frame, textvariable=self.bt_base_sl_points, width=8).grid(row=0, column=1, padx=2)
 
         ttk.Label(risk_frame, text="TP1 Points:").grid(row=0, column=2, sticky="e", padx=2)
@@ -426,15 +420,19 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Label(risk_frame, text="TP4 Points:").grid(row=1, column=2, sticky="e", padx=2)
         ttk.Entry(risk_frame, textvariable=self.bt_tp_points[3], width=8).grid(row=1, column=3, padx=2)
 
+        self.bt_use_trail_stop = tk.BooleanVar(value=True)
         ttk.Checkbutton(risk_frame, text="Use Trailing Stop", variable=self.bt_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
 
         ttk.Label(risk_frame, text="Trail Activation Points:").grid(row=2, column=0, sticky="e", padx=2)
+        self.bt_trail_activation = tk.StringVar(value="25")
         ttk.Entry(risk_frame, textvariable=self.bt_trail_activation, width=8).grid(row=2, column=1, padx=2)
 
         ttk.Label(risk_frame, text="Trail Distance Points:").grid(row=2, column=2, sticky="e", padx=2)
+        self.bt_trail_distance = tk.StringVar(value="10")
         ttk.Entry(risk_frame, textvariable=self.bt_trail_distance, width=8).grid(row=2, column=3, padx=2)
 
         ttk.Label(risk_frame, text="Risk % per Trade:").grid(row=2, column=4, sticky="e", padx=2)
+        self.bt_risk_per_trade_percent = tk.StringVar(value="1.0")
         ttk.Entry(risk_frame, textvariable=self.bt_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
         row += 1
 
@@ -485,7 +483,7 @@ class UnifiedTradingGUI(tk.Tk):
         
         # Backtest controls
         ttk.Button(frame, text="Run Backtest", command=self._bt_run_backtest).grid(row=row, column=0, padx=5, pady=5, sticky="w")
-        ttk.Button(frame, text="Show Config", command=lambda: self._show_config(mode='backtest')).grid(row=row, column=1, padx=5, pady=5, sticky="w")
+        ttk.Button(frame, text="Save Config", command=lambda: self.build_config_from_gui()).grid(row=row, column=1, padx=5, pady=5, sticky="w")
 
     # --- Forward Test Tab ---
     def _build_forward_test_tab(self):
@@ -560,7 +558,15 @@ class UnifiedTradingGUI(tk.Tk):
         indicators_frame = ttk.Frame(frame)
         indicators_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
 
-        # Use Variables already created/initialized in _initialize_all_variables/_initialize_variables_from_config
+        self.ft_use_ema_crossover = tk.BooleanVar(value=True)
+        self.ft_use_macd = tk.BooleanVar(value=True)
+        self.ft_use_vwap = tk.BooleanVar(value=True)
+        self.ft_use_rsi_filter = tk.BooleanVar(value=False)
+        self.ft_use_htf_trend = tk.BooleanVar(value=True)
+        self.ft_use_bollinger_bands = tk.BooleanVar(value=False)
+        self.ft_use_stochastic = tk.BooleanVar(value=False)
+        self.ft_use_atr = tk.BooleanVar(value=True)
+
         ttk.Checkbutton(indicators_frame, text="EMA Crossover", variable=self.ft_use_ema_crossover).grid(row=0, column=0, sticky="w", padx=5)
         ttk.Checkbutton(indicators_frame, text="MACD", variable=self.ft_use_macd).grid(row=0, column=1, sticky="w", padx=5)
         ttk.Checkbutton(indicators_frame, text="VWAP", variable=self.ft_use_vwap).grid(row=0, column=2, sticky="w", padx=5)
@@ -578,39 +584,47 @@ class UnifiedTradingGUI(tk.Tk):
         self.ft_param_frame = ttk.LabelFrame(self.ft_tab, text="Parameters")
         self.ft_param_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
 
-        # params_frame must be a child of ft_param_frame and use existing ft_* vars
-        params_frame = ttk.Frame(self.ft_param_frame)
-        params_frame.grid(row=0, column=0, sticky="w", padx=5, pady=2)
+        params_frame = ttk.Frame(frame)
+        params_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
 
         # EMA Parameters
         ttk.Label(params_frame, text="Fast EMA:").grid(row=0, column=0, sticky="e", padx=2)
+        self.ft_fast_ema = tk.StringVar(value="9")
         ttk.Entry(params_frame, textvariable=self.ft_fast_ema, width=8).grid(row=0, column=1, padx=2)
 
         ttk.Label(params_frame, text="Slow EMA:").grid(row=0, column=2, sticky="e", padx=2)
+        self.ft_slow_ema = tk.StringVar(value="21")
         ttk.Entry(params_frame, textvariable=self.ft_slow_ema, width=8).grid(row=0, column=3, padx=2)
- 
+
         # MACD Parameters
         ttk.Label(params_frame, text="MACD Fast:").grid(row=1, column=0, sticky="e", padx=2)
+        self.ft_macd_fast = tk.StringVar(value="12")
         ttk.Entry(params_frame, textvariable=self.ft_macd_fast, width=8).grid(row=1, column=1, padx=2)
- 
+
         ttk.Label(params_frame, text="MACD Slow:").grid(row=1, column=2, sticky="e", padx=2)
+        self.ft_macd_slow = tk.StringVar(value="26")
         ttk.Entry(params_frame, textvariable=self.ft_macd_slow, width=8).grid(row=1, column=3, padx=2)
- 
+
         ttk.Label(params_frame, text="MACD Signal:").grid(row=1, column=4, sticky="e", padx=2)
+        self.ft_macd_signal = tk.StringVar(value="9")
         ttk.Entry(params_frame, textvariable=self.ft_macd_signal, width=8).grid(row=1, column=5, padx=2)
- 
+
         # RSI Parameters
         ttk.Label(params_frame, text="RSI Length:").grid(row=2, column=0, sticky="e", padx=2)
+        self.ft_rsi_length = tk.StringVar(value="14")
         ttk.Entry(params_frame, textvariable=self.ft_rsi_length, width=8).grid(row=2, column=1, padx=2)
- 
+
         ttk.Label(params_frame, text="RSI Oversold:").grid(row=2, column=2, sticky="e", padx=2)
+        self.ft_rsi_oversold = tk.StringVar(value="30")
         ttk.Entry(params_frame, textvariable=self.ft_rsi_oversold, width=8).grid(row=2, column=3, padx=2)
- 
+
         ttk.Label(params_frame, text="RSI Overbought:").grid(row=2, column=4, sticky="e", padx=2)
+        self.ft_rsi_overbought = tk.StringVar(value="70")
         ttk.Entry(params_frame, textvariable=self.ft_rsi_overbought, width=8).grid(row=2, column=5, padx=2)
- 
+
         # HTF Parameters
         ttk.Label(params_frame, text="HTF Period:").grid(row=3, column=0, sticky="e", padx=2)
+        self.ft_htf_period = tk.StringVar(value="20")
         ttk.Entry(params_frame, textvariable=self.ft_htf_period, width=8).grid(row=3, column=1, padx=2)
         # Consecutive Green Bars
         ttk.Label(params_frame, text="Green Bars Req:").grid(row=3, column=2, sticky="e", padx=2)
@@ -623,8 +637,9 @@ class UnifiedTradingGUI(tk.Tk):
 
         risk_frame = ttk.Frame(frame)
         risk_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
- 
+
         ttk.Label(risk_frame, text="Stop Loss Points:").grid(row=0, column=0, sticky="e", padx=2)
+        self.ft_base_sl_points = tk.StringVar(value="15")
         ttk.Entry(risk_frame, textvariable=self.ft_base_sl_points, width=8).grid(row=0, column=1, padx=2)
 
         ttk.Label(risk_frame, text="TP1 Points:").grid(row=0, column=2, sticky="e", padx=2)
@@ -637,15 +652,19 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Label(risk_frame, text="TP4 Points:").grid(row=1, column=2, sticky="e", padx=2)
         ttk.Entry(risk_frame, textvariable=self.bt_tp_points[3], width=8).grid(row=1, column=3, padx=2)
 
+        self.ft_use_trail_stop = tk.BooleanVar(value=True)
         ttk.Checkbutton(risk_frame, text="Use Trailing Stop", variable=self.ft_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
 
         ttk.Label(risk_frame, text="Trail Activation Points:").grid(row=2, column=0, sticky="e", padx=2)
+        self.ft_trail_activation_points = tk.StringVar(value="25")
         ttk.Entry(risk_frame, textvariable=self.ft_trail_activation_points, width=8).grid(row=2, column=1, padx=2)
 
         ttk.Label(risk_frame, text="Trail Distance Points:").grid(row=2, column=2, sticky="e", padx=2)
+        self.ft_trail_distance_points = tk.StringVar(value="10")
         ttk.Entry(risk_frame, textvariable=self.ft_trail_distance_points, width=8).grid(row=2, column=3, padx=2)
 
         ttk.Label(risk_frame, text="Risk % per Trade:").grid(row=2, column=4, sticky="e", padx=2)
+        self.ft_risk_per_trade_percent = tk.StringVar(value="1.0")
         ttk.Entry(risk_frame, textvariable=self.ft_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
         row += 1
 
@@ -1168,7 +1187,7 @@ class UnifiedTradingGUI(tk.Tk):
             self.bt_result_box.config(state="disabled")
 
     def apply_gui_state_to_config(self, config):
-        """Copy current Backtest GUI widget values into provided config dict (mutating it)."""
+        """Copy current GUI widget values into provided config dict (mutating it)."""
         # Strategy
         config.setdefault('strategy', {})
         config['strategy']['use_ema_crossover'] = self.bt_use_ema_crossover.get()
@@ -1219,81 +1238,6 @@ class UnifiedTradingGUI(tk.Tk):
         config['backtest']['data_path'] = self.bt_data_file.get() if hasattr(self, 'bt_data_file') else ""
         config['logging'] = DEFAULT_CONFIG.get('logging', {}).copy()
 
-    def apply_forward_gui_state_to_config(self, config):
-        """Copy current Forward Test GUI widget values into provided config dict (mutating it)."""
-        config.setdefault('strategy', {})
-        config['strategy']['use_ema_crossover'] = self.ft_use_ema_crossover.get()
-        config['strategy']['use_macd'] = self.ft_use_macd.get()
-        config['strategy']['use_vwap'] = self.ft_use_vwap.get()
-        config['strategy']['use_rsi_filter'] = self.ft_use_rsi_filter.get()
-        config['strategy']['use_htf_trend'] = self.ft_use_htf_trend.get()
-        config['strategy']['use_bollinger_bands'] = self.ft_use_bollinger_bands.get()
-        config['strategy']['use_stochastic'] = self.ft_use_stochastic.get()
-        config['strategy']['use_atr'] = self.ft_use_atr.get()
-        # forward test strategy params (guard .get() on textvars)
-        try:
-            config['strategy']['fast_ema'] = int(self.ft_fast_ema.get())
-            config['strategy']['slow_ema'] = int(self.ft_slow_ema.get())
-            config['strategy']['macd_fast'] = int(self.ft_macd_fast.get())
-            config['strategy']['macd_slow'] = int(self.ft_macd_slow.get())
-            config['strategy']['macd_signal'] = int(self.ft_macd_signal.get())
-            config['strategy']['rsi_length'] = int(self.ft_rsi_length.get())
-            config['strategy']['htf_period'] = int(self.ft_htf_period.get())
-        except Exception:
-            # leave defaults if parsing fails; validation will catch invalid types
-            logger.debug("Forward GUI: some numeric strategy fields could not be parsed; leaving defaults")
-
-        # risk
-        config.setdefault('risk', {})
-        try:
-            config['risk']['base_sl_points'] = float(self.ft_base_sl_points.get())
-            config['risk']['use_trail_stop'] = self.ft_use_trail_stop.get()
-            config['risk']['trail_activation_points'] = float(self.ft_trail_activation_points.get())
-            config['risk']['trail_distance_points'] = float(self.ft_trail_distance_points.get())
-            config['risk']['tp_points'] = [
-                float(self.ft_tp1_points.get()),
-                float(self.ft_tp2_points.get()),
-                float(self.ft_tp3_points.get()),
-                float(self.ft_tp4_points.get())
-            ]
-        except Exception:
-            logger.debug("Forward GUI: some numeric risk fields could not be parsed; leaving defaults")
-
-        # capital
-        config.setdefault('capital', {})
-        try:
-            config['capital']['initial_capital'] = float(self.ft_initial_capital.get())
-        except Exception:
-            logger.debug("Forward GUI: initial capital parse failed; leaving default")
-
-        # instrument / live / session
-        config.setdefault('instrument', {})
-        config['instrument']['symbol'] = self.ft_symbol.get() or config['instrument'].get('symbol')
-        config.setdefault('live', {})
-        config['live']['exchange_type'] = self.ft_exchange.get() or config['live'].get('exchange_type')
-        config['live']['feed_type'] = self.ft_feed_type.get() or config['live'].get('feed_type')
-        config.setdefault('session', {})
-       
-       
-
-        try:
-            if self.ft_session_start_hour.get():
-                config['session']['start_hour'] = int(self.ft_session_start_hour.get())
-            if self.ft_session_start_min.get():
-                config['session']['start_min'] = int(self.ft_session_start_min.get())
-            if self.ft_session_end_hour.get():
-                config['session']['end_hour'] = int(self.ft_session_end_hour.get())
-            if self.ft_session_end_min.get():
-                config['session']['end_min'] = int(self.ft_session_end_min.get())
-            config['session']['start_buffer_minutes'] = int(self.ft_start_buffer.get())
-            config['session']['end_buffer_minutes'] = int(self.ft_end_buffer.get())
-            config['session']['timezone'] = self.ft_timezone.get() or config['session'].get('timezone')
-        except Exception:
-            logger.debug("Forward GUI: session parsing issues; leaving defaults")
-
-        # logging defaults preserved
-        config['logging'] = DEFAULT_CONFIG.get('logging', {}).copy()
-
     def build_config_from_gui(self, mode='backtest'):
         """
         Collect GUI values into a dict, validate, and return frozen config.
@@ -1303,36 +1247,173 @@ class UnifiedTradingGUI(tk.Tk):
             mode: 'backtest' or 'forward_test' to determine which GUI variables to use
         """
         try:
-            # start from a fresh copy of defaults (SSOT)
-            config = create_config_from_defaults()
-
-            if mode == 'backtest':
-                # copy backtest GUI state into config
-                self.apply_gui_state_to_config(config)
-                # ensure data_path reflects chosen file
-                if self.bt_data_file.get():
-                    config.setdefault('backtest', {})['data_path'] = self.bt_data_file.get()
-            elif mode == 'forward_test':
-                # copy forward-test GUI state into config
-                self.apply_forward_gui_state_to_config(config)
-            else:
-                raise ValueError(f"Unknown mode '{mode}'")
-
+            # Start with a copy of defaults to ensure all sections exist
+            config = copy.deepcopy(DEFAULT_CONFIG)
+            
+            # === STRATEGY SECTION ===
+            config['strategy'] = {
+                'strategy_version': 1,
+                'use_ema_crossover': self.bt_use_ema_crossover.get(),
+                'use_macd': self.bt_use_macd.get(),
+                'use_vwap': self.bt_use_vwap.get(),
+                'use_rsi_filter': self.bt_use_rsi_filter.get(),
+                'use_htf_trend': self.bt_use_htf_trend.get(),
+                'use_bollinger_bands': self.bt_use_bollinger_bands.get(),
+                'use_stochastic': self.bt_use_stochastic.get(),
+                'use_atr': self.bt_use_atr.get(),
+                'fast_ema': int(self.bt_fast_ema.get()),
+                'slow_ema': int(self.bt_slow_ema.get()),
+                'macd_fast': int(self.bt_macd_fast.get()),
+                'macd_slow': int(self.bt_macd_slow.get()),
+                'macd_signal': int(self.bt_macd_signal.get()),
+                'rsi_length': int(self.bt_rsi_length.get()),
+                'rsi_overbought': float(self.bt_rsi_overbought.get()),
+                'rsi_oversold': float(self.bt_rsi_oversold.get()),
+                'htf_period': int(self.bt_htf_period.get()),
+                'consecutive_green_bars': int(self.bt_consecutive_green_bars.get()),
+                'atr_len': int(self.bt_atr_len.get() if hasattr(self, 'bt_atr_len') else '14'),
+                'indicator_update_mode': 'tick',
+                'nan_streak_threshold': 7,
+                'nan_recovery_threshold': 3
+            }
+            
+            # === RISK SECTION ===
+            config['risk'] = {
+                'max_positions_per_day': 25,
+                'base_sl_points': float(self.bt_base_sl_points.get()),
+                'tp_points': [float(v.get()) for v in self.bt_tp_points],
+                'tp_percents': [float(v.get())/100.0 for v in self.bt_tp_percents],
+                'use_trail_stop': self.bt_use_trail_stop.get(),
+                'trail_activation_points': float(self.bt_trail_activation.get()),
+                'trail_distance_points': float(self.bt_trail_distance.get()),
+                'risk_per_trade_percent': float(self.bt_risk_per_trade_percent.get()),
+                'commission_percent': 0.03,
+                'commission_per_trade': 0.0,
+                'tick_size': 0.05,
+                'max_position_value_percent': 100.0,
+                'stt_percent': 0.025,
+                'exchange_charges_percent': 0.003,
+                'gst_percent': 18.0,
+                'slippage_points': 0.0
+            }
+            
+            # === CAPITAL SECTION ===
+            config['capital'] = {
+                'initial_capital': float(self.bt_initial_capital.get())
+            }
+            
+            # === INSTRUMENT SECTION ===
+            config['instrument'] = {
+                'symbol': self.bt_symbol.get(),
+                'exchange': self.bt_exchange.get(),
+                'lot_size': int(self.bt_lot_size.get()),
+                'tick_size': 0.05,
+                'product_type': 'INTRADAY'
+            }
+            
+            # === SESSION SECTION ===
+            config['session'] = {
+                'is_intraday': self.bt_is_intraday.get(),
+                'start_hour': int(self.bt_session_start_hour.get()),
+                'start_min': int(self.bt_session_start_min.get()),
+                'end_hour': int(self.bt_session_end_hour.get()),
+                'end_min': int(self.bt_session_end_min.get()),
+                'start_buffer_minutes': 5,
+                'end_buffer_minutes': 20,
+                'no_trade_start_minutes': 5,
+                'no_trade_end_minutes': 10,
+                'timezone': 'Asia/Kolkata'
+            }
+            
+            # === BACKTEST SECTION ===
+            config['backtest'] = {
+                'allow_short': False,
+                'close_at_session_end': True,
+                'save_results': True,
+                'results_dir': 'results',
+                'log_level': 'INFO',
+                'data_path': self.bt_data_file.get()
+            }
+            
+            # === LIVE SECTION ===
+            config['live'] = {
+                'paper_trading': True,
+                'exchange_type': 'NSE_FO',
+                'feed_type': 'LTP',
+                'log_ticks': False,
+                'visual_indicator': True
+            }
+            
+            # === LOGGING SECTION ===
+            config['logging'] = {
+                'enable_smart_logger': False,
+                'verbosity': 'normal',
+                'log_progress': True,
+                'max_signal_reasons': 5,
+                'log_to_file': True,
+                'log_file': 'unified_gui.log'
+            }
+            
+            # Override with forward test specific values if mode is 'forward_test'
+            if mode == 'forward_test':
+                config['strategy']['use_ema_crossover'] = self.ft_use_ema_crossover.get()
+                config['strategy']['use_macd'] = self.ft_use_macd.get()
+                config['strategy']['use_vwap'] = self.ft_use_vwap.get()
+                config['strategy']['use_rsi_filter'] = self.ft_use_rsi_filter.get()
+                config['strategy']['use_htf_trend'] = self.ft_use_htf_trend.get()
+                config['strategy']['use_bollinger_bands'] = self.ft_use_bollinger_bands.get()
+                config['strategy']['use_stochastic'] = self.ft_use_stochastic.get()
+                config['strategy']['use_atr'] = self.ft_use_atr.get()
+                config['strategy']['fast_ema'] = int(self.ft_fast_ema.get())
+                config['strategy']['slow_ema'] = int(self.ft_slow_ema.get())
+                config['strategy']['macd_fast'] = int(self.ft_macd_fast.get())
+                config['strategy']['macd_slow'] = int(self.ft_macd_slow.get())
+                config['strategy']['macd_signal'] = int(self.ft_macd_signal.get())
+                config['strategy']['rsi_length'] = int(self.ft_rsi_length.get())
+                config['risk']['base_sl_points'] = float(self.ft_base_sl_points.get())
+                config['risk']['use_trail_stop'] = self.ft_use_trail_stop.get()
+                config['risk']['trail_activation_points'] = float(self.ft_trail_activation_points.get())
+                config['risk']['trail_distance_points'] = float(self.ft_trail_distance_points.get())
+                config['risk']['risk_per_trade_percent'] = float(self.ft_risk_per_trade_percent.get())
+                config['capital']['initial_capital'] = float(self.ft_initial_capital.get())
+                config['session']['start_hour'] = int(self.ft_session_start_hour.get())
+                config['session']['start_min'] = int(self.ft_session_start_min.get())
+                config['session']['end_hour'] = int(self.ft_session_end_hour.get())
+                config['session']['end_min'] = int(self.ft_session_end_min.get())
+                config['session']['start_buffer_minutes'] = int(self.ft_start_buffer.get())
+                config['session']['end_buffer_minutes'] = int(self.ft_end_buffer.get())
+                config['session']['timezone'] = self.ft_timezone.get()
+                config['live']['exchange_type'] = self.ft_exchange.get()
+                config['live']['feed_type'] = self.ft_feed_type.get()
+                config['instrument']['symbol'] = self.ft_symbol.get()
+                
+                # Use TP values from forward test
+                config['risk']['tp_points'] = [
+                    float(self.ft_tp1_points.get()),
+                    float(self.ft_tp2_points.get()),
+                    float(self.ft_tp3_points.get()),
+                    float(self.ft_tp4_points.get())
+                ]
+            
+            # Validate configuration using authoritative validator
             validation_result = validate_config(config)
+            
             if not validation_result.get('valid', False):
                 error_msg = "Configuration validation failed:\n" + "\n".join(validation_result.get('errors', []))
                 messagebox.showerror("Configuration Error", error_msg)
-                logger.error("Config validation failed: %s", validation_result.get('errors', []))
+                logger.error(f"Config validation failed: {validation_result.get('errors', [])}")
                 return None
-
+            
+            # Freeze configuration to make it immutable
             frozen_config = freeze_config(config)
-            logger.info("Configuration built and validated successfully from GUI (mode=%s)", mode)
+            
+            logger.info("Configuration built and validated successfully from GUI")
             return frozen_config
-
+            
         except Exception as e:
             error_msg = f"Failed to build configuration from GUI: {str(e)}"
             messagebox.showerror("Configuration Error", error_msg)
-            logger.exception("build_config_from_gui failed: %s", e)
+            logger.exception(f"build_config_from_gui failed: {e}")
             return None
 
     def _create_gui_framework(self):
@@ -1360,7 +1441,6 @@ def main():
         app.mainloop()
     except Exception as e:
         print(f"Failed to start GUI application: {e}")
-    
 
 if __name__ == "__main__":
     main()

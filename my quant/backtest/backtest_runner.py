@@ -108,6 +108,7 @@ class BacktestRunner:
             )
 
         self.config = config
+        self.data_path = data_path  # Store the data_path parameter
         logger.info("Using provided frozen configuration")
 
         # Configure root logging from config (non-destructive)
