@@ -5,9 +5,19 @@ This file contains all default values used by both GUI and non-GUI components.
 Any changes to defaults should be made here only.
 """
 
+import os
 from typing import Dict, Any
 
+# Single Source of Truth for defaults used by GUI and runners.
 DEFAULT_CONFIG: Dict[str, Any] = {
+    "logging": {
+        # Must be a path containing a directory (no empty dirname)
+        "logfile": os.path.join("logs", "unified_gui.log"),
+        # Canonical verbosity string (valid logging level)
+        "verbosity": "INFO",
+        "console_output": True,
+        "file_rotation": True
+    },
     "strategy": {
         "strategy_version": 1,
         "use_ema_crossover": True,
@@ -88,19 +98,5 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "feed_type": "LTP",
         "log_ticks": False,
         "visual_indicator": True
-    },
-    "logging": {
-        "enable_smart_logger": False,
-        # user-facing dropdown: one of ('minimal','normal','verbose','debug')
-        # GUI should present these options; 'normal' is the default.
-        "verbosity": "normal",
-        "log_progress": True,
-        "max_signal_reasons": 5,
-        "log_to_file": True,
-        "log_file": "unified_gui.log",
-        "log_level_overrides": {},
-        # Number of ticks between verbose per-tick debug messages.
-        # Controlled only via DEFAULTS -> GUI -> frozen config (SSOT).
-        "tick_log_interval": 100
     }
 }

@@ -4,53 +4,36 @@ from typing import Dict, Any
 
 def setup_logger(log_file: str = "unified_gui.log", log_level: int = logging.INFO):
     """
-    Lightweight logger initializer for legacy code paths.
-    Prefer setup_logging_from_config for config-driven behavior.
+    Compatibility wrapper that delegates to utils.logging_utils.setup_logging.
+    Fail-fast: raise if delegation is not possible.
     """
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
-    logging.getLogger().setLevel(log_level)
-    return logging.getLogger()
+    from .logging_utils import setup_logging  # let ImportError propagate on serious issues
+
+    lvl = log_level if isinstance(log_level, int) else getattr(logging, str(log_level).upper(), None)
+    if lvl is None:
+        raise ValueError(f"Invalid log level: {log_level}")
+
+    # Delegate without fallback
+    return setup_logging(log_level=lvl, log_file=log_file, console_output=True, file_rotation=True, module_name="logger_setup")
 
 def setup_logging_from_config(config: Dict[str, Any]):
     """
-    Configure logging from config dict (defaults.py is SSOT).
-    Expects config['logging']['verbosity'] to be one of:
-      'minimal' | 'detailed' | 'debug'  (or equivalent strings)
-    Applies optional per-component overrides in config['logging']['log_level_overrides'].
+    Configure logging strictly from config dict. Raise if required keys missing.
     """
-    level_map = {
-        'minimal': logging.WARNING,
-        'detailed': logging.INFO,
-        'info': logging.INFO,
-        'debug': logging.DEBUG,
-        'warning': logging.WARNING,
-        'error': logging.ERROR,
-        'critical': logging.CRITICAL
-    }
+    if not isinstance(config, dict):
+        raise TypeError("setup_logging_from_config expects a dict")
 
-    logging_cfg = (config or {}).get('logging', {}) or {}
-    verbosity = str(logging_cfg.get('verbosity', '')).lower()
-    root_level = level_map.get(verbosity, logging.INFO)
+    logging_cfg = config.get("logging", {}) or {}
+    required = ["logfile", "verbosity", "console_output", "file_rotation"]
+    missing = [k for k in required if k not in logging_cfg]
+    if missing:
+        raise RuntimeError(f"Logging configuration missing keys: {missing}")
 
-    logging.basicConfig(
-        level=root_level,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+    from .logging_utils import setup_logging
+    return setup_logging(
+        log_level=str(logging_cfg["verbosity"]),
+        log_file=str(logging_cfg["logfile"]),
+        console_output=bool(logging_cfg["console_output"]),
+        file_rotation=bool(logging_cfg["file_rotation"]),
+        module_name="logger_setup"
     )
-    logging.getLogger().setLevel(root_level)
-
-    overrides = logging_cfg.get('log_level_overrides', {}) or {}
-    for logger_name, lvl in overrides.items():
-        try:
-            if isinstance(lvl, str):
-                lvl_val = getattr(logging, lvl.upper(), None) or level_map.get(str(lvl).lower())
-            else:
-                lvl_val = int(lvl)
-        except Exception:
-            lvl_val = None
-        if lvl_val is not None:
-            logging.getLogger(logger_name).setLevel(lvl_val)

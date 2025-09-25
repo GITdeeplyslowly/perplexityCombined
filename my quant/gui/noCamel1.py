@@ -9,33 +9,53 @@ Provides a comprehensive GUI for:
 - Managing configurations
 """
 
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-import threading
 import os
 import json
-from datetime import datetime
+import threading
 import logging
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+from datetime import datetime
 import numpy as np
 import pytz
-from datetime import datetime
+
+from types import MappingProxyType
+from typing import Dict, Any
+
+from utils.config_helper import create_config_from_defaults, validate_config, freeze_config, ConfigAccessor
+from backtest.backtest_runner import BacktestRunner
 from utils.cache_manager import refresh_symbol_cache, load_symbol_cache
 from live.trader import LiveTrader
 
-# Add import for defaults and strict config helpers
 from config.defaults import DEFAULT_CONFIG
-from utils.config_helper import (
-    create_config_from_defaults,
-    get_logging_verbosity_options,
-    validate_config,
-    freeze_config
-)
-from utils.logger_setup import setup_logger, setup_logging_from_config
-from backtest.backtest_runner import BacktestRunner
-from types import MappingProxyType
+from utils.logging_utils import setup_logging
 
-LOG_FILENAME = "unified_gui.log"
-logger = setup_logger(log_file=LOG_FILENAME, log_level=logging.INFO)
+# Module-level logger and strict startup logging using canonical DEFAULT_CONFIG.
+# Fail-fast if DEFAULT_CONFIG does not provide the required logging keys.
+logging_config = DEFAULT_CONFIG.get("logging", {}) or {}
+required_logging_keys = ["logfile", "verbosity", "console_output", "file_rotation"]
+missing_keys = [k for k in required_logging_keys if k not in logging_config]
+if missing_keys:
+    raise RuntimeError(f"DEFAULT_CONFIG logging section missing keys: {missing_keys}")
+
+LOG_FILENAME = str(logging_config["logfile"])
+LOG_VERBOSITY = str(logging_config["verbosity"])
+LOG_CONSOLE = bool(logging_config["console_output"])
+LOG_ROTATION = bool(logging_config["file_rotation"])
+
+# Ensure log dir exists if provided (no empty dirname)
+log_dir = os.path.dirname(LOG_FILENAME)
+if log_dir:
+    os.makedirs(log_dir, exist_ok=True)
+
+# Configure unified logging (strict, fail-fast)
+logger = setup_logging(
+    log_level=LOG_VERBOSITY,
+    log_file=LOG_FILENAME,
+    console_output=LOG_CONSOLE,
+    file_rotation=LOG_ROTATION,
+    module_name=__name__
+)
 
 def now_ist():
     """Return current time in India Standard Time"""
@@ -62,13 +82,10 @@ class UnifiedTradingGUI(tk.Tk):
         # 4. Initialize GUI variables from runtime_config (single source for widgets)
         self._initialize_variables_from_runtime_config()
 
-        # 5. Configure logging according to runtime config (best-effort)
-        try:
-            setup_logging_from_config(self.runtime_config)
-            # refresh module logger after reconfiguring logging
-            logger = logging.getLogger(__name__)
-        except Exception:
-            logger.exception("setup_logging_from_config failed; using fallback logger")
+        # 5. Logging is configured at module import from DEFAULT_CONFIG (strict, single source).
+        # If runtime reconfiguration is desired, call setup_logging(...) explicitly with
+        # runtime_config['logging'] (no fallbacks). We intentionally avoid best-effort
+        # reconfiguration here to keep logging deterministic.
 
         # 6. Create GUI components and tabs
         self._create_gui_framework()
@@ -1419,8 +1436,7 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Button(frame, text="Browse", command=self._bt_browse_csv).grid(row=row, column=2, padx=5, pady=5)
         row += 1
 
-        # Run Backtest button
-        ttk.Button(frame, text="Run Backtest", command=self._bt_run_backtest, style="Accent.TButton").grid(row=row, column=0, columnspan=3, pady=10)
+        # Run Backtest button        ttk.Button(frame, text="Run Backtest", command=self._bt_run_backtest, style="Accent.TButton").grid(row=row, column=0, columnspan=3, pady=10)
         row += 1
 
         # Strategy Configuration
@@ -1447,6 +1463,7 @@ class UnifiedTradingGUI(tk.Tk):
         row += 1
         bt_params_frame = ttk.Frame(frame)
         bt_params_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+
         # EMA Parameters
         ttk.Label(bt_params_frame, text="Fast EMA:").grid(row=0, column=0, sticky="e", padx=2)
         ttk.Entry(bt_params_frame, textvariable=self.bt_fast_ema, width=8).grid(row=0, column=1, padx=2)
@@ -1572,25 +1589,25 @@ class UnifiedTradingGUI(tk.Tk):
     def _bt_run_backtest(self):
         """Run backtest with GUI configuration (enforces frozen config)"""
         try:
-            frozen_cfg = self.build_config_from_gui()
-            if frozen_cfg is None:
+            frozen_config = self.build_config_from_gui()
+            if frozen_config is None:
                 logger.warning("Backtest aborted: invalid or unfrozen configuration")
                 return
-
+ 
             # Data path: prefer backtest.data_path in config, fallback to file chooser input
             data_path = None
             try:
-                data_path = frozen_cfg.get('backtest', {}).get('data_path') or self.bt_data_file.get()
+                data_path = frozen_config.get("backtest", {}).get("data_path") or self.bt_data_file.get()
             except Exception:
-                # frozen_cfg is MappingProxyType; use dict() to inspect if needed
-                data_path = dict(frozen_cfg).get('backtest', {}).get('data_path') or self.bt_data_file.get()
-
+                # frozen_config is MappingProxyType; use dict() to inspect if needed
+                data_path = dict(frozen_config).get("backtest", {}).get("data_path") or self.bt_data_file.get()
+ 
             if not data_path:
                 messagebox.showerror("Missing Data", "Please select a data file for backtest.")
                 return
-
+ 
             # Construct runner with frozen config (strict)
-            runner = BacktestRunner(config=frozen_cfg, data_path=data_path)
+            runner = BacktestRunner(config=frozen_config, data_path=data_path)
             results = runner.run()
             self.display_backtest_results(results)
         except Exception as e:
@@ -1669,7 +1686,7 @@ class UnifiedTradingGUI(tk.Tk):
         
         # HTF parameter
         self.bt_htf_period = tk.StringVar(value=str(strategy_config.get('htf_period', 20)))
-        self.bt_consecutive_green_bars = tk.StringVar(value=str(strategy_config.get('consecutive_green_bars', 3)))
+        self.bt_consecutive_green_bars = tk.StringVar(value=strategy_config.get('consecutive_green_bars', 3))
         
         # Risk management
         self.bt_base_sl_points = tk.StringVar(value=str(risk_config.get('base_sl_points', 15.0)))

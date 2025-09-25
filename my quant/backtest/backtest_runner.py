@@ -27,13 +27,10 @@ import pandas as pd
 import os
 import inspect
 from datetime import datetime, time
-from typing import Dict, Any, Tuple
 import logging
-from core.position_manager import PositionManager
-from utils.simple_loader import load_data_simple
-from utils.time_utils import normalize_datetime_to_ist, now_ist, ensure_tz_aware, is_within_session, is_time_to_exit
-from utils.config_helper import ConfigAccessor
+import os
 from types import MappingProxyType
+from utils.logging_utils import setup_logging
 
 from core.researchStrategy import ModularIntradayStrategy
 from backtest.results import BacktestResults
@@ -74,51 +71,61 @@ def get_strategy(config: dict):
     Hard-coded to use researchStrategy for backtesting.
     """
     strat_mod = importlib.import_module("core.researchStrategy")
-    ind_mod = importlib.import_module("core.indicators")
     
-    # FIXED: Keep nested structure, no more flattening
+    # FIXED: Maintain consistent nested structure, no more flattening
     logger.info("NESTED CONFIG: Using consistent nested configuration structure")
     logger.info(f"Strategy parameters found: {list(config.get('strategy', {}).keys())}")
      
-    # Pass nested config directly to strategy
-    return strat_mod.ModularIntradayStrategy(config, ind_mod)
+    # FIXED: researchStrategy only takes frozen_config, not indicators module
+    return strat_mod.ModularIntradayStrategy(config)
 
 class BacktestRunner:
     """
     Backtesting engine for testing strategies against historical data.
     """
     
-    def __init__(self, config: MappingProxyType = None, data_path: str = None):
-        """
-        Strict constructor: BacktestRunner requires a frozen MappingProxyType produced by the GUI workflow:
-            cfg = create_config_from_defaults()
-            validation = validate_config(cfg)  # must be valid
-            frozen = freeze_config(cfg)        # MappingProxyType
-            runner = BacktestRunner(frozen)
-        """
-        # Enforce strict workflow: require a frozen MappingProxyType produced by the GUI/workflow.
+    def __init__(self, config: MappingProxyType, data_path: str = ""):
+        # Enforce frozen MappingProxyType per workflow
         if not isinstance(config, MappingProxyType):
-            logger.error(
-                "BacktestRunner requires a frozen MappingProxyType produced by freeze_config(). Received: %s",
-                type(config)
-            )
-            raise ValueError(
-                "BacktestRunner requires a frozen (MappingProxyType) config. "
-                "Use create_config_from_defaults() -> validate_config(cfg) -> freeze_config(cfg) before calling."
-            )
+            raise ValueError("BacktestRunner requires a frozen MappingProxyType config produced by the GUI workflow.")
 
         self.config = config
-        self.data_path = data_path  # Store the data_path parameter
-        logger.info("Using provided frozen configuration")
+        self.data_path = data_path
+        logging.getLogger(__name__).info("Using provided frozen configuration")
 
-        # Configure root logging from config (non-destructive)
-        try:
-            from utils.logger_setup import setup_logging_from_config
-            setup_logging_from_config(self.config)
-        except Exception:
-            logging.getLogger(__name__).exception("setup_logging_from_config failed; continuing with default logging")
+        # Require explicit logging configuration from the frozen config.
+        if "logging" not in self.config:
+            raise RuntimeError("Missing 'logging' section in config. Comprehensive logging requires explicit logging settings.")
+
+        logging_cfg = dict(self.config["logging"])
+        required_keys = ["logfile", "verbosity", "console_output", "file_rotation"]
+        missing_keys = [k for k in required_keys if k not in logging_cfg]
+        if missing_keys:
+            raise RuntimeError(f"Logging configuration missing keys: {missing_keys}. Provide these in the config.")
+
+        log_level = str(logging_cfg["verbosity"]).upper()
+        log_file = str(logging_cfg["logfile"])
+        console_output = bool(logging_cfg["console_output"])
+        file_rotation = bool(logging_cfg["file_rotation"])
+
+        # Ensure directory exists if provided
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+
+        # Initialize comprehensive logger — fail-fast if this errors
+        comprehensive_logger = setup_logging(
+            log_level=log_level,
+            log_file=log_file,
+            console_output=console_output,
+            file_rotation=file_rotation,
+            module_name="backtest.backtest_runner"
+        )
+
+        globals()["logger"] = comprehensive_logger
 
         # Create strict config accessor (will raise KeyError on missing keys)
+        from utils.config_helper import ConfigAccessor
         self.config_accessor = ConfigAccessor(self.config)
 
         logger.info("BacktestRunner initialized with strategy version: %s", self.config_accessor.get('strategy.strategy_version'))

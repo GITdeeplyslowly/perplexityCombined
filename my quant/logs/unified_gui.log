@@ -1,0 +1,390 @@
+2025-09-25 08:39:17 [    INFO] backtest.backtest_runner: Logging configured for backtest.backtest_runner
+2025-09-25 08:39:17 [    INFO] backtest.backtest_runner: Comprehensive file logging configured for backtest
+2025-09-25 08:39:17 [    INFO] backtest.backtest_runner: BacktestRunner initialized with strategy version: 1
+2025-09-25 08:39:17 [    INFO] backtest.backtest_runner: Starting backtest run
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Data loaded: 36240 rows from 2025-09-19 09:19:38+05:30 to 2025-09-19 15:30:01+05:30
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Data prepared successfully - strategy will calculate indicators incrementally
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: STARTING BACKTEST WITH NORMALIZED DATA PIPELINE
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: === NESTED CONFIG STRUCTURE MAINTAINED ===
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Section 'strategy': 23 parameters
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Section 'risk': 16 parameters
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Section 'capital': 1 parameters
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Section 'instrument': 5 parameters
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Section 'session': 10 parameters
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Section 'backtest': 6 parameters
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Section 'live': 5 parameters
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Section 'logging': 11 parameters
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: NESTED CONFIG: Using consistent nested configuration structure
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Strategy parameters found: ['strategy_version', 'use_ema_crossover', 'use_macd', 'use_vwap', 'use_rsi_filter', 'use_htf_trend', 'use_bollinger_bands', 'use_stochastic', 'use_atr', 'fast_ema', 'slow_ema', 'macd_fast', 'macd_slow', 'macd_signal', 'rsi_length', 'rsi_overbought', 'rsi_oversold', 'htf_period', 'consecutive_green_bars', 'atr_len', 'indicator_update_mode', 'nan_streak_threshold', 'nan_recovery_threshold']
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Strategy interface validation passed
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: === NESTED CONFIG PASSED TO POSITION MANAGER ===
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Applying session filtering to data based on user configuration
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Filtered data from 36240 to 36239 rows based on user session timing
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: === PROCESSING INDICATORS INCREMENTALLY (ROW-BY-ROW) ===
+2025-09-25 08:39:19 [    INFO] backtest.backtest_runner: Processing 36239 rows incrementally without chunking
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Indicators calculated successfully. DataFrame shape: (36239, 20)
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: === INCREMENTAL PROCESSING COMPLETE ===
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: ================================================================================
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: STAGE 3: AFTER INDICATOR CALCULATION (Same Rows)
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: ================================================================================
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row      0 (Sample  1): Time=2025-09-19 09:19:38+05:30, Close=  146.60, [FastEMA=146.600, SlowEMA=146.600, VWAP=146.600, MACD=0.0000], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row    200 (Sample  2): Time=2025-09-19 09:21:40+05:30, Close=  141.20, [FastEMA=140.272, SlowEMA=140.389, VWAP=142.384, MACD=-0.4356], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row    400 (Sample  3): Time=2025-09-19 09:23:42+05:30, Close=  148.75, [FastEMA=148.159, SlowEMA=147.581, VWAP=143.655, MACD=0.4922], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row    600 (Sample  4): Time=2025-09-19 09:25:47+05:30, Close=  149.80, [FastEMA=150.350, SlowEMA=151.002, VWAP=145.329, MACD=-0.5658], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row    800 (Sample  5): Time=2025-09-19 09:27:47+05:30, Close=  149.65, [FastEMA=150.091, SlowEMA=150.437, VWAP=146.813, MACD=-0.4045], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   1000 (Sample  6): Time=2025-09-19 09:29:49+05:30, Close=  146.45, [FastEMA=146.780, SlowEMA=147.355, VWAP=147.269, MACD=-0.5657], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   1200 (Sample  7): Time=2025-09-19 09:31:51+05:30, Close=  158.05, [FastEMA=158.436, SlowEMA=158.282, VWAP=148.293, MACD=0.1879], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   1400 (Sample  8): Time=2025-09-19 09:33:54+05:30, Close=  165.05, [FastEMA=164.748, SlowEMA=164.098, VWAP=150.031, MACD=0.7001], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   1600 (Sample  9): Time=2025-09-19 09:35:56+05:30, Close=  174.10, [FastEMA=173.866, SlowEMA=174.430, VWAP=153.222, MACD=-0.5912], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   1800 (Sample 10): Time=2025-09-19 09:37:58+05:30, Close=  186.25, [FastEMA=186.193, SlowEMA=185.435, VWAP=155.719, MACD=0.9810], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   2000 (Sample 11): Time=2025-09-19 09:40:02+05:30, Close=  184.25, [FastEMA=183.920, SlowEMA=184.261, VWAP=158.662, MACD=-0.4760], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   2200 (Sample 12): Time=2025-09-19 09:42:05+05:30, Close=  178.40, [FastEMA=178.673, SlowEMA=178.423, VWAP=160.573, MACD=0.4099], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   2400 (Sample 13): Time=2025-09-19 09:44:08+05:30, Close=  174.05, [FastEMA=173.384, SlowEMA=173.578, VWAP=162.054, MACD=-0.3378], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   2600 (Sample 14): Time=2025-09-19 09:46:10+05:30, Close=  182.55, [FastEMA=182.144, SlowEMA=181.782, VWAP=163.287, MACD=0.4443], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   2800 (Sample 15): Time=2025-09-19 09:48:14+05:30, Close=  185.80, [FastEMA=186.093, SlowEMA=186.564, VWAP=164.879, MACD=-0.5317], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   3000 (Sample 16): Time=2025-09-19 09:50:17+05:30, Close=  177.65, [FastEMA=177.850, SlowEMA=178.104, VWAP=165.985, MACD=-0.3203], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   3200 (Sample 17): Time=2025-09-19 09:52:18+05:30, Close=  172.15, [FastEMA=172.485, SlowEMA=172.797, VWAP=166.601, MACD=-0.2689], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   3400 (Sample 18): Time=2025-09-19 09:54:21+05:30, Close=  172.75, [FastEMA=172.587, SlowEMA=172.150, VWAP=167.021, MACD=0.3410], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   3600 (Sample 19): Time=2025-09-19 09:56:26+05:30, Close=  182.65, [FastEMA=182.023, SlowEMA=181.552, VWAP=167.601, MACD=0.5526], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   3800 (Sample 20): Time=2025-09-19 09:58:29+05:30, Close=  184.55, [FastEMA=184.885, SlowEMA=184.648, VWAP=168.504, MACD=0.2828], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   4000 (Sample 21): Time=2025-09-19 10:00:30+05:30, Close=  200.90, [FastEMA=200.054, SlowEMA=198.407, VWAP=169.777, MACD=1.8693], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   4200 (Sample 22): Time=2025-09-19 10:02:32+05:30, Close=  195.85, [FastEMA=195.816, SlowEMA=195.690, VWAP=171.079, MACD=0.2690], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   4400 (Sample 23): Time=2025-09-19 10:04:35+05:30, Close=  200.15, [FastEMA=200.612, SlowEMA=200.752, VWAP=172.542, MACD=-0.0801], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   4600 (Sample 24): Time=2025-09-19 10:06:37+05:30, Close=  190.10, [FastEMA=189.523, SlowEMA=188.739, VWAP=173.386, MACD=0.6971], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Ind  Row   4800 (Sample 25): Time=2025-09-19 10:08:40+05:30, Close=  185.60, [FastEMA=185.684, SlowEMA=185.985, VWAP=173.932, MACD=-0.2798], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Indicators calculated. Final 5 rows:
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: 
+                            close    fast_ema    slow_ema        vwap      macd  rsi
+2025-09-19 15:29:57+05:30  142.50  142.569464  142.512701  174.455309  0.033363  NaN
+2025-09-19 15:29:58+05:30  142.85  142.625571  142.543365  174.451015  0.055047  NaN
+2025-09-19 15:29:59+05:30  142.70  142.640457  142.557604  174.449166  0.059444  NaN
+2025-09-19 15:29:59+05:30  142.70  142.652366  142.570549  174.447318  0.062211  NaN
+2025-09-19 15:30:00+05:30  143.00  142.721893  142.609590  174.446708  0.087601  NaN
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: EMA DIAGNOSTIC: 18374/36239 rows have fast > slow (50.7%)
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: VWAP DIAGNOSTIC: 19947/36239 rows have price > VWAP (55.0%)
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: MACD DIAGNOSTIC: 18170/36239 rows have MACD > Signal (50.1%)
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Sample indicator values:
+Empty DataFrame
+Columns: [fast_ema, slow_ema, vwap, macd, macd_signal, rsi, htf_ema]
+Index: []
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Starting backtest execution...
+2025-09-25 08:40:57 [    INFO] backtest.backtest_runner: Processing timestamp: 2025-09-19 09:19:38+05:30 (tzinfo: Asia/Kolkata)
+2025-09-25 08:41:00 [    INFO] backtest.backtest_runner: Progress: 1,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:02 [    INFO] backtest.backtest_runner: Progress: 2,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:05 [    INFO] backtest.backtest_runner: Progress: 3,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:07 [    INFO] backtest.backtest_runner: Progress: 4,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:09 [    INFO] backtest.backtest_runner: Progress: 5,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:12 [    INFO] backtest.backtest_runner: Progress: 6,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:14 [    INFO] backtest.backtest_runner: Progress: 7,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:16 [    INFO] backtest.backtest_runner: Progress: 8,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:18 [    INFO] backtest.backtest_runner: Progress: 9,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:21 [    INFO] backtest.backtest_runner: Progress: 10,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:23 [    INFO] backtest.backtest_runner: Progress: 11,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:25 [    INFO] backtest.backtest_runner: Progress: 12,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:28 [    INFO] backtest.backtest_runner: Progress: 13,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:30 [    INFO] backtest.backtest_runner: Progress: 14,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:32 [    INFO] backtest.backtest_runner: Progress: 15,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:34 [    INFO] backtest.backtest_runner: Progress: 16,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:36 [    INFO] backtest.backtest_runner: Progress: 17,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:39 [    INFO] backtest.backtest_runner: Progress: 18,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:41 [    INFO] backtest.backtest_runner: Progress: 19,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:43 [    INFO] backtest.backtest_runner: Progress: 20,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:45 [    INFO] backtest.backtest_runner: Progress: 21,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:47 [    INFO] backtest.backtest_runner: Progress: 22,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:49 [    INFO] backtest.backtest_runner: Progress: 23,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:52 [    INFO] backtest.backtest_runner: Progress: 24,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:54 [    INFO] backtest.backtest_runner: Progress: 25,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:56 [    INFO] backtest.backtest_runner: Progress: 26,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:41:58 [    INFO] backtest.backtest_runner: Progress: 27,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:42:00 [    INFO] backtest.backtest_runner: Progress: 28,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:42:03 [    INFO] backtest.backtest_runner: Progress: 29,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:42:05 [    INFO] backtest.backtest_runner: Progress: 30,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:42:07 [    INFO] backtest.backtest_runner: Progress: 31,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:42:09 [    INFO] backtest.backtest_runner: Progress: 32,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:42:11 [    INFO] backtest.backtest_runner: Progress: 33,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner: Progress: 34,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner: Session end reached at 15:10:00, closing all positions
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner: Backtest completed: 0 signals, 0 trades executed
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner: BACKTEST SUMMARY
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner: Data Quality:
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Total input rows: 36240
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Processed rows: 36240
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Data quality: 100.0%
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner: 
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner: Trading Performance:
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Total Trades: 0
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Win Rate: 0.00%
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Total P&L: 0.00
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Avg Win: 0.00
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Avg Loss: 0.00
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Profit Factor: 0.00
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Max Win: 0.00
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Max Loss: 0.00
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner:   Total Commission: 0.00
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 08:42:14 [ WARNING] backtest.backtest_runner: No trades executed during backtest
+2025-09-25 08:42:14 [    INFO] backtest.backtest_runner: Backtest completed successfully
+2025-09-25 08:44:41 [    INFO] backtest.backtest_runner: Logging configured for backtest.backtest_runner
+2025-09-25 08:44:41 [    INFO] backtest.backtest_runner: Comprehensive file logging configured for backtest
+2025-09-25 08:44:41 [    INFO] backtest.backtest_runner: BacktestRunner initialized with strategy version: 1
+2025-09-25 08:44:41 [    INFO] backtest.backtest_runner: Starting backtest run
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Data loaded: 36240 rows from 2025-09-19 09:19:38+05:30 to 2025-09-19 15:30:01+05:30
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Data prepared successfully - strategy will calculate indicators incrementally
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: STARTING BACKTEST WITH NORMALIZED DATA PIPELINE
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: === NESTED CONFIG STRUCTURE MAINTAINED ===
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Section 'strategy': 23 parameters
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Section 'risk': 16 parameters
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Section 'capital': 1 parameters
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Section 'instrument': 5 parameters
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Section 'session': 10 parameters
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Section 'backtest': 6 parameters
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Section 'live': 5 parameters
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Section 'logging': 11 parameters
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: NESTED CONFIG: Using consistent nested configuration structure
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Strategy parameters found: ['strategy_version', 'use_ema_crossover', 'use_macd', 'use_vwap', 'use_rsi_filter', 'use_htf_trend', 'use_bollinger_bands', 'use_stochastic', 'use_atr', 'fast_ema', 'slow_ema', 'macd_fast', 'macd_slow', 'macd_signal', 'rsi_length', 'rsi_overbought', 'rsi_oversold', 'htf_period', 'consecutive_green_bars', 'atr_len', 'indicator_update_mode', 'nan_streak_threshold', 'nan_recovery_threshold']
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Strategy interface validation passed
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: === NESTED CONFIG PASSED TO POSITION MANAGER ===
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Applying session filtering to data based on user configuration
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Filtered data from 36240 to 36239 rows based on user session timing
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: === PROCESSING INDICATORS INCREMENTALLY (ROW-BY-ROW) ===
+2025-09-25 08:44:43 [    INFO] backtest.backtest_runner: Processing 36239 rows incrementally without chunking
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Indicators calculated successfully. DataFrame shape: (36239, 20)
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: === INCREMENTAL PROCESSING COMPLETE ===
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: ================================================================================
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: STAGE 3: AFTER INDICATOR CALCULATION (Same Rows)
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: ================================================================================
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row      0 (Sample  1): Time=2025-09-19 09:19:38+05:30, Close=  146.60, [FastEMA=146.600, SlowEMA=146.600, VWAP=146.600, MACD=0.0000], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row    200 (Sample  2): Time=2025-09-19 09:21:40+05:30, Close=  141.20, [FastEMA=140.272, SlowEMA=140.389, VWAP=142.384, MACD=-0.4356], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row    400 (Sample  3): Time=2025-09-19 09:23:42+05:30, Close=  148.75, [FastEMA=148.159, SlowEMA=147.581, VWAP=143.655, MACD=0.4922], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row    600 (Sample  4): Time=2025-09-19 09:25:47+05:30, Close=  149.80, [FastEMA=150.350, SlowEMA=151.002, VWAP=145.329, MACD=-0.5658], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row    800 (Sample  5): Time=2025-09-19 09:27:47+05:30, Close=  149.65, [FastEMA=150.091, SlowEMA=150.437, VWAP=146.813, MACD=-0.4045], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   1000 (Sample  6): Time=2025-09-19 09:29:49+05:30, Close=  146.45, [FastEMA=146.780, SlowEMA=147.355, VWAP=147.269, MACD=-0.5657], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   1200 (Sample  7): Time=2025-09-19 09:31:51+05:30, Close=  158.05, [FastEMA=158.436, SlowEMA=158.282, VWAP=148.293, MACD=0.1879], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   1400 (Sample  8): Time=2025-09-19 09:33:54+05:30, Close=  165.05, [FastEMA=164.748, SlowEMA=164.098, VWAP=150.031, MACD=0.7001], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   1600 (Sample  9): Time=2025-09-19 09:35:56+05:30, Close=  174.10, [FastEMA=173.866, SlowEMA=174.430, VWAP=153.222, MACD=-0.5912], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   1800 (Sample 10): Time=2025-09-19 09:37:58+05:30, Close=  186.25, [FastEMA=186.193, SlowEMA=185.435, VWAP=155.719, MACD=0.9810], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   2000 (Sample 11): Time=2025-09-19 09:40:02+05:30, Close=  184.25, [FastEMA=183.920, SlowEMA=184.261, VWAP=158.662, MACD=-0.4760], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   2200 (Sample 12): Time=2025-09-19 09:42:05+05:30, Close=  178.40, [FastEMA=178.673, SlowEMA=178.423, VWAP=160.573, MACD=0.4099], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   2400 (Sample 13): Time=2025-09-19 09:44:08+05:30, Close=  174.05, [FastEMA=173.384, SlowEMA=173.578, VWAP=162.054, MACD=-0.3378], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   2600 (Sample 14): Time=2025-09-19 09:46:10+05:30, Close=  182.55, [FastEMA=182.144, SlowEMA=181.782, VWAP=163.287, MACD=0.4443], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   2800 (Sample 15): Time=2025-09-19 09:48:14+05:30, Close=  185.80, [FastEMA=186.093, SlowEMA=186.564, VWAP=164.879, MACD=-0.5317], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   3000 (Sample 16): Time=2025-09-19 09:50:17+05:30, Close=  177.65, [FastEMA=177.850, SlowEMA=178.104, VWAP=165.985, MACD=-0.3203], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   3200 (Sample 17): Time=2025-09-19 09:52:18+05:30, Close=  172.15, [FastEMA=172.485, SlowEMA=172.797, VWAP=166.601, MACD=-0.2689], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   3400 (Sample 18): Time=2025-09-19 09:54:21+05:30, Close=  172.75, [FastEMA=172.587, SlowEMA=172.150, VWAP=167.021, MACD=0.3410], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   3600 (Sample 19): Time=2025-09-19 09:56:26+05:30, Close=  182.65, [FastEMA=182.023, SlowEMA=181.552, VWAP=167.601, MACD=0.5526], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   3800 (Sample 20): Time=2025-09-19 09:58:29+05:30, Close=  184.55, [FastEMA=184.885, SlowEMA=184.648, VWAP=168.504, MACD=0.2828], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   4000 (Sample 21): Time=2025-09-19 10:00:30+05:30, Close=  200.90, [FastEMA=200.054, SlowEMA=198.407, VWAP=169.777, MACD=1.8693], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   4200 (Sample 22): Time=2025-09-19 10:02:32+05:30, Close=  195.85, [FastEMA=195.816, SlowEMA=195.690, VWAP=171.079, MACD=0.2690], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   4400 (Sample 23): Time=2025-09-19 10:04:35+05:30, Close=  200.15, [FastEMA=200.612, SlowEMA=200.752, VWAP=172.542, MACD=-0.0801], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   4600 (Sample 24): Time=2025-09-19 10:06:37+05:30, Close=  190.10, [FastEMA=189.523, SlowEMA=188.739, VWAP=173.386, MACD=0.6971], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Ind  Row   4800 (Sample 25): Time=2025-09-19 10:08:40+05:30, Close=  185.60, [FastEMA=185.684, SlowEMA=185.985, VWAP=173.932, MACD=-0.2798], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Indicators calculated. Final 5 rows:
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: 
+                            close    fast_ema    slow_ema        vwap      macd  rsi
+2025-09-19 15:29:57+05:30  142.50  142.569464  142.512701  174.455309  0.033363  NaN
+2025-09-19 15:29:58+05:30  142.85  142.625571  142.543365  174.451015  0.055047  NaN
+2025-09-19 15:29:59+05:30  142.70  142.640457  142.557604  174.449166  0.059444  NaN
+2025-09-19 15:29:59+05:30  142.70  142.652366  142.570549  174.447318  0.062211  NaN
+2025-09-19 15:30:00+05:30  143.00  142.721893  142.609590  174.446708  0.087601  NaN
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: EMA DIAGNOSTIC: 18374/36239 rows have fast > slow (50.7%)
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: VWAP DIAGNOSTIC: 19947/36239 rows have price > VWAP (55.0%)
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: MACD DIAGNOSTIC: 18170/36239 rows have MACD > Signal (50.1%)
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Sample indicator values:
+Empty DataFrame
+Columns: [fast_ema, slow_ema, vwap, macd, macd_signal, rsi, htf_ema]
+Index: []
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Starting backtest execution...
+2025-09-25 08:46:34 [    INFO] backtest.backtest_runner: Processing timestamp: 2025-09-19 09:19:38+05:30 (tzinfo: Asia/Kolkata)
+2025-09-25 08:46:36 [    INFO] backtest.backtest_runner: Progress: 1,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:46:38 [    INFO] backtest.backtest_runner: Progress: 2,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:46:41 [    INFO] backtest.backtest_runner: Progress: 3,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:46:43 [    INFO] backtest.backtest_runner: Progress: 4,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:46:45 [    INFO] backtest.backtest_runner: Progress: 5,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:46:47 [    INFO] backtest.backtest_runner: Progress: 6,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:46:49 [    INFO] backtest.backtest_runner: Progress: 7,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:46:51 [    INFO] backtest.backtest_runner: Progress: 8,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:46:53 [    INFO] backtest.backtest_runner: Progress: 9,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:46:55 [    INFO] backtest.backtest_runner: Progress: 10,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:46:57 [    INFO] backtest.backtest_runner: Progress: 11,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:46:59 [    INFO] backtest.backtest_runner: Progress: 12,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:01 [    INFO] backtest.backtest_runner: Progress: 13,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:03 [    INFO] backtest.backtest_runner: Progress: 14,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:04 [    INFO] backtest.backtest_runner: Progress: 15,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:06 [    INFO] backtest.backtest_runner: Progress: 16,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:08 [    INFO] backtest.backtest_runner: Progress: 17,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:10 [    INFO] backtest.backtest_runner: Progress: 18,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:12 [    INFO] backtest.backtest_runner: Progress: 19,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:14 [    INFO] backtest.backtest_runner: Progress: 20,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:16 [    INFO] backtest.backtest_runner: Progress: 21,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:18 [    INFO] backtest.backtest_runner: Progress: 22,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:20 [    INFO] backtest.backtest_runner: Progress: 23,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:21 [    INFO] backtest.backtest_runner: Progress: 24,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:23 [    INFO] backtest.backtest_runner: Progress: 25,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:25 [    INFO] backtest.backtest_runner: Progress: 26,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:27 [    INFO] backtest.backtest_runner: Progress: 27,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:29 [    INFO] backtest.backtest_runner: Progress: 28,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:31 [    INFO] backtest.backtest_runner: Progress: 29,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:33 [    INFO] backtest.backtest_runner: Progress: 30,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:35 [    INFO] backtest.backtest_runner: Progress: 31,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:37 [    INFO] backtest.backtest_runner: Progress: 32,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:39 [    INFO] backtest.backtest_runner: Progress: 33,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner: Progress: 34,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner: Session end reached at 15:10:00, closing all positions
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner: Backtest completed: 0 signals, 0 trades executed
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner: BACKTEST SUMMARY
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner: Data Quality:
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Total input rows: 36240
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Processed rows: 36240
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Data quality: 100.0%
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner: 
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner: Trading Performance:
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Total Trades: 0
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Win Rate: 0.00%
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Total P&L: 0.00
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Avg Win: 0.00
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Avg Loss: 0.00
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Profit Factor: 0.00
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Max Win: 0.00
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Max Loss: 0.00
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner:   Total Commission: 0.00
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 08:47:41 [ WARNING] backtest.backtest_runner: No trades executed during backtest
+2025-09-25 08:47:41 [    INFO] backtest.backtest_runner: Backtest completed successfully
+2025-09-25 09:11:41 [    INFO] backtest.backtest_runner: Logging configured for backtest.backtest_runner
+2025-09-25 09:11:41 [    INFO] backtest.backtest_runner: Comprehensive file logging configured for backtest
+2025-09-25 09:11:41 [    INFO] backtest.backtest_runner: BacktestRunner initialized with strategy version: 1
+2025-09-25 09:11:41 [    INFO] backtest.backtest_runner: Starting backtest run
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Data loaded: 36521 rows from 2025-09-24 06:55:07.793000+05:30 to 2025-09-24 15:30:00+05:30
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Data prepared successfully - strategy will calculate indicators incrementally
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: STARTING BACKTEST WITH NORMALIZED DATA PIPELINE
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: === NESTED CONFIG STRUCTURE MAINTAINED ===
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Section 'strategy': 23 parameters
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Section 'risk': 16 parameters
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Section 'capital': 1 parameters
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Section 'instrument': 5 parameters
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Section 'session': 10 parameters
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Section 'backtest': 6 parameters
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Section 'live': 5 parameters
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Section 'logging': 11 parameters
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: NESTED CONFIG: Using consistent nested configuration structure
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Strategy parameters found: ['strategy_version', 'use_ema_crossover', 'use_macd', 'use_vwap', 'use_rsi_filter', 'use_htf_trend', 'use_bollinger_bands', 'use_stochastic', 'use_atr', 'fast_ema', 'slow_ema', 'macd_fast', 'macd_slow', 'macd_signal', 'rsi_length', 'rsi_overbought', 'rsi_oversold', 'htf_period', 'consecutive_green_bars', 'atr_len', 'indicator_update_mode', 'nan_streak_threshold', 'nan_recovery_threshold']
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Strategy interface validation passed
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: === NESTED CONFIG PASSED TO POSITION MANAGER ===
+2025-09-25 09:11:43 [    INFO] backtest.backtest_runner: Applying session filtering to data based on user configuration
+2025-09-25 09:11:44 [    INFO] backtest.backtest_runner: Filtered data from 36521 to 36519 rows based on user session timing
+2025-09-25 09:11:44 [    INFO] backtest.backtest_runner: === PROCESSING INDICATORS INCREMENTALLY (ROW-BY-ROW) ===
+2025-09-25 09:11:44 [    INFO] backtest.backtest_runner: Processing 36519 rows incrementally without chunking
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Indicators calculated successfully. DataFrame shape: (36519, 20)
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: === INCREMENTAL PROCESSING COMPLETE ===
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: ================================================================================
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: STAGE 3: AFTER INDICATOR CALCULATION (Same Rows)
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: ================================================================================
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row      0 (Sample  1): Time=2025-09-24 09:15:00+05:30, Close=  250.00, [FastEMA=250.000, SlowEMA=250.000, VWAP=250.000, MACD=0.0000], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row    200 (Sample  2): Time=2025-09-24 09:17:01+05:30, Close=  209.05, [FastEMA=208.695, SlowEMA=208.349, VWAP=216.224, MACD=0.3996], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row    400 (Sample  3): Time=2025-09-24 09:19:04+05:30, Close=  204.60, [FastEMA=204.160, SlowEMA=204.621, VWAP=213.639, MACD=-0.4760], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row    600 (Sample  4): Time=2025-09-24 09:21:07+05:30, Close=  199.60, [FastEMA=198.391, SlowEMA=198.096, VWAP=210.374, MACD=0.1555], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row    800 (Sample  5): Time=2025-09-24 09:23:09+05:30, Close=  195.45, [FastEMA=195.008, SlowEMA=194.248, VWAP=206.347, MACD=0.8664], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   1000 (Sample  6): Time=2025-09-24 09:25:12+05:30, Close=  195.35, [FastEMA=195.290, SlowEMA=195.871, VWAP=204.737, MACD=-0.6878], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   1200 (Sample  7): Time=2025-09-24 09:27:15+05:30, Close=  191.55, [FastEMA=192.551, SlowEMA=192.769, VWAP=203.331, MACD=-0.3972], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   1400 (Sample  8): Time=2025-09-24 09:29:18+05:30, Close=  186.50, [FastEMA=186.788, SlowEMA=187.881, VWAP=202.144, MACD=-1.2403], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   1600 (Sample  9): Time=2025-09-24 09:31:23+05:30, Close=  189.55, [FastEMA=188.080, SlowEMA=186.605, VWAP=200.148, MACD=1.4738], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   1800 (Sample 10): Time=2025-09-24 09:33:26+05:30, Close=  192.55, [FastEMA=192.707, SlowEMA=192.621, VWAP=199.139, MACD=0.0321], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   2000 (Sample 11): Time=2025-09-24 09:35:29+05:30, Close=  191.60, [FastEMA=190.446, SlowEMA=189.632, VWAP=198.134, MACD=0.7003], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   2200 (Sample 12): Time=2025-09-24 09:37:32+05:30, Close=  191.35, [FastEMA=191.004, SlowEMA=190.591, VWAP=197.402, MACD=0.6074], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   2400 (Sample 13): Time=2025-09-24 09:39:35+05:30, Close=  194.85, [FastEMA=194.145, SlowEMA=193.417, VWAP=196.941, MACD=0.6849], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   2600 (Sample 14): Time=2025-09-24 09:41:38+05:30, Close=  186.60, [FastEMA=186.078, SlowEMA=185.570, VWAP=196.180, MACD=0.5385], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   2800 (Sample 15): Time=2025-09-24 09:43:42+05:30, Close=  183.45, [FastEMA=183.021, SlowEMA=182.508, VWAP=195.095, MACD=0.6921], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   3000 (Sample 16): Time=2025-09-24 09:45:45+05:30, Close=  178.40, [FastEMA=178.853, SlowEMA=178.908, VWAP=193.998, MACD=-0.0335], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   3200 (Sample 17): Time=2025-09-24 09:47:47+05:30, Close=  186.60, [FastEMA=186.605, SlowEMA=186.519, VWAP=193.330, MACD=0.0343], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   3400 (Sample 18): Time=2025-09-24 09:49:51+05:30, Close=  193.40, [FastEMA=192.528, SlowEMA=191.902, VWAP=193.079, MACD=0.6071], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   3600 (Sample 19): Time=2025-09-24 09:51:55+05:30, Close=  192.30, [FastEMA=191.782, SlowEMA=191.330, VWAP=192.954, MACD=0.5011], Signals=[EMA_Bull=True, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   3800 (Sample 20): Time=2025-09-24 09:53:59+05:30, Close=  192.05, [FastEMA=192.687, SlowEMA=192.802, VWAP=192.960, MACD=-0.0438], Signals=[EMA_Bull=False, VWAP_Bull=False]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   4000 (Sample 21): Time=2025-09-24 09:56:01+05:30, Close=  195.55, [FastEMA=194.716, SlowEMA=194.324, VWAP=192.967, MACD=0.3440], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   4200 (Sample 22): Time=2025-09-24 09:58:03+05:30, Close=  198.25, [FastEMA=197.872, SlowEMA=197.406, VWAP=193.076, MACD=0.4227], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   4400 (Sample 23): Time=2025-09-24 10:00:08+05:30, Close=  198.30, [FastEMA=198.560, SlowEMA=198.958, VWAP=193.288, MACD=-0.2699], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   4600 (Sample 24): Time=2025-09-24 10:02:11+05:30, Close=  194.95, [FastEMA=194.766, SlowEMA=195.478, VWAP=193.482, MACD=-0.7439], Signals=[EMA_Bull=False, VWAP_Bull=True]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Ind  Row   4800 (Sample 25): Time=2025-09-24 10:04:14+05:30, Close=  204.50, [FastEMA=204.576, SlowEMA=204.144, VWAP=193.652, MACD=0.6020], Signals=[EMA_Bull=True, VWAP_Bull=True]
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Indicators calculated. Final 5 rows:
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: 
+                            close    fast_ema    slow_ema        vwap      macd  rsi
+2025-09-24 15:29:58+05:30  172.55  172.829823  172.868405  196.581537 -0.046762  NaN
+2025-09-24 15:29:58+05:30  172.55  172.773859  172.839459  196.581087 -0.066601  NaN
+2025-09-24 15:29:59+05:30  172.85  172.789087  172.840418  196.580643 -0.057455  NaN
+2025-09-24 15:30:00+05:30  173.25  172.881270  172.877652  196.580206 -0.017725  NaN
+2025-09-24 15:30:00+05:30  173.25  172.955016  172.911502  196.579769  0.013604  NaN
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: EMA DIAGNOSTIC: 18505/36519 rows have fast > slow (50.7%)
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: VWAP DIAGNOSTIC: 18078/36519 rows have price > VWAP (49.5%)
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: MACD DIAGNOSTIC: 18380/36519 rows have MACD > Signal (50.3%)
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Sample indicator values:
+Empty DataFrame
+Columns: [fast_ema, slow_ema, vwap, macd, macd_signal, rsi, htf_ema]
+Index: []
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Starting backtest execution...
+2025-09-25 09:13:30 [    INFO] backtest.backtest_runner: Processing timestamp: 2025-09-24 09:15:00+05:30 (tzinfo: Asia/Kolkata)
+2025-09-25 09:13:33 [    INFO] backtest.backtest_runner: Progress: 1,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:13:36 [    INFO] backtest.backtest_runner: Progress: 2,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:13:38 [    INFO] backtest.backtest_runner: Progress: 3,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:13:40 [    INFO] backtest.backtest_runner: Progress: 4,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:13:42 [    INFO] backtest.backtest_runner: Progress: 5,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:13:44 [    INFO] backtest.backtest_runner: Progress: 6,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:13:46 [    INFO] backtest.backtest_runner: Progress: 7,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:13:48 [    INFO] backtest.backtest_runner: Progress: 8,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:13:50 [    INFO] backtest.backtest_runner: Progress: 9,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:13:52 [    INFO] backtest.backtest_runner: Progress: 10,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:13:55 [    INFO] backtest.backtest_runner: Progress: 11,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:13:59 [    INFO] backtest.backtest_runner: Progress: 12,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:02 [    INFO] backtest.backtest_runner: Progress: 13,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:05 [    INFO] backtest.backtest_runner: Progress: 14,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:07 [    INFO] backtest.backtest_runner: Progress: 15,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:11 [    INFO] backtest.backtest_runner: Progress: 16,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:13 [    INFO] backtest.backtest_runner: Progress: 17,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:15 [    INFO] backtest.backtest_runner: Progress: 18,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:17 [    INFO] backtest.backtest_runner: Progress: 19,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:19 [    INFO] backtest.backtest_runner: Progress: 20,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:22 [    INFO] backtest.backtest_runner: Progress: 21,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:24 [    INFO] backtest.backtest_runner: Progress: 22,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:26 [    INFO] backtest.backtest_runner: Progress: 23,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:27 [    INFO] backtest.backtest_runner: Progress: 24,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:30 [    INFO] backtest.backtest_runner: Progress: 25,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:32 [    INFO] backtest.backtest_runner: Progress: 26,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:34 [    INFO] backtest.backtest_runner: Progress: 27,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:35 [    INFO] backtest.backtest_runner: Progress: 28,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:37 [    INFO] backtest.backtest_runner: Progress: 29,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:39 [    INFO] backtest.backtest_runner: Progress: 30,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:45 [    INFO] backtest.backtest_runner: Progress: 31,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:49 [    INFO] backtest.backtest_runner: Progress: 32,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:55 [    INFO] backtest.backtest_runner: Progress: 33,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:58 [    INFO] backtest.backtest_runner: Progress: 34,000 bars processed, Signals: 0, Entries: 0, Trades: 0
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner: Session end reached at 15:10:00, closing all positions
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner: Backtest completed: 0 signals, 0 trades executed
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner: BACKTEST SUMMARY
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner: Data Quality:
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Total input rows: 36521
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Processed rows: 36521
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Data quality: 100.0%
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner: 
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner: Trading Performance:
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Total Trades: 0
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Win Rate: 0.00%
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Total P&L: 0.00
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Avg Win: 0.00
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Avg Loss: 0.00
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Profit Factor: 0.00
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Max Win: 0.00
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Max Loss: 0.00
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner:   Total Commission: 0.00
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner: ============================================================
+2025-09-25 09:14:59 [ WARNING] backtest.backtest_runner: No trades executed during backtest
+2025-09-25 09:14:59 [    INFO] backtest.backtest_runner: Backtest completed successfully

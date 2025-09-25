@@ -15,119 +15,84 @@ import logging
 import logging.handlers
 import os
 import sys
-from datetime import datetime
-from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 import threading
 
-# Global logging configuration
-LOG_FORMAT = "%(asctime)s [%(levelname)8s] %(name)s: %(message)s"
+LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-DEFAULT_LOG_LEVEL = logging.INFO
 
-# Thread lock for thread-safe logging configuration
 _config_lock = threading.Lock()
 _configured_loggers: Dict[str, logging.Logger] = {}
 
-def get_log_file_path(base_name: str = "trading", 
-                      log_dir: str = "logs", 
-                      use_timestamp: bool = True) -> str:
+def setup_logging(
+    log_level: str = "INFO",
+    log_file: Optional[str] = None,
+    console_output: bool = True,
+    file_rotation: bool = True,
+    max_file_size: int = 10 * 1024 * 1024,
+    backup_count: int = 5,
+    module_name: Optional[str] = None
+) -> logging.Logger:
     """
-    Generate a standardized log file path.
-    
-    Args:
-        base_name: Base name for the log file
-        log_dir: Directory to store log files
-        use_timestamp: Whether to include timestamp in filename
-        
-    Returns:
-        Full path to log file
+    Strict logging setup: configure the root logger and return a module logger.
+    This function is fail-fast: caller must provide a valid non-empty log_file if file logging is desired.
     """
-    # Ensure log directory exists
-    log_path = Path(log_dir)
-    log_path.mkdir(parents=True, exist_ok=True)
-    
-    if use_timestamp:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{base_name}_{timestamp}.log"
-    else:
-        filename = f"{base_name}.log"
-    
-    return str(log_path / filename)
+    if not log_file:
+        raise ValueError("setup_logging requires a non-empty 'log_file' path provided by configuration")
 
-def setup_logging(log_level: str = "INFO", 
-                  log_file: Optional[str] = None,
-                  console_output: bool = True,
-                  file_rotation: bool = True,
-                  max_file_size: int = 10 * 1024 * 1024,  # 10MB
-                  backup_count: int = 5,
-                  module_name: Optional[str] = None) -> logging.Logger:
-    """
-    Configure logging for the trading system.
-    
-    Args:
-        log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        log_file: Path to log file (optional)
-        console_output: Whether to output to console
-        file_rotation: Whether to use rotating file handler
-        max_file_size: Maximum size per log file in bytes
-        backup_count: Number of backup files to keep
-        module_name: Specific module name for logger
-        
-    Returns:
-        Configured logger instance
-    """
     with _config_lock:
-        # Determine logger name
-        logger_name = module_name or "trading_system"
-        
-        # Return existing logger if already configured
-        if logger_name in _configured_loggers:
-            return _configured_loggers[logger_name]
-        
-        # Create logger
-        logger = logging.getLogger(logger_name)
-        logger.setLevel(getattr(logging, log_level.upper(), DEFAULT_LOG_LEVEL))
-        
-        # Clear any existing handlers
-        logger.handlers.clear()
-        
-        # Create formatter
+        level = getattr(logging, str(log_level).upper(), None)
+        if level is None:
+            raise ValueError(f"Invalid log level: {log_level}")
+
+        root = logging.getLogger()
+        root.setLevel(level)
+
         formatter = logging.Formatter(LOG_FORMAT, DATE_FORMAT)
-        
-        # Console handler
+
+        # Avoid duplicate file handlers
+        existing_file_paths = set()
+        for h in list(root.handlers):
+            try:
+                existing_file_paths.add(getattr(h, "baseFilename"))
+            except Exception:
+                pass
+
+        # Ensure directory exists only if dirname is provided
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+
+        if log_file not in existing_file_paths:
+            try:
+                if file_rotation:
+                    fh = logging.handlers.RotatingFileHandler(
+                        log_file, maxBytes=max_file_size, backupCount=backup_count, encoding="utf-8"
+                    )
+                else:
+                    fh = logging.FileHandler(log_file, encoding="utf-8")
+                fh.setLevel(logging.DEBUG)
+                fh.setFormatter(formatter)
+                root.addHandler(fh)
+            except Exception as e:
+                raise RuntimeError(f"Failed to create file handler for '{log_file}': {e}")
+
+        # Console handler (required if console_output True)
         if console_output:
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setLevel(logging.INFO)
-            console_handler.setFormatter(formatter)
-            logger.addHandler(console_handler)
-        
-        # File handler
-        if log_file:
-            # Ensure directory exists
-            os.makedirs(os.path.dirname(log_file), exist_ok=True)
-            
-            if file_rotation:
-                file_handler = logging.handlers.RotatingFileHandler(
-                    log_file, 
-                    maxBytes=max_file_size,
-                    backupCount=backup_count,
-                    encoding='utf-8'
-                )
-            else:
-                file_handler = logging.FileHandler(log_file, encoding='utf-8')
-            
-            file_handler.setLevel(logging.DEBUG)
-            file_handler.setFormatter(formatter)
-            logger.addHandler(file_handler)
-        
-        # Prevent duplicate logs
-        logger.propagate = False
-        
-        # Cache configured logger
-        _configured_loggers[logger_name] = logger
-        
-        logger.info(f"Logging configured for {logger_name}")
+            has_console = any(isinstance(h, logging.StreamHandler) and getattr(h, "stream", None) in (sys.stdout, sys.stderr) for h in root.handlers)
+            if not has_console:
+                ch = logging.StreamHandler(sys.stdout)
+                ch.setLevel(level)
+                ch.setFormatter(formatter)
+                root.addHandler(ch)
+
+        module_logger_name = module_name or __name__
+        logger = logging.getLogger(module_logger_name)
+        logger.propagate = True
+        logger.setLevel(level)
+        _configured_loggers[module_logger_name] = logger
+
+        logger.info("Logging configured (root handlers) - module: %s", module_logger_name)
         return logger
 
 def get_module_logger(module_name: str, 
