@@ -443,7 +443,25 @@ class ModularIntradayStrategy:
             TradingSignal object
         """
         # --- NEW: Update green bars count for this bar ---
-        self._update_green_bars_count(row)
+        # Update tick-to-tick green count using the implemented helper.
+        # process_tick_or_bar / incremental loop pass a row with 'close' scalar.
+        try:
+            close_px = None
+            if isinstance(row, pd.Series):
+                close_px = row.get('close', None)
+            elif isinstance(row, dict):
+                close_px = row.get('close', None)
+            # Only update when we can extract a numeric close price
+            if close_px is not None:
+                try:
+                    self._update_green_tick_count(float(close_px))
+                except Exception:
+                    logger.exception("Failed to update green tick count")
+            else:
+                logger.debug("generate_entry_signal: missing close price; skipping green-tick update")
+        except Exception:
+            logger.exception("Unexpected error while updating green tick count")
+        
         # Check if we can enter
         if not self.can_enter_new_position(current_time):
             return TradingSignal('HOLD', current_time, row['close'], reason="Cannot enter new position")

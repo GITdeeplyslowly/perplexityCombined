@@ -1436,7 +1436,8 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Button(frame, text="Browse", command=self._bt_browse_csv).grid(row=row, column=2, padx=5, pady=5)
         row += 1
 
-        # Run Backtest button        ttk.Button(frame, text="Run Backtest", command=self._bt_run_backtest, style="Accent.TButton").grid(row=row, column=0, columnspan=3, pady=10)
+        # Run Backtest button
+        ttk.Button(frame, text="Run Backtest", command=self._bt_run_backtest).grid(row=row, column=0, columnspan=3, pady=10)
         row += 1
 
         # Strategy Configuration

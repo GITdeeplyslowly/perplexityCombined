@@ -18,7 +18,6 @@ Raw Data → DataNormalizer → Indicators → Strategy → Position Manager
 
     """
 
-import yaml
 import importlib
 import logging
 import sys
@@ -27,11 +26,22 @@ import pandas as pd
 import os
 import inspect
 from datetime import datetime, time
-import logging
-import os
 from types import MappingProxyType
+from typing import Tuple, Any, Dict
+
+# Centralized logging setup utility
 from utils.logging_utils import setup_logging
 
+# Time utilities (timezone handling, buffer helpers)
+from utils.time_utils import ensure_tz_aware, is_within_session, apply_buffer_to_time
+
+# Data loader used by the centralized loader / runner
+from utils.simple_loader import load_data_simple
+
+# Position manager used by the runner
+from core.position_manager import PositionManager
+
+# Strategy and results
 from core.researchStrategy import ModularIntradayStrategy
 from backtest.results import BacktestResults
 from utils.smart_logger import create_smart_logger
@@ -59,10 +69,13 @@ except (AssertionError, AttributeError, ImportError) as e:
     # Raise immediately to prevent hard-to-diagnose errors later
     raise ImportError("Critical timezone function not properly available")
 
-def load_config(config_path: str) -> dict:
-    """Load YAML strategy and risk config."""
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
+# NOTE: YAML config loading removed from the BacktestRunner.
+# The BacktestRunner MUST receive a frozen MappingProxyType config produced
+# by the GUI workflow (create_config_from_defaults -> validate_config -> freeze_config).
+# If a CLI YAML-driven workflow is required later, implement a separate helper
+# script (outside of this module) that produces the frozen config and passes it
+# into BacktestRunner. Keeping YAML loading out of this module enforces the
+# single-source-of-truth and prevents divergent runtime configuration.
 
 def get_strategy(config: dict):
     """

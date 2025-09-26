@@ -15,14 +15,38 @@ import logging
 import logging.handlers
 import os
 import sys
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 import threading
+from datetime import datetime
 
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 _config_lock = threading.Lock()
 _configured_loggers: Dict[str, logging.Logger] = {}
+
+def get_log_file_path(base_name: str = "trading",
+                      log_dir: str = "logs",
+                      use_timestamp: bool = True) -> str:
+    """
+    Construct a log file path and ensure the directory exists (when provided).
+    Returns a path like "<log_dir>/<base_name>_YYYYMMDD_HHMMSS.log" when use_timestamp=True.
+    This function raises on directory creation failure (strict behavior).
+    """
+    # Ensure directory exists when a directory component is provided
+    if log_dir:
+        try:
+            os.makedirs(log_dir, exist_ok=True)
+        except Exception as e:
+            raise RuntimeError(f"Failed to create log directory '{log_dir}': {e}")
+
+    if use_timestamp:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{base_name}_{timestamp}.log"
+    else:
+        filename = f"{base_name}.log"
+
+    return os.path.join(log_dir, filename) if log_dir else filename
 
 def setup_logging(
     log_level: str = "INFO",

@@ -13,6 +13,9 @@ from types import MappingProxyType
 
 logger = logging.getLogger(__name__)
 
+# Module-level missing sentinel used by strict accessors
+MISSING = object()
+
 # Logging verbosity helpers (GUI dropdown + resolver)
 LOG_VERBOSITY_OPTIONS = ['minimal', 'normal', 'verbose', 'debug']
 
@@ -95,3 +98,37 @@ class ConfigAccessor:
             if cur is default:
                 return default
         return cur
+
+    # ---- Strict, fail-fast convenience accessors (no DEFAULT_CONFIG fallbacks) ----
+
+    def _get_section_param(self, section: str, key: str, default: Any = MISSING):
+        """
+        Strict section accessor. If default is omitted, raise KeyError when key missing.
+        """
+        path = f"{section}.{key}"
+        val = self.get(path, MISSING)
+        if val is MISSING:
+            if default is MISSING:
+                raise KeyError(f"Missing required configuration key: {path}")
+            return default
+        return val
+
+    def get_logging_param(self, key: str, default: Any = MISSING):
+        """Read logging.<key>; raise KeyError if missing and no default provided."""
+        return self._get_section_param("logging", key, default)
+
+    def get_strategy_param(self, key: str, default: Any = MISSING):
+        """Read strategy.<key>; raise KeyError if missing and no default provided."""
+        return self._get_section_param("strategy", key, default)
+
+    def get_session_param(self, key: str, default: Any = MISSING):
+        return self._get_section_param("session", key, default)
+
+    def get_risk_param(self, key: str, default: Any = MISSING):
+        return self._get_section_param("risk", key, default)
+
+    def get_instrument_param(self, key: str, default: Any = MISSING):
+        return self._get_section_param("instrument", key, default)
+
+    def get_capital_param(self, key: str, default: Any = MISSING):
+        return self._get_section_param("capital", key, default)

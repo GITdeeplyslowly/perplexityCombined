@@ -16,7 +16,17 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         # Canonical verbosity string (valid logging level)
         "verbosity": "INFO",
         "console_output": True,
-        "file_rotation": True
+        "file_rotation": True,
+
+        # --- Strict settings required by downstream code (no fallbacks) ---
+        "enable_smart_logger": False,
+        "tick_log_interval": 100,
+        "log_progress": True,
+        "max_signal_reasons": 5,
+        "log_to_file": True,
+        # alias for logfile for compatibility
+        "log_file": os.path.join("logs", "unified_gui.log"),
+        "log_level_overrides": {}
     },
     "strategy": {
         "strategy_version": 1,
