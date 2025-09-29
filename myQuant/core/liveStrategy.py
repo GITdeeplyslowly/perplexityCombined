@@ -1,4 +1,4 @@
-"""
+﻿"""
 core/strategy.py - Unified Long-Only, Intraday Strategy for Trading Bot and Backtest
 
 - F&O-ready, multi-indicator, live-driven.
@@ -10,15 +10,14 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime, time, timedelta
-from utils.time_utils import now_ist, normalize_datetime_to_ist, is_time_to_exit, is_within_session, ensure_tz_aware, apply_buffer_to_time
-import logging
 import pytz
+from utils.time_utils import now_ist, normalize_datetime_to_ist, is_time_to_exit, is_within_session, ensure_tz_aware, apply_buffer_to_time
+from types import MappingProxyType
+from utils.logger import HighPerfLogger, increment_tick_counter, get_tick_counter, format_tick_message
 
 from utils.config_helper import ConfigAccessor
 from core.indicators import IncrementalEMA, IncrementalMACD, IncrementalVWAP, IncrementalATR
 from dataclasses import dataclass
-
-logger = logging.getLogger(__name__)
 
 @dataclass
 class TradingSignal:
@@ -44,7 +43,7 @@ class ModularIntradayStrategy:
     - Consecutive green bars re-entry logic
     """
     
-    def __init__(self, config: Dict[str, Any], indicators_module=None):
+    def __init__(self, config: MappingProxyType, indicators_module=None):
         """
         Initialize strategy with parameters.
         
@@ -53,6 +52,10 @@ class ModularIntradayStrategy:
             indicators_module: Optional module for calculating indicators
         """
         self.config = config
+        # STRICT / fail-fast: initialize HighPerfLogger (requires frozen MappingProxyType & prior setup).
+        # Let any exception propagate so misconfiguration is detected immediately.
+        # Use high-performance logger (FAIL-FAST: requires caller to have run setup_from_config)
+        self.perf_logger = HighPerfLogger(__name__, config)
         self.config_accessor = ConfigAccessor(config)
         self.indicators = indicators_module
         self.in_position = False
@@ -110,7 +113,6 @@ class ModularIntradayStrategy:
             except KeyError:
                 missing.append(f"{section}.{key}")
         if missing:
-            logger.error(f"Missing required config entries: {missing}")
             raise ValueError(f"Invalid configuration - missing: {missing}")
  
         # Session/session exit config (populate using existing accessors)
@@ -135,15 +137,15 @@ class ModularIntradayStrategy:
             try:
                 self.timezone = pytz.timezone(tz_name)
             except Exception as e:
-                logger.error(f"Invalid timezone {tz_name}: {e}")
                 raise ValueError(f"Invalid timezone in config: {tz_name}")
         except KeyError as e:
-            logger.error(f"Missing required session parameter: {e}")
             raise
 
-        logger.info(f"Session configured: {self.session_start.strftime('%H:%M')} to "
-                   f"{self.session_end.strftime('%H:%M')} with "
-                   f"buffers: +{self.start_buffer_minutes}/-{self.end_buffer_minutes} min")
+        # Log session configuration via high-perf logger (concise lifecycle event)
+        self.perf_logger.session_start(
+            f"Session configured: {self.session_start.strftime('%H:%M')} to {self.session_end.strftime('%H:%M')} "
+            f"buffers=+{self.start_buffer_minutes}/-{self.end_buffer_minutes}m"
+        )
 
         # EMA parameters
         self.fast_ema = self.config_accessor.get_strategy_param('fast_ema')
@@ -171,29 +173,15 @@ class ModularIntradayStrategy:
             self.green_bars_count = 0
             self.last_bar_data = None
         except KeyError as e:
-            logger.error(f"Missing required strategy parameter: {e}")
             raise
         
         # Set name and version
         self.name = "Modular Intraday Long-Only Strategy"
         self.version = "3.0"
         
-        logger.info(f"Strategy initialized: {self.name} v{self.version}")
-        logger.info(
-            f"[INIT] Indicator switches: EMA={self.use_ema_crossover}, MACD={self.use_macd}, VWAP={self.use_vwap}, "
-            f"RSI={self.use_rsi_filter}, HTF={self.use_htf_trend}, BB={self.use_bollinger_bands}"
-        )
-        logger.info(
-            f"[INIT] Indicator params: fast_ema={self.fast_ema}, slow_ema={self.slow_ema}, "
-            f"MACD=({self.macd_fast}, {self.macd_slow}, {self.macd_signal}), "
-            f"Green Bars Req={self.consecutive_green_bars_required}"
-        )
-        logger.info(
-            f"[INIT] Session: {self.session_start.strftime('%H:%M')}–{self.session_end.strftime('%H:%M')}, "
-            f"Buffers: +{self.start_buffer_minutes}/-{self.end_buffer_minutes}, "
-            f"no_trade_start={self.no_trade_start_minutes} no_trade_end={self.no_trade_end_minutes}, "
-            f"Max/day={self.max_positions_per_day}"
-        )
+        # Emit concise initialization event via high-perf logger
+        self.perf_logger.session_start(f"Strategy initialized: {self.name} v{self.version}")
+        # (Detailed indicator info intentionally not emitted via stdlib logger per standardization)
 
     def is_trading_session(self, current_time: datetime) -> bool:
         """
@@ -235,7 +223,7 @@ class ModularIntradayStrategy:
         if not self._check_consecutive_green_ticks():
             gating_reasons.append(f"Need {self.consecutive_green_bars_required} green ticks, have {self.green_bars_count}")
         if gating_reasons:
-            logger.info(f"[ENTRY BLOCKED] at {current_time}: {' | '.join(gating_reasons)}")
+            self.perf_logger.entry_blocked('; '.join(gating_reasons))
             return False
         return True
 
@@ -255,14 +243,12 @@ class ModularIntradayStrategy:
         Check if positions should be exited based on user-defined session end and buffer
         """
         if not self.is_trading_session(now):
-            logger.debug(f"✅ Should exit: Not in trading session {now}")
             return True
         
         # Get effective end time with buffer
         _, buffer_end = self.get_effective_session_times()
         
         if now.time() >= buffer_end:
-            logger.debug(f"✅ Should exit: After buffer end {buffer_end}")
             return True
         
         return False
@@ -304,9 +290,10 @@ class ModularIntradayStrategy:
         """Reset session-based indicators (like VWAP) for a new trading session."""
         try:
             self.vwap_tracker.reset()
-            logger.debug("Session indicators reset for new trading day")
+            # Use perf_logger tick_debug for low-level debug in hot paths
+            self.perf_logger.tick_debug(format_tick_message, get_tick_counter(), 0.0, None)
         except Exception as e:
-            logger.error(f"Failed to reset session indicators: {e}")
+            pass  # Suppress errors in reset
 
     def calculate_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
         """Incremental processing: update incremental trackers row-by-row and return DataFrame with indicator cols."""
@@ -399,7 +386,6 @@ class ModularIntradayStrategy:
             if not symbol:
                 raise KeyError('instrument.symbol')
         except KeyError as e:
-            logger.error("Missing required parameter: %s", e)
             return None
 
         # Use instrument SSOT for contract sizing (no risk.lot_size overrides)
@@ -407,7 +393,6 @@ class ModularIntradayStrategy:
             lot_size = int(self.config_accessor.get_instrument_param('lot_size'))
             tick_size = float(self.config_accessor.get_instrument_param('tick_size'))
         except KeyError as e:
-            logger.error("Missing instrument sizing parameter: %s", e)
             return None
 
         position_id = position_manager.open_position(
@@ -426,10 +411,9 @@ class ModularIntradayStrategy:
             self.daily_stats['trades_today'] += 1
             self.last_signal_time = now
 
-            logger.info("Position opened: %s @ %.2f", position_id, entry_price)
+            self.perf_logger.trade_executed("BUY", entry_price, lot_size, "Strategy signal")
             return position_id
-
-        logger.warning("Position manager returned None")
+        # If position not opened, do not emit stdlib warning (standardization)
         return None
 
     def should_close(self, row: pd.Series, now: datetime, position_manager) -> bool:
@@ -446,14 +430,12 @@ class ModularIntradayStrategy:
         try:
             success = position_manager.close_position_full(position_id, price, now, reason=reason)
             if success:
-                logger.info("Strategy exit executed: %s @ %.2f - %s", position_id, price, reason)
                 self.in_position = False
                 self.position_id = None
                 self.position_entry_time = None
                 self.position_entry_price = None
             return success
         except Exception as e:
-            logger.error("Strategy exit failed: %s", e)
             return False
 
     def should_exit_position(self, row: pd.Series, position_type: str, 
@@ -493,7 +475,8 @@ class ModularIntradayStrategy:
             'session_start_time': now
         }
         self.last_signal_time = None
-        logger.info(f"Daily counters reset for {now.date()}")
+        # Log daily reset via high-perf logger
+        self.perf_logger.session_start(f"Daily counters reset for {now.date()}")
 
     def validate_parameters(self) -> List[str]:
         """
@@ -582,25 +565,28 @@ class ModularIntradayStrategy:
         
         for method in required_methods:
             if not hasattr(self, method):
-                logger.error(f"MISSING METHOD: {method}")
                 return False
             else:
-                logger.info(f"✅ Method exists: {method}")
-        
+                pass  # Method exists
+    
         return True
 
     def process_tick_or_bar(self, row: pd.Series):
-        """
-        Defensive incremental processing for a single tick/bar.
-        Mirrors researchStrategy.process_tick_or_bar semantics but optimized for live use.
-        """
+        # Tick counter and hot-path perf logging
+        increment_tick_counter()
+        if self.perf_logger:
+            self.perf_logger.tick_debug(
+                format_tick_message,
+                get_tick_counter(), 
+                row.get('close', 0), 
+                row.get('volume', None)
+            )
         try:
             # Accept Series or single-row DataFrame
             if isinstance(row, pd.DataFrame):
                 if len(row) == 1:
                     row = row.iloc[0]
                 else:
-                    logger.error("process_tick_or_bar expects single-row input")
                     return row
 
             def safe_extract(key, default=None):
@@ -611,15 +597,12 @@ class ModularIntradayStrategy:
 
             close_price = safe_extract('close', safe_extract('price', None))
             if close_price is None:
-                logger.warning("Missing close/price in row; skipping indicator update")
                 return row
             try:
                 close_price = float(close_price)
             except Exception:
-                logger.warning("Invalid close price; skipping row")
                 return row
             if close_price <= 0:
-                logger.warning("Non-positive close price; skipping row")
                 return row
 
             volume = safe_extract('volume', 0) or 0
@@ -673,7 +656,6 @@ class ModularIntradayStrategy:
             self._update_green_tick_count(close_price)
             return updated
         except Exception as e:
-            logger.error(f"Error in process_tick_or_bar: {e}")
             return row
 
     # Backwards-compatible aliases expected by backtest/other modules
@@ -689,7 +671,6 @@ class ModularIntradayStrategy:
             # Combine session gating and entry signal
             return self.can_enter_new_position(timestamp) and bool(self.entry_signal(row))
         except Exception:
-            logger.exception("can_open_long check failed")
             return False
 
     def should_exit(self, row: pd.Series, timestamp: datetime, position_manager=None) -> bool:
@@ -704,7 +685,6 @@ class ModularIntradayStrategy:
                 return True
             return False
         except Exception:
-            logger.exception("should_exit check failed")
             return True  # safe default: ask runner to close positions
 
     # alias for any callers expecting should_close
@@ -714,29 +694,47 @@ class ModularIntradayStrategy:
     def _update_green_tick_count(self, current_price: float):
         """
         Update consecutive green ticks counter based on tick-to-tick price movement.
-        A green tick is defined as current_price > prev_tick_price.
+        A green tick is defined as current_price > prev_tick_price with configurable noise filtering.
         """
         try:
             if self.prev_tick_price is None:
                 # First tick of session or after reset
                 self.green_bars_count = 0
-                logger.debug(f"First tick: price={current_price:.2f}, green_count=0")
+                self.prev_tick_price = current_price
+                return
+
+            # Get noise filter parameters from config
+            noise_filter_enabled = bool(self.config_accessor.get_strategy_param('noise_filter_enabled', True))
+            noise_filter_percentage = float(self.config_accessor.get_strategy_param('noise_filter_percentage', 0.0001))
+            noise_filter_min_ticks = float(self.config_accessor.get_strategy_param('noise_filter_min_ticks', 1.0))
+            
+            # Calculate minimum movement threshold
+            min_movement = max(self.tick_size * noise_filter_min_ticks, 
+                              self.prev_tick_price * noise_filter_percentage)
+            
+            # Apply noise filter if enabled
+            if noise_filter_enabled:
+                if current_price > (self.prev_tick_price + min_movement):
+                    # Significant upward movement
+                    self.green_bars_count += 1
+                elif current_price < (self.prev_tick_price - min_movement):
+                    # Significant downward movement
+                    self.green_bars_count = 0
+                else:
+                    # Price within noise range - maintain current count
+                    pass
             else:
-                # Compare with previous tick
+                # Original behavior without noise filtering
                 if current_price > self.prev_tick_price:
                     self.green_bars_count += 1
-                    logger.debug(f"Green tick: {self.prev_tick_price:.2f} -> {current_price:.2f}, count={self.green_bars_count}")
                 else:
                     # Reset counter on price decrease or equal
                     self.green_bars_count = 0
-                    logger.debug(f"Red tick: {self.prev_tick_price:.2f} -> {current_price:.2f}, count reset to 0")
             
             # Update previous price for next comparison
             self.prev_tick_price = current_price
-            
-            logger.debug(f"Green tick count: {self.green_bars_count}/{self.consecutive_green_bars_required}")
         except Exception as e:
-            logger.error(f"Error updating green tick count: {e}")
+            pass  # Suppress errors in tick count update
 
     def _check_consecutive_green_ticks(self) -> bool:
         """Check if we have enough consecutive green ticks for entry."""

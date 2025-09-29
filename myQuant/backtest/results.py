@@ -1,4 +1,4 @@
-"""
+﻿"""
 backtest/results.py
 
 Compute trading performance metrics for backtests, including:
@@ -225,18 +225,18 @@ class Results:
         print(f"{'='*60}")
         print(f"Total Trades        : {m.total_trades}")
         print(f"Win Rate (%)        : {m.win_rate:.2f}")
-        print(f"Gross Profit        : ₹{m.gross_profit:.2f}")
-        print(f"Gross Loss          : ₹{m.gross_loss:.2f}")
-        print(f"Avg Win             : ₹{m.avg_win:.2f}")
-        print(f"Avg Loss            : ₹{m.avg_loss:.2f}")
-        print(f"Net P&L             : ₹{m.net_pnl:.2f}")
-        print(f"Best Trade (P&L)    : ₹{m.best_trade:.2f}")
-        print(f"Worst Trade (P&L)   : ₹{m.worst_trade:.2f}")
+        print(f"Gross Profit        : â‚¹{m.gross_profit:.2f}")
+        print(f"Gross Loss          : â‚¹{m.gross_loss:.2f}")
+        print(f"Avg Win             : â‚¹{m.avg_win:.2f}")
+        print(f"Avg Loss            : â‚¹{m.avg_loss:.2f}")
+        print(f"Net P&L             : â‚¹{m.net_pnl:.2f}")
+        print(f"Best Trade (P&L)    : â‚¹{m.best_trade:.2f}")
+        print(f"Worst Trade (P&L)   : â‚¹{m.worst_trade:.2f}")
         print(f"Return (%)          : {m.return_percent:.2f}")
         print(f"Drawdown (%)        : {m.drawdown_percent:.2f}")
-        print(f"Final Capital       : ₹{m.final_capital:,.2f}")
+        print(f"Final Capital       : â‚¹{m.final_capital:,.2f}")
         print(f"Profit Factor       : {m.profit_factor:.2f}")
-        print(f"Total Commission    : ₹{m.total_commission:.2f}")
+        print(f"Total Commission    : â‚¹{m.total_commission:.2f}")
         print(f"{'='*60}")
 
     def get_trade_summary(self) -> pd.DataFrame:

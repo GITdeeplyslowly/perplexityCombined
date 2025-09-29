@@ -1,4 +1,4 @@
-"""
+﻿"""
 utils/smart_logger.py
 
 Event-driven smart logger for trading systems (minimal, plain-text).

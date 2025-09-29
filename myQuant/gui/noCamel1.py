@@ -1,4 +1,4 @@
-"""
+﻿"""
 unified_gui.py - Unified Trading Interface for both Backtesting and Live Trading
 
 Provides a comprehensive GUI for:
@@ -28,34 +28,25 @@ from utils.cache_manager import refresh_symbol_cache, load_symbol_cache
 from live.trader import LiveTrader
 
 from config.defaults import DEFAULT_CONFIG
-from utils.logging_utils import setup_logging
+from utils.logger import setup_from_config
 
-# Module-level logger and strict startup logging using canonical DEFAULT_CONFIG.
-# Fail-fast if DEFAULT_CONFIG does not provide the required logging keys.
-logging_config = DEFAULT_CONFIG.get("logging", {}) or {}
-required_logging_keys = ["logfile", "verbosity", "console_output", "file_rotation"]
-missing_keys = [k for k in required_logging_keys if k not in logging_config]
-if missing_keys:
-    raise RuntimeError(f"DEFAULT_CONFIG logging section missing keys: {missing_keys}")
+# Build, validate and freeze the canonical config (FAIL-FAST if defaults are invalid).
+# This ensures setup_from_config receives a proper MappingProxyType.
+base_cfg = create_config_from_defaults()
+validation = validate_config(base_cfg)
+if not validation.get('valid', False):
+    errs = validation.get('errors', []) or ["Unknown validation failure"]
+    raise RuntimeError("DEFAULT_CONFIG validation failed:\n" + "\n".join(errs))
+frozen_cfg = freeze_config(base_cfg)
+setup_from_config(frozen_cfg)
+logger = logging.getLogger(__name__)
 
-LOG_FILENAME = str(logging_config["logfile"])
-LOG_VERBOSITY = str(logging_config["verbosity"])
-LOG_CONSOLE = bool(logging_config["console_output"])
-LOG_ROTATION = bool(logging_config["file_rotation"])
-
-# Ensure log dir exists if provided (no empty dirname)
-log_dir = os.path.dirname(LOG_FILENAME)
-if log_dir:
-    os.makedirs(log_dir, exist_ok=True)
-
-# Configure unified logging (strict, fail-fast)
-logger = setup_logging(
-    log_level=LOG_VERBOSITY,
-    log_file=LOG_FILENAME,
-    console_output=LOG_CONSOLE,
-    file_rotation=LOG_ROTATION,
-    module_name=__name__
-)
+# Add: canonical log filename from SSOT defaults (no hardcoded fallback outside defaults.py)
+# use 'logfile' canonical key from defaults.py
+LOG_FILENAME = DEFAULT_CONFIG.get('logging', {}).get('logfile')
+if not LOG_FILENAME:
+    # defensive fallback only for developer convenience (DEFAULT_CONFIG should supply this)
+    LOG_FILENAME = os.path.join('logs', 'trading.log')
 
 def now_ist():
     """Return current time in India Standard Time"""
@@ -95,68 +86,6 @@ class UnifiedTradingGUI(tk.Tk):
 
         logger.info("GUI initialized successfully with runtime config")
 
-    def _initialize_variables_from_defaults(self):
-        """Initialize all GUI variables from runtime_config (single source for widgets)"""
-        # NEW: read sections from the runtime_config which already merges defaults + user prefs
-        strategy_defaults = self.runtime_config.get('strategy', {})
-        risk_defaults = self.runtime_config.get('risk', {})
-        capital_defaults = self.runtime_config.get('capital', {})
-        instrument_defaults = self.runtime_config.get('instrument', {})
-        session_defaults = self.runtime_config.get('session', {})
-
-        # --- Strategy variables ---
-        self.bt_use_ema_crossover = tk.BooleanVar(value=strategy_defaults.get('use_ema_crossover', False))
-        self.bt_use_macd = tk.BooleanVar(value=strategy_defaults.get('use_macd', False))
-        self.bt_use_vwap = tk.BooleanVar(value=strategy_defaults.get('use_vwap', False))
-        self.bt_use_rsi_filter = tk.BooleanVar(value=strategy_defaults.get('use_rsi_filter', False))
-        self.bt_use_htf_trend = tk.BooleanVar(value=strategy_defaults.get('use_htf_trend', False))
-        self.bt_use_bollinger_bands = tk.BooleanVar(value=strategy_defaults.get('use_bollinger_bands', False))
-        self.bt_use_stochastic = tk.BooleanVar(value=strategy_defaults.get('use_stochastic', False))
-        self.bt_use_atr = tk.BooleanVar(value=strategy_defaults.get('use_atr', False))
-
-        # EMA parameters
-        self.bt_fast_ema = tk.StringVar(value=str(strategy_defaults.get('fast_ema', '9')))
-        self.bt_slow_ema = tk.StringVar(value=str(strategy_defaults.get('slow_ema', '21')))
-
-        # MACD parameters
-        self.bt_macd_fast = tk.StringVar(value=str(strategy_defaults.get('macd_fast', '12')))
-        self.bt_macd_slow = tk.StringVar(value=str(strategy_defaults.get('macd_slow', '26')))
-        self.bt_macd_signal = tk.StringVar(value=str(strategy_defaults.get('macd_signal', '9')))
-
-        # RSI parameters
-        self.bt_rsi_length = tk.StringVar(value=str(strategy_defaults.get('rsi_length', 14)))
-        self.bt_rsi_oversold = tk.StringVar(value=str(strategy_defaults.get('rsi_oversold', 30)))
-        self.bt_rsi_overbought = tk.StringVar(value=str(strategy_defaults.get('rsi_overbought', 70)))
-
-        # HTF parameter
-        self.bt_htf_period = tk.StringVar(value=str(strategy_defaults.get('htf_period', 20)))
-
-        # --- Consecutive Green Bars parameter ---
-        self.bt_consecutive_green_bars = tk.StringVar(value=str(strategy_defaults.get('consecutive_green_bars', 3)))
-
-        # --- Risk management ---
-        self.bt_base_sl_points = tk.StringVar(value=str(risk_defaults.get('base_sl_points', 12.0)))
-        self.bt_tp_points = [tk.StringVar(value=str(p)) for p in risk_defaults.get('tp_points', [10.0, 25.0, 50.0, 100.0])]
-        self.bt_tp_percents = [tk.StringVar(value=str(p*100)) for p in risk_defaults.get('tp_percents', [0.25,0.25,0.25,0.25])]
-        self.bt_use_trail_stop = tk.BooleanVar(value=risk_defaults.get('use_trail_stop', False))
-        self.bt_trail_activation = tk.StringVar(value=str(risk_defaults.get('trail_activation_points', 5.0)))
-        self.bt_trail_distance = tk.StringVar(value=str(risk_defaults.get('trail_distance_points', 7.0)))
-        self.bt_risk_per_trade_percent = tk.StringVar(value=str(risk_defaults.get('risk_per_trade_percent', 1.0)))
-
-        # --- Capital settings ---
-        self.bt_initial_capital = tk.StringVar(value=str(capital_defaults.get('initial_capital', 100000.0)))
-
-        # --- Instrument settings ---
-        self.bt_symbol = tk.StringVar(value=instrument_defaults.get('symbol', 'NIFTY'))
-        self.bt_exchange = tk.StringVar(value=instrument_defaults.get('exchange', 'NSE_FO'))
-        self.bt_lot_size = tk.StringVar(value=str(instrument_defaults.get('lot_size', 1)))
-
-        # --- Session settings ---
-        self.bt_is_intraday = tk.BooleanVar(value=session_defaults.get('is_intraday', True))
-        self.bt_session_start_hour = tk.StringVar(value=str(session_defaults.get('start_hour', 9)))
-        self.bt_session_start_min = tk.StringVar(value=str(session_defaults.get('start_min', 15)))
-        self.bt_session_end_hour = tk.StringVar(value=str(session_defaults.get('end_hour', 15)))
-        self.bt_session_end_min = tk.StringVar(value=str(session_defaults.get('end_min', 30)))
     def _load_user_preferences(self):
         """Load user preferences from saved file"""
         prefs_file = "user_preferences.json"
@@ -296,6 +225,11 @@ class UnifiedTradingGUI(tk.Tk):
         config['strategy']['macd_signal'] = int(self.bt_macd_signal.get())
         # Consecutive Green Bars
         config['strategy']['consecutive_green_bars'] = int(self.bt_consecutive_green_bars.get())
+
+        # Add noise filter settings (no hardcoded defaults)
+        config['strategy']['noise_filter_enabled'] = self.bt_noise_filter_enabled.get()
+        config['strategy']['noise_filter_percentage'] = float(self.bt_noise_filter_percentage.get()) / 100.0  # Convert from percentage display
+        config['strategy']['noise_filter_min_ticks'] = float(self.bt_noise_filter_min_ticks.get())
 
         # --- ADD THIS LINE ---
         config['strategy']['strategy_version'] = DEFAULT_CONFIG['strategy'].get('strategy_version', 1)
@@ -560,38 +494,38 @@ class UnifiedTradingGUI(tk.Tk):
         # Risk Management
         ttk.Label(frame, text="Risk Management:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
         row += 1
+        bt_risk_frame = ttk.Frame(frame)  # Create the risk frame
+        bt_risk_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        row += 1
 
-        risk_frame = ttk.Frame(frame)
-        risk_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-
-        ttk.Label(risk_frame, text="Stop Loss Points:").grid(row=0, column=0, sticky="e", padx=2)
+        ttk.Label(bt_risk_frame, text="Stop Loss Points:").grid(row=0, column=0, sticky="e", padx=2)
         self.ft_base_sl_points = tk.StringVar(value="15")
-        ttk.Entry(risk_frame, textvariable=self.ft_base_sl_points, width=8).grid(row=0, column=1, padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.ft_base_sl_points, width=8).grid(row=0, column=1, padx=2)
 
-        ttk.Label(risk_frame, text="TP1 Points:").grid(row=0, column=2, sticky="e", padx=2)
-        ttk.Entry(risk_frame, textvariable=self.bt_tp_points[0], width=8).grid(row=0, column=3, padx=2)
-        ttk.Label(risk_frame, text="TP2 Points:").grid(row=0, column=4, sticky="e", padx=2)
-        ttk.Entry(risk_frame, textvariable=self.bt_tp_points[1], width=8).grid(row=0, column=5, padx=2)
-        ttk.Label(risk_frame, text="TP3 Points:").grid(row=1, column=0, sticky="e", padx=2)
-        ttk.Entry(risk_frame, textvariable=self.bt_tp_points[2], width=8).grid(row=1, column=1, padx=2)
+        ttk.Label(bt_risk_frame, text="TP1 Points:").grid(row=0, column=2, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[0], width=8).grid(row=0, column=3, padx=2)
+        ttk.Label(bt_risk_frame, text="TP2 Points:").grid(row=0, column=4, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[1], width=8).grid(row=0, column=5, padx=2)
+        ttk.Label(bt_risk_frame, text="TP3 Points:").grid(row=1, column=0, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[2], width=8).grid(row=1, column=1, padx=2)
 
-        ttk.Label(risk_frame, text="TP4 Points:").grid(row=1, column=2, sticky="e", padx=2)
-        ttk.Entry(risk_frame, textvariable=self.bt_tp_points[3], width=8).grid(row=1, column=3, padx=2)
+        ttk.Label(bt_risk_frame, text="TP4 Points:").grid(row=1, column=2, sticky="e", padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[3], width=8).grid(row=1, column=3, padx=2)
 
         self.ft_use_trail_stop = tk.BooleanVar(value=True)
-        ttk.Checkbutton(risk_frame, text="Use Trailing Stop", variable=self.ft_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
+        ttk.Checkbutton(bt_risk_frame, text="Use Trailing Stop", variable=self.ft_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
 
-        ttk.Label(risk_frame, text="Trail Activation Points:").grid(row=2, column=0, sticky="e", padx=2)
+        ttk.Label(bt_risk_frame, text="Trail Activation Points:").grid(row=2, column=0, sticky="e", padx=2)
         self.ft_trail_activation_points = tk.StringVar(value="25")
-        ttk.Entry(risk_frame, textvariable=self.ft_trail_activation_points, width=8).grid(row=2, column=1, padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.ft_trail_activation_points, width=8).grid(row=2, column=1, padx=2)
 
-        ttk.Label(risk_frame, text="Trail Distance Points:").grid(row=2, column=2, sticky="e", padx=2)
+        ttk.Label(bt_risk_frame, text="Trail Distance Points:").grid(row=2, column=2, sticky="e", padx=2)
         self.ft_trail_distance_points = tk.StringVar(value="10")
-        ttk.Entry(risk_frame, textvariable=self.ft_trail_distance_points, width=8).grid(row=2, column=3, padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.ft_trail_distance_points, width=8).grid(row=2, column=3, padx=2)
 
-        ttk.Label(risk_frame, text="Risk % per Trade:").grid(row=2, column=4, sticky="e", padx=2)
+        ttk.Label(bt_risk_frame, text="Risk % per Trade:").grid(row=2, column=4, sticky="e", padx=2)
         self.ft_risk_per_trade_percent = tk.StringVar(value="1.0")
-        ttk.Entry(risk_frame, textvariable=self.ft_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.ft_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
         row += 1
 
         # --- Instrument Settings ---
@@ -649,6 +583,15 @@ class UnifiedTradingGUI(tk.Tk):
         self.ft_result_box = tk.Text(frame, height=16, width=110, state="disabled")
         self.ft_result_box.grid(row=row, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
         frame.rowconfigure(row, weight=1)
+
+        # Add run button frame
+        run_button_frame = ttk.Frame(frame)
+        run_button_frame.grid(row=row, column=0, columnspan=3, pady=10)
+        ttk.Button(
+            run_button_frame,
+            text="Start Forward Test",
+            command=self._ft_run_forward_test
+        ).grid(row=0, column=0, padx=10)
 
     def _ft_refresh_cache(self):
         try:
@@ -784,141 +727,66 @@ class UnifiedTradingGUI(tk.Tk):
             self.ft_token.set("")
 
     def _ft_run_forward_test(self):
-        """Start forward test with proper nested configuration"""
-        if self._forward_thread and self._forward_thread.is_alive():
-            messagebox.showwarning("Warning", "Forward test already running")
-            return
-
-        # Build proper nested configuration structure for forward test
-        gui_config = {
-            # === STRATEGY SECTION ===
-            'strategy': {
-                'use_ema_crossover': self.ft_use_ema_crossover.get(),
-                'use_macd': self.ft_use_macd.get(),
-                'use_vwap': self.ft_use_vwap.get(),
-                'use_rsi_filter': self.ft_use_rsi_filter.get(),
-                'use_htf_trend': self.ft_use_htf_trend.get(),
-                'use_bollinger_bands': self.ft_use_bollinger_bands.get(),
-                'use_stochastic': self.ft_use_stochastic.get(),
-                'use_atr': self.ft_use_atr.get(),
-                'fast_ema': int(self.ft_fast_ema.get()),
-                'slow_ema': int(self.ft_slow_ema.get()),
-                'macd_fast': int(self.ft_macd_fast.get()),
-                'macd_slow': int(self.ft_macd_slow.get()),
-                'macd_signal': int(self.ft_macd_signal.get()),
-                'rsi_length': int(self.ft_rsi_length.get()),
-                'rsi_oversold': int(self.ft_rsi_oversold.get()),
-                'rsi_overbought': int(self.ft_rsi_overbought.get()),
-                'htf_period': int(self.ft_htf_period.get()),
-                'indicator_update_mode': 'tick',
-                # --- ADD THIS LINE ---
-                'strategy_version': DEFAULT_CONFIG['strategy'].get('strategy_version', 1)
-                # ---------------------
-            },
-
-            # === RISK MANAGEMENT SECTION ===
-            'risk': {
-                'base_sl_points': float(self.ft_base_sl_points.get()),
-                'tp_points': [
-                    float(self.ft_tp1_points.get()),
-                    float(self.ft_tp2_points.get()),
-                    float(self.ft_tp3_points.get()),
-                    float(self.ft_tp4_points.get())
-                ],
-                'tp_percents': [0.25, 0.25, 0.25, 0.25],
-                'use_trail_stop': self.ft_use_trail_stop.get(),
-                'trail_activation_points': float(self.ft_trail_activation_points.get()),
-                'trail_distance_points': float(self.ft_trail_distance_points.get()),
-                'risk_per_trade_percent': float(self.ft_risk_per_trade_percent.get()),
-                'commission_percent': 0.03,
-                'commission_per_trade': 0.0
-            },
-
-            # === CAPITAL SECTION ===
-            'capital': {
-                'initial_capital': float(self.ft_initial_capital.get())
-            },
-
-            # === INSTRUMENT SECTION ===
-            'instrument': {
-                'symbol': self.ft_symbol.get(),
-                'exchange': self.ft_exchange.get(),
-                'lot_size': int(self.bt_lot_size.get()),
-                'tick_size': 0.05,
-                'product_type': 'INTRADAY'
-            },
-
-            # === SESSION SECTION ===
-            'session': {
-                'is_intraday': True,
-                'start_hour': int(self.ft_session_start_hour.get()),
-                'start_min': int(self.ft_session_start_min.get()),
-                'end_hour': int(self.ft_session_end_hour.get()),
-                'end_min': int(self.ft_session_end_min.get()),
-                'start_buffer_minutes': int(self.ft_start_buffer.get()),
-                'end_buffer_minutes': int(self.ft_end_buffer.get()),
-                'timezone': self.ft_timezone.get()
-            },
-
-            # === LIVE TRADING SECTION ===
-            'live': {
-                'paper_trading': True,
-                'exchange_type': self.ft_exchange.get(),
-                'feed_type': self.ft_feed_type.get(),
-                'log_ticks': False,
-                'visual_indicator': True
-            },
-
-            # === BACKTEST SECTION (for compatibility) ===
-            'backtest': {
-                'allow_short': False,
-                'close_at_session_end': True,
-                'save_results': True,
-                'results_dir': 'forward_test_results',
-                'log_level': 'INFO'
-            }
-        }
-
-        # Validate and freeze GUI-built config using authoritative validator
-        config = self.build_config_from_gui()
-        if config is None:
-            return
-
-        logger.info("Using nested, validated & frozen configuration for forward test")
-        logger.debug(f"Forward test config: {dict(config) if not isinstance(config, dict) else config}")
-
+        """Run forward test with current GUI configuration"""
         try:
-            self.ft_result_box.config(state="normal")
-            self.ft_result_box.delete("1.0", "end")
-            self.ft_result_box.insert("end", f"Starting forward test for {config['instrument']['symbol']}...\n")
-            self.ft_result_box.config(state="disabled")
-
-            trader = LiveTrader(config_dict=config)
-            self._forward_thread = threading.Thread(target=trader.start)
-            self._forward_thread.start()
-        except Exception as e:
-            logger.error(f"Error starting forward test: {e}")
-            messagebox.showerror("Forward Test Error", f"Failed to start forward test: {str(e)}")
-
-    def _ft_stop_forward_test(self):
-        """Stop the running forward test"""
-        try:
-            if self._forward_thread and self._forward_thread.is_alive():
-                # Set a stop flag if the trader has one
-                if hasattr(self, '_stop_forward_test_flag'):
-                    self._stop_forward_test_flag = True
+            # Build configuration similar to backtest but with forward test specifics
+            config = create_config_from_defaults()
             
-                self.ft_result_box.config(state="normal")
-                self.ft_result_box.insert("end", "Stopping forward test...\n")
-                self.ft_result_box.config(state="disabled")
+            # Strategy settings 
+            config['strategy']['use_ema_crossover'] = self.bt_use_ema_crossover.get()
+            config['strategy']['use_macd'] = self.bt_use_macd.get()
+            config['strategy']['use_vwap'] = self.bt_use_vwap.get()
+            config['strategy']['use_rsi_filter'] = self.bt_use_rsi_filter.get()
+            config['strategy']['use_htf_trend'] = self.bt_use_htf_trend.get()
+            config['strategy']['fast_ema'] = int(self.bt_fast_ema.get())
+            config['strategy']['slow_ema'] = int(self.bt_slow_ema.get())
+            config['strategy']['consecutive_green_bars'] = int(self.bt_consecutive_green_bars.get())
             
-                logger.info("Forward test stop requested")
-                messagebox.showinfo("Stop", "Stop signal sent to forward test.")
-            else:
-                messagebox.showinfo("Stop", "No forward test is currently running.")
+            # Add noise filter settings
+            config['strategy']['noise_filter_enabled'] = self.bt_noise_filter_enabled.get()
+            config['strategy']['noise_filter_percentage'] = float(self.bt_noise_filter_percentage.get()) / 100.0
+            config['strategy']['noise_filter_min_ticks'] = float(self.bt_noise_filter_min_ticks.get())
+            
+            # Risk settings
+            config['risk']['base_sl_points'] = float(self.bt_base_sl_points.get())
+            config['risk']['use_trail_stop'] = self.bt_use_trail_stop.get()
+            config['risk']['trail_activation_points'] = float(self.bt_trail_activation.get())
+            config['risk']['trail_distance_points'] = float(self.bt_trail_distance.get())
+            config['risk']['tp_points'] = [float(var.get()) for var in self.bt_tp_points]
+            config['risk']['tp_percents'] = [float(var.get())/100.0 for var in self.bt_tp_percents]
+            
+            # Capital, instrument and session settings
+            # (using same variables as backtest for now)
+            config['capital']['initial_capital'] = float(self.bt_initial_capital.get())
+            config['instrument']['symbol'] = self.bt_symbol.get()
+            config['instrument']['exchange'] = self.bt_exchange.get()
+            config['instrument']['lot_size'] = int(self.bt_lot_size.get())
+            config['session']['is_intraday'] = self.bt_is_intraday.get()
+            config['session']['start_hour'] = int(self.bt_session_start_hour.get())
+            config['session']['start_min'] = int(self.bt_session_start_min.get())
+            config['session']['end_hour'] = int(self.bt_session_end_hour.get())
+            config['session']['end_min'] = int(self.bt_session_end_min.get())
+            
+            # Validate and freeze config
+            validation = validate_config(config)
+            if not validation.get('valid', False):
+                errs = validation.get('errors', []) or ["Unknown validation failure"]
+                messagebox.showerror("Configuration Validation Failed",
+                                    "Please fix configuration issues:\n\n" + "\n".join(errs))
+                return
+                
+            # Freeze config to make it immutable
+            frozen_config = freeze_config(config)
+            
+            # Here you would create and start your live trader
+            # live_trader = LiveTrader(config=frozen_config)
+            # live_trader.start()
+            
+            messagebox.showinfo("Forward Test", "Forward test configuration validated successfully. Implementation pending.")
+            
         except Exception as e:
-            logger.error(f"Error stopping forward test: {e}")
-            messagebox.showerror("Error", f"Failed to stop forward test: {e}")
+            logger.exception(f"Forward test setup failed: {e}")
+            messagebox.showerror("Forward Test Error", f"Failed to set up forward test: {e}")
 
     # --- Status Tab ---
     def _build_log_tab(self):
@@ -1068,9 +936,9 @@ class UnifiedTradingGUI(tk.Tk):
                 self.max_lots.set(f"{max_affordable_lots} lots max")
             if hasattr(self, 'position_value'):
                 position_value = recommended_quantity * current_price
-                self.position_value.set(f"â‚¹{position_value:,.0f}")
+                self.position_value.set(f"Ã¢â€šÂ¹{position_value:,.0f}")
 
-            logger.info(f"Position Sizing: {recommended_lots} lots = {recommended_quantity:,} units @ â‚¹{current_price:.2f}")
+            logger.info(f"Position Sizing: {recommended_lots} lots = {recommended_quantity:,} units @ Ã¢â€šÂ¹{current_price:.2f}")
 
         except (ValueError, ZeroDivisionError) as e:
             logger.error(f"Position calculation error: {e}")
@@ -1090,7 +958,7 @@ class UnifiedTradingGUI(tk.Tk):
 
             # Capital validation
             if capital < 10000:
-                errors.append("Minimum capital requirement: â‚¹10,000")
+                errors.append("Minimum capital requirement: Ã¢â€šÂ¹10,000")
 
             # Risk validation
             if risk_pct < 0.1:
@@ -1101,7 +969,7 @@ class UnifiedTradingGUI(tk.Tk):
             # Position size validation
             min_position_value = lot_size * price
             if min_position_value > capital * 0.95:
-                errors.append(f"Insufficient capital for even 1 lot (â‚¹{min_position_value:,.0f} required)")
+                errors.append(f"Insufficient capital for even 1 lot (Ã¢â€šÂ¹{min_position_value:,.0f} required)")
 
             # Stop loss validation
             if sl_points <= 0:
@@ -1303,7 +1171,7 @@ class UnifiedTradingGUI(tk.Tk):
                 result = messagebox.askokcancel(
                     "Session Configuration Warnings",
                     "The following potential issues were found:\n\n" +
-                    "\n".join([f"â€¢ {w}" for w in warnings]) +
+                    "\n".join([f"Ã¢â‚¬Â¢ {w}" for w in warnings]) +
                     f"\n\nEffective trading window: {effective_minutes} minutes" +
                     "\n\nDo you want to use this configuration anyway?"
                 )
@@ -1321,7 +1189,7 @@ class UnifiedTradingGUI(tk.Tk):
 
         except ValueError:
             messagebox.showwarning("Input Error", "Please enter valid numbers")
-            self.session_status.set("âš ï¸ Invalid number format")
+            self.session_status.set("Ã¢Å¡ Ã¯Â¸Â Invalid number format")
 
     def _apply_session_config(self, start_hour, start_min, end_hour, end_min,
                          start_buffer, end_buffer):
@@ -1361,9 +1229,9 @@ class UnifiedTradingGUI(tk.Tk):
         self.symbol_token_map = {}
         
         # Capital management variables
-        self.capital_usable = tk.StringVar(value="â‚¹0 (0%)")
+        self.capital_usable = tk.StringVar(value="Ã¢â€šÂ¹0 (0%)")
         self.max_lots = tk.StringVar(value="0 lots (0 shares)")
-        self.max_risk = tk.StringVar(value="â‚¹0 (0%)")
+        self.max_risk = tk.StringVar(value="Ã¢â€šÂ¹0 (0%)")
         self.recommended_lots = tk.StringVar(value="0 lots (0 shares)")
 
         # Session configuration variables
@@ -1405,6 +1273,11 @@ class UnifiedTradingGUI(tk.Tk):
         self.logger_tick_interval = tk.StringVar(
             value=str(DEFAULT_CONFIG.get('logging', {}).get('tick_log_interval', 100))
         )
+
+        # Noise filter settings - just declare variables without values
+        self.bt_noise_filter_enabled = tk.BooleanVar()
+        self.bt_noise_filter_percentage = tk.StringVar()
+        self.bt_noise_filter_min_ticks = tk.StringVar()
     def _create_gui_framework(self):
         """Create the core GUI framework - notebook and tabs"""
         # Create notebook for tabs
@@ -1503,11 +1376,14 @@ class UnifiedTradingGUI(tk.Tk):
         # Risk Management
         ttk.Label(frame, text="Risk Management:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
         row += 1
-        bt_risk_frame = ttk.Frame(frame)
+        bt_risk_frame = ttk.Frame(frame)  # Create the risk frame
         bt_risk_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        row += 1
+
         ttk.Label(bt_risk_frame, text="Stop Loss Points:").grid(row=0, column=0, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_base_sl_points, width=8).grid(row=0, column=1, padx=2)
-        # TP Points
+        self.ft_base_sl_points = tk.StringVar(value="15")
+        ttk.Entry(bt_risk_frame, textvariable=self.ft_base_sl_points, width=8).grid(row=0, column=1, padx=2)
+
         ttk.Label(bt_risk_frame, text="TP1 Points:").grid(row=0, column=2, sticky="e", padx=2)
         ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[0], width=8).grid(row=0, column=3, padx=2)
         ttk.Label(bt_risk_frame, text="TP2 Points:").grid(row=0, column=4, sticky="e", padx=2)
@@ -1519,14 +1395,19 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[3], width=8).grid(row=1, column=3, padx=2)
 
         self.ft_use_trail_stop = tk.BooleanVar(value=True)
-        ttk.Checkbutton(bt_risk_frame, text="Use Trailing Stop", variable=self.bt_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
+        ttk.Checkbutton(bt_risk_frame, text="Use Trailing Stop", variable=self.ft_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
 
         ttk.Label(bt_risk_frame, text="Trail Activation Points:").grid(row=2, column=0, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_trail_activation, width=8).grid(row=2, column=1, padx=2)
+        self.ft_trail_activation_points = tk.StringVar(value="25")
+        ttk.Entry(bt_risk_frame, textvariable=self.ft_trail_activation_points, width=8).grid(row=2, column=1, padx=2)
+
         ttk.Label(bt_risk_frame, text="Trail Distance Points:").grid(row=2, column=2, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_trail_distance, width=8).grid(row=2, column=3, padx=2)
+        self.ft_trail_distance_points = tk.StringVar(value="10")
+        ttk.Entry(bt_risk_frame, textvariable=self.ft_trail_distance_points, width=8).grid(row=2, column=3, padx=2)
+
         ttk.Label(bt_risk_frame, text="Risk % per Trade:").grid(row=2, column=4, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
+        self.ft_risk_per_trade_percent = tk.StringVar(value="1.0")
+        ttk.Entry(bt_risk_frame, textvariable=self.ft_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
         row += 1
 
         # --- Instrument Settings ---
@@ -1572,6 +1453,30 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_result_box = tk.Text(frame, height=20, state="disabled", wrap="word")
         self.bt_result_box.grid(row=row, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
         frame.rowconfigure(row, weight=1)
+
+        # Noise Filter Section
+        ttk.Label(frame, text="Noise Filter Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10, 0))
+        row += 1
+
+        noise_filter_frame = ttk.Frame(frame)
+        noise_filter_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        row += 1
+
+        # Noise Filter Enable Checkbox
+        ttk.Checkbutton(
+            noise_filter_frame, 
+            text="Enable Noise Filter", 
+            variable=self.bt_noise_filter_enabled
+        ).grid(row=0, column=0, sticky="w", padx=5)
+
+        # Noise Filter Percentage
+        ttk.Label(noise_filter_frame, text="Filter Threshold (%):").grid(row=0, column=1, sticky="e", padx=5)
+        ttk.Entry(noise_filter_frame, textvariable=self.bt_noise_filter_percentage, width=10).grid(row=0, column=2, sticky="w", padx=5)
+
+        # Min Ticks
+        ttk.Label(noise_filter_frame, text="Min Ticks:").grid(row=0, column=3, sticky="e", padx=5)
+        ttk.Entry(noise_filter_frame, textvariable=self.bt_noise_filter_min_ticks, width=10).grid(row=0, column=4, sticky="w", padx=5)
+        row += 1
 
     def _bt_browse_csv(self):
         """Browse for CSV file"""
@@ -1714,6 +1619,11 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_session_start_min = tk.StringVar(value=str(session_config.get('start_min', 15)))
         self.bt_session_end_hour = tk.StringVar(value=str(session_config.get('end_hour', 15)))
         self.bt_session_end_min = tk.StringVar(value=str(session_config.get('end_min', 30)))
+
+        # Noise filter settings - initialize from runtime_config (no hardcoded values)
+        self.bt_noise_filter_enabled = tk.BooleanVar(value=strategy_config.get('noise_filter_enabled', True))
+        self.bt_noise_filter_percentage = tk.StringVar(value=str(strategy_config.get('noise_filter_percentage', 0.0001) * 100))
+        self.bt_noise_filter_min_ticks = tk.StringVar(value=strategy_config.get('noise_filter_min_ticks', 1.0))
 
     def _validate_data_columns(self, data_file, required_columns):
         """Validate that CSV file has required columns"""

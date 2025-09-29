@@ -1,4 +1,4 @@
-"""
+﻿"""
 core/indicators.py
 Unified, parameter-driven indicator library for both backtest and live trading bot.
 """

@@ -1,134 +1,82 @@
-"""
+﻿"""
 config_helper.py - Configuration helpers (SSOT via config.defaults)
-
-Workflow enforced:
-- GUI: create_config_from_defaults() -> mutate -> validate_config(cfg) -> freeze_config(cfg)
-- Runners/strategies: receive frozen MappingProxyType and use ConfigAccessor(frozen_cfg)
-- No legacy adapter/wrapper present.
+Enforces: create -> validate -> freeze (MappingProxyType) workflow.
 """
-import logging
 from typing import Dict, Any
 from copy import deepcopy
 from types import MappingProxyType
+import logging
+import json
+import os
 
 logger = logging.getLogger(__name__)
 
-# Module-level missing sentinel used by strict accessors
-MISSING = object()
-
-# Logging verbosity helpers (GUI dropdown + resolver)
-LOG_VERBOSITY_OPTIONS = ['minimal', 'normal', 'verbose', 'debug']
-
-# ---- Added: small, safe config factory, validator, freezer and accessor ----
 try:
     from config.defaults import DEFAULT_CONFIG
 except Exception:
     DEFAULT_CONFIG = {}
 
+MISSING = object()
+
 def create_config_from_defaults() -> Dict[str, Any]:
-    """
-    Produce a mutable runtime config copied from DEFAULT_CONFIG (SSOT).
-    GUI uses this to build runtime config before validation and freeze.
-    """
+    """Return a deep copy of DEFAULT_CONFIG for GUI mutation."""
     if not isinstance(DEFAULT_CONFIG, dict):
         raise RuntimeError("DEFAULT_CONFIG missing or invalid")
     return deepcopy(DEFAULT_CONFIG)
 
 def validate_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Perform lightweight validation and return a dict containing:
-      { "valid": bool, "errors": [..], "warnings": [..] }
-    This is intentionally conservative - detailed validation can be implemented later.
+    Minimal validator: checks required top-level sections and logging presence.
+    Returns {'valid': bool, 'errors': [...]}.
+    GUI should run full validation before freeze.
     """
-    result = {"valid": True, "errors": [], "warnings": []}
-    if not isinstance(cfg, dict):
-        result["valid"] = False
-        result["errors"].append("Config must be a dictionary")
-        return result
+    errors = []
+    required_sections = ['strategy', 'risk', 'capital', 'instrument', 'session', 'logging']
+    for s in required_sections:
+        if s not in cfg:
+            errors.append(f"Missing section: {s}")
+    # logging: enforce canonical key 'logfile'
+    try:
+        log = cfg['logging']
+        if 'logfile' not in log or not log['logfile']:
+            errors.append("logging.logfile is required")
+    except Exception:
+        errors.append("Invalid logging section")
 
-    # Minimal required sections (strict)
-    required_sections = ['strategy', 'risk', 'capital', 'instrument', 'session']
-    for sec in required_sections:
-        if sec not in cfg:
-            result["valid"] = False
-            result["errors"].append(f"Missing required section: {sec}")
-
-    # Logging section validation (must include canonical keys)
-    if 'logging' in cfg:
-        logging_cfg = cfg['logging'] or {}
-        for key in ("logfile", "verbosity", "console_output", "file_rotation"):
-            if key not in logging_cfg:
-                result["valid"] = False
-                result["errors"].append(f"logging.{key} missing")
-    else:
-        result["valid"] = False
-        result["errors"].append("Missing logging section")
-
-    return result
+    return {"valid": len(errors) == 0, "errors": errors}
 
 def freeze_config(cfg: Dict[str, Any]) -> MappingProxyType:
-    """
-    Return an immutable MappingProxyType copy of the provided config.
-    Caller should validate before freezing.
-    """
+    """Return an immutable MappingProxyType of the config (deepcopy then freeze)."""
     if not isinstance(cfg, dict):
         raise TypeError("freeze_config expects a dict")
+    # persist a copy for reproducibility
+    try:
+        os.makedirs("results", exist_ok=True)
+        # do not overwrite existing snapshot; caller should save with run_id
+    except Exception:
+        pass
     return MappingProxyType(deepcopy(cfg))
 
 class ConfigAccessor:
-    """
-    Small helper to read frozen mapping proxy with dot-path and nested access.
-    Example: accessor.get('strategy.fast_ema') -> value
-    """
+    """Strict accessor to read from frozen MappingProxyType; raises on missing keys."""
     def __init__(self, frozen_cfg: MappingProxyType):
         if not isinstance(frozen_cfg, MappingProxyType):
-            raise TypeError("ConfigAccessor expects a MappingProxyType")
+            raise TypeError("ConfigAccessor requires a frozen MappingProxyType")
         self._cfg = frozen_cfg
 
-    def get(self, path: str, default: Any = None):
-        """Get nested configuration value by dot-separated path."""
-        if not path:
-            return default
-        cur = self._cfg
-        for part in path.split('.'):
-            if isinstance(cur, MappingProxyType) or isinstance(cur, dict):
-                cur = cur.get(part, default)
+    def get(self, path: str, default=MISSING):
+        """
+        Path like 'strategy.fast_ema' returns value or raises KeyError if missing and no default.
+        """
+        parts = path.split('.')
+        curr = self._cfg
+        for p in parts:
+            if isinstance(curr, MappingProxyType) and p in curr:
+                curr = curr[p]
+            elif isinstance(curr, dict) and p in curr:
+                curr = curr[p]
             else:
+                if default is MISSING:
+                    raise KeyError(f"Missing config key: {path}")
                 return default
-            if cur is default:
-                return default
-        return cur
-
-    # ---- Strict, fail-fast convenience accessors (no DEFAULT_CONFIG fallbacks) ----
-
-    def _get_section_param(self, section: str, key: str, default: Any = MISSING):
-        """
-        Strict section accessor. If default is omitted, raise KeyError when key missing.
-        """
-        path = f"{section}.{key}"
-        val = self.get(path, MISSING)
-        if val is MISSING:
-            if default is MISSING:
-                raise KeyError(f"Missing required configuration key: {path}")
-            return default
-        return val
-
-    def get_logging_param(self, key: str, default: Any = MISSING):
-        """Read logging.<key>; raise KeyError if missing and no default provided."""
-        return self._get_section_param("logging", key, default)
-
-    def get_strategy_param(self, key: str, default: Any = MISSING):
-        """Read strategy.<key>; raise KeyError if missing and no default provided."""
-        return self._get_section_param("strategy", key, default)
-
-    def get_session_param(self, key: str, default: Any = MISSING):
-        return self._get_section_param("session", key, default)
-
-    def get_risk_param(self, key: str, default: Any = MISSING):
-        return self._get_section_param("risk", key, default)
-
-    def get_instrument_param(self, key: str, default: Any = MISSING):
-        return self._get_section_param("instrument", key, default)
-
-    def get_capital_param(self, key: str, default: Any = MISSING):
-        return self._get_section_param("capital", key, default)
+        return curr

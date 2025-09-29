@@ -1,4 +1,4 @@
-```python
+﻿```python
 // filepath: c:\Users\user\projects\Perplexity Combined\tests\test_position_manager.py
 # Standalone unit test for PositionManager using GUI SSOT config flow
 

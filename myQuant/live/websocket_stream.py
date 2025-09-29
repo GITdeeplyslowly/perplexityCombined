@@ -1,4 +1,4 @@
-"""
+﻿"""
 live/websocket_stream.py
 
 SmartAPI WebSocket streaming module for unified trading system.
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # Load session info from smartapi/session_token.json or config
     session_path = "smartapi/session_token.json"
     if not os.path.exists(session_path):
-        print("Session JSON missing—run smartapi login first.")
+        print("Session JSON missingâ€”run smartapi login first.")
         exit(1)
     with open(session_path, "r") as f:
         session = json.load(f)
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     symbols = load_symbol_cache()
     test_tokens = [v for (k, v) in list(symbols.items())[:3]]
     def print_tick(tick, symbol):
-        print(f"[{tick['timestamp']}] {symbol}: ₹{tick['price']} Vol:{tick['volume']}")
+        print(f"[{tick['timestamp']}] {symbol}: â‚¹{tick['price']} Vol:{tick['volume']}")
     streamer = WebSocketTickStreamer(
         api_key, client_code, feed_token,
         test_tokens, feed_type="Quote", on_tick=print_tick

@@ -1,4 +1,4 @@
-"""
+﻿"""
 live/broker_adapter.py
 
 Unified SmartAPI broker/tick data adapter for live trading and forward test simulation.
@@ -97,7 +97,7 @@ class BrokerAdapter:
             self.paper_trading = True
 
     def get_next_tick(self) -> Optional[Dict[str, Any]]:
-        """Fetch next tick—using SmartAPI polling, or simulated if in paper mode."""
+        """Fetch next tickâ€”using SmartAPI polling, or simulated if in paper mode."""
         if self.paper_trading or not self.connection:
             # Simulate tick by quick micro-oscillation
             last = self.last_price or 22000.0

@@ -1,4 +1,4 @@
-"""
+﻿"""
 core/position_manager.py - Unified Position Manager for Backtest & Live Trading
 
 Handles:
@@ -311,10 +311,10 @@ class PositionManager:
         self.positions[position_id] = position
         logger.info("Opened position %s", position_id)
         logger.info("Lots: %s (%s total units)", lots, quantity)
-        logger.info("Entry price: ₹%.2f per unit", actual_entry_price)
-        logger.info("Stop loss: ₹%.2f", stop_loss_price)
-        logger.info("Take profit levels: %s", [f'₹{tp:.2f}' for tp in tp_levels])
-        logger.info("Position value: ₹%,.2f", quantity * actual_entry_price)
+        logger.info("Entry price: â‚¹%.2f per unit", actual_entry_price)
+        logger.info("Stop loss: â‚¹%.2f", stop_loss_price)
+        logger.info("Take profit levels: %s", [f'â‚¹{tp:.2f}' for tp in tp_levels])
+        logger.info("Position value: â‚¹%,.2f", quantity * actual_entry_price)
         return position_id
 
     def close_position_partial(self, position_id: str, exit_price: float,
@@ -369,12 +369,12 @@ class PositionManager:
             logger.info(f"Fully closed position {position_id}")
         else:
             position.status = PositionStatus.PARTIALLY_CLOSED
-            logger.info(f"Partially closed position {position_id}: {quantity_to_close} @ ₹{exit_price}")
+            logger.info(f"Partially closed position {position_id}: {quantity_to_close} @ â‚¹{exit_price}")
         self.daily_pnl += net_pnl
         logger.info("Closed position %s", position_id)
         logger.info("Lots closed: %s (%s units)", lots_closed, quantity_to_close)
-        logger.info("Exit price: ₹%.2f per unit", exit_price)
-        logger.info("P&L: ₹%.2f (%s)", net_pnl, exit_reason)
+        logger.info("Exit price: â‚¹%.2f per unit", exit_price)
+        logger.info("P&L: â‚¹%.2f (%s)", net_pnl, exit_reason)
         return True
 
     def close_position_full(self, position_id: str, exit_price: float,
@@ -411,7 +411,7 @@ class PositionManager:
                     exit_quantity = position.current_quantity  # Last TP: exit all remaining
                 # Logging for verification
                 exit_lots = exit_quantity // position.lot_size if position.lot_size > 0 else exit_quantity
-                logger.info(f"🎯 TP{i+1} Exit: {exit_lots} lots ({exit_quantity} units)")
+                logger.info(f"ðŸŽ¯ TP{i+1} Exit: {exit_lots} lots ({exit_quantity} units)")
                 # --- END FIX ---
                 if exit_quantity > 0:
                     reason = f"Take Profit {i+1}"

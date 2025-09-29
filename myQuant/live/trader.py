@@ -1,4 +1,4 @@
-"""
+﻿"""
 live/trader.py
 
 Unified forward-test/live simulation runner.
@@ -53,7 +53,7 @@ class LiveTrader:
         self.is_running = True
         logger = logging.getLogger(__name__)
         self.broker.connect()
-        logger.info("🟢 Forward testing session started.")
+        logger.info("ðŸŸ¢ Forward testing session started.")
         try:
             while self.is_running:
                 tick = self.broker.get_next_tick()
@@ -79,7 +79,7 @@ class LiveTrader:
                     self.active_position_id = self.strategy.open_long(row, now, self.position_manager)
                     if self.active_position_id:
                         qty = self.position_manager.positions[self.active_position_id].current_quantity
-                        logger.info(f"[SIM] ENTERED LONG at ₹{row['close']} ({qty} contracts)")
+                        logger.info(f"[SIM] ENTERED LONG at â‚¹{row['close']} ({qty} contracts)")
                         if result_box:
                             result_box.config(state="normal")
                             result_box.insert("end", f"Simulated BUY: {qty} @ {row['close']:.2f}\n")

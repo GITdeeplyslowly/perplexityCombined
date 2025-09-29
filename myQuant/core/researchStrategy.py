@@ -1,4 +1,4 @@
-"""
+﻿"""
 researchStrategy.py - Core trading strategy implementation
 
 MIGRATED: This module has been migrated from batch to incremental processing 
@@ -24,14 +24,14 @@ import pytz
 import logging
 from utils.time_utils import is_within_session, ensure_tz_aware, apply_buffer_to_time
 from utils.config_helper import ConfigAccessor
-from utils.smart_logger import create_smart_logger
-
-
-# Import indicators - MIGRATED: Now using only incremental processing
+from types import MappingProxyType
 from core.indicators import IncrementalEMA, IncrementalMACD, IncrementalVWAP, IncrementalATR
-import pandas as pd
-import pytz
+
+# Use new core logger primitives (no legacy adapters). STRICT: fail-fast if requested.
+from utils.logger import HighPerfLogger, increment_tick_counter, get_tick_counter, format_tick_message
 import logging
+
+logger = logging.getLogger(__name__)
 
 def extract_scalar_value(row, key, default=0):
     """Safely extract scalar value from row, handling Series objects"""
@@ -50,8 +50,6 @@ def extract_scalar_value(row, key, default=0):
         logger.warning(f"Failed to extract {key}: {e}, using default {default}")
         return default
 
-logger = logging.getLogger(__name__)
-
 @dataclass
 class TradingSignal:
     """Represents a trading signal with all necessary information."""
@@ -68,15 +66,14 @@ class ModularIntradayStrategy:
     Unified long-only intraday strategy supporting multiple indicators.
     """
     
-    def __init__(self, frozen_config):
+    def __init__(self, frozen_config: MappingProxyType):
         # frozen_config is expected to be MappingProxyType produced by GUI (SSOT)
-        # Use ConfigAccessor to read canonical config values (no hard-coded literals)
-        self.config_accessor = ConfigAccessor(frozen_config)
-        # Read tick logging interval from the logging section (SSOT)
-        # This controls how frequently per-tick verbose debug messages are emitted
-        self.tick_log_interval = int(self.config_accessor.get_logging_param('tick_log_interval'))
-        # Per-run tick counter used to rate-limit per-tick debug logs
-        self.tick_counter = 0
+        self.config = frozen_config
+        # ConfigAccessor must be available before reading any strategy params
+        self.config_accessor = ConfigAccessor(self.config)
+        # STRICT / fail-fast: initialize HighPerfLogger (requires frozen MappingProxyType & prior setup).
+        # Let any exception propagate so misconfiguration is detected immediately.
+        self.perf_logger = HighPerfLogger(__name__, frozen_config)
 
         # --- Strategy section (use values from defaults.py only) ---
         # Use strict API: no 'cast' keyword on accessor; do explicit conversion where needed.
@@ -186,15 +183,12 @@ class ModularIntradayStrategy:
         self.green_bars_count = 0
         self.last_bar_data = None
 
-        # Feature-flagged smart logger for strategy-level event logging (defensive)
-        try:
-            try:
-                enable_smart = self.config_accessor.get_logging_param('enable_smart_logger')
-            except KeyError:
-                enable_smart = False
-            self.smart_logger = create_smart_logger(__name__, self.config, logger_type='trading') if bool(enable_smart) else None
-        except Exception:
-            logger.exception("Failed to initialize strategy smart logger")
+        # Feature-flagged event logger (STRICT: if config requests it, creation must succeed)
+        enable_smart = bool(self.config.get('logging', {}).get('enable_smart_logger', False))
+        if enable_smart:
+            # Fail-fast: let constructor raise on misconfiguration (no silent fallback)
+            self.smart_logger = HighPerfLogger(__name__ + ".events", self.config)
+        else:
             self.smart_logger = None
 
         # --- Indicator / parameter initialization (ensure trackers exist before any processing) ---
@@ -282,7 +276,8 @@ class ModularIntradayStrategy:
         self.vwap_tracker.reset()
         logger.debug("Session indicators reset for new trading day")
 
-        logger.info("Strategy initialized: %s v%s", self.name, self.version)
+        # Emit concise initialization event via high-perf logger
+        self.perf_logger.session_start(f"Strategy initialized: {self.name} v{self.version}")
         logger.info(
             f"[INIT] Indicator switches: EMA={self.use_ema_crossover}, MACD={self.use_macd}, VWAP={self.use_vwap}, "
             f"RSI={self.use_rsi_filter}, HTF={self.use_htf_trend}, BB={self.use_bollinger_bands}, "
@@ -295,7 +290,7 @@ class ModularIntradayStrategy:
             f"HTF period={self.htf_period}, Green Bars Req={self.consecutive_green_bars_required}"
         )
         logger.info(
-            f"[INIT] Session: {self.session_start.strftime('%H:%M')}–{self.session_end.strftime('%H:%M')}, "
+            f"[INIT] Session: {self.session_start.strftime('%H:%M')}â€“{self.session_end.strftime('%H:%M')}, "
             f"Buffers: +{self.start_buffer_minutes}/-{self.end_buffer_minutes}, "
             f"no_trade_start={self.no_trade_start_minutes} no_trade_end={self.no_trade_end_minutes}, "
             f"Max/day={self.max_positions_per_day}"
@@ -306,8 +301,7 @@ class ModularIntradayStrategy:
         TRUE INCREMENTAL PROCESSING: Process data row-by-row to mirror real-time trading.
         This completely eliminates batch processing and ensures no look-ahead bias.
         """
-        logger.info("=== STARTING TRUE INCREMENTAL PROCESSING ===")
-        logger.info(f"Processing {len(df)} rows incrementally (row-by-row)")
+        self.perf_logger.session_start(f"Incremental processing: {len(df)} rows")
         
         # Reset all incremental trackers for clean processing
         self.reset_incremental_trackers()
@@ -349,9 +343,10 @@ class ModularIntradayStrategy:
             
             # Log progress every 1000 rows
             if rows_processed % 1000 == 0:
-                logger.debug(f"Incremental processing: {rows_processed}/{len(df)} rows completed")
+                # rate-limited debug via perf_logger
+                self.perf_logger.tick_debug(format_tick_message, get_tick_counter(), 0.0, None)
         
-        logger.info(f"=== INCREMENTAL PROCESSING COMPLETE: {rows_processed} rows ===")
+        self.perf_logger.session_end(f"Incremental processing complete: {rows_processed} rows")
  
         return df
     
@@ -608,6 +603,7 @@ class ModularIntradayStrategy:
             # Event-driven hold logging
             max_reasons = int(self.config_accessor.get_logging_param('max_signal_reasons'))
             hold_reasons = failed_reasons if max_reasons is None else failed_reasons[:max_reasons]
+
             if getattr(self, "smart_logger", None):
                 self.smart_logger.log_signal_event('HOLD', current_time, hold_reasons, row['close'])
             else:
@@ -742,7 +738,7 @@ class ModularIntradayStrategy:
                 logger.error(f"MISSING METHOD: {method}")
                 return False
             else:
-                logger.info(f"✅ Method exists: {method}")
+                logger.info(f"âœ… Method exists: {method}")
         
         return True
 
@@ -930,6 +926,11 @@ class ModularIntradayStrategy:
     
         
     def process_tick_or_bar(self, row: pd.Series):
+        # Called per tick
+        increment_tick_counter()
+        # use perf_logger.tick_debug for rate-limited debug
+        if self.perf_logger:
+            self.perf_logger.tick_debug(format_tick_message, get_tick_counter(), row.get('close', 0), row.get('volume', None))
         """
         TRUE INCREMENTAL PROCESSING: Update all indicators for a single tick/bar.
         This is the core of incremental processing - called for each data point in sequence.
@@ -1025,16 +1026,41 @@ class ModularIntradayStrategy:
     
     def _update_green_tick_count(self, current_price: float):
         """
-        Update consecutive green ticks counter based on tick-to-tick price movement.
-        A green tick is defined as current_price > prev_tick_price.
+        Update consecutive green ticks counter based on tick-to-tick price movement
+        with configurable noise filtering.
         """
         try:
             if self.prev_tick_price is None:
                 # First tick of session or after reset
                 self.green_bars_count = 0
+                self.prev_tick_price = current_price
                 logger.debug(f"First tick: price={current_price:.2f}, green_count=0")
+                return
+                
+            # Get noise filter parameters from config
+            noise_filter_enabled = bool(self.config_accessor.get_strategy_param('noise_filter_enabled', True))
+            noise_filter_percentage = float(self.config_accessor.get_strategy_param('noise_filter_percentage', 0.0001))
+            noise_filter_min_ticks = float(self.config_accessor.get_strategy_param('noise_filter_min_ticks', 1.0))
+            
+            # Calculate minimum movement threshold
+            min_movement = max(self.tick_size * noise_filter_min_ticks, 
+                              self.prev_tick_price * noise_filter_percentage)
+            
+            # Apply noise filter if enabled
+            if noise_filter_enabled:
+                if current_price > (self.prev_tick_price + min_movement):
+                    # Significant upward movement
+                    self.green_bars_count += 1
+                    logger.debug(f"Green tick: {self.prev_tick_price:.2f} -> {current_price:.2f} (delta: {current_price - self.prev_tick_price:.2f} > {min_movement:.2f}), count={self.green_bars_count}")
+                elif current_price < (self.prev_tick_price - min_movement):
+                    # Significant downward movement
+                    self.green_bars_count = 0
+                    logger.debug(f"Red tick: {self.prev_tick_price:.2f} -> {current_price:.2f} (delta: {self.prev_tick_price - current_price:.2f} > {min_movement:.2f}), count reset to 0")
+                else:
+                    # Price within noise range - maintain current count
+                    logger.debug(f"Noise range tick: {self.prev_tick_price:.2f} -> {current_price:.2f} (delta: {abs(current_price - self.prev_tick_price):.2f} <= {min_movement:.2f}), count remains {self.green_bars_count}")
             else:
-                # Compare with previous tick
+                # Original behavior without noise filtering
                 if current_price > self.prev_tick_price:
                     self.green_bars_count += 1
                     logger.debug(f"Green tick: {self.prev_tick_price:.2f} -> {current_price:.2f}, count={self.green_bars_count}")
@@ -1042,7 +1068,7 @@ class ModularIntradayStrategy:
                     # Reset counter on price decrease or equal
                     self.green_bars_count = 0
                     logger.debug(f"Red tick: {self.prev_tick_price:.2f} -> {current_price:.2f}, count reset to 0")
-        
+            
             # Update previous price for next comparison
             self.prev_tick_price = current_price
             

@@ -1,4 +1,4 @@
-"""
+﻿"""
 utils/time_utils.py
 
 Time and session-related utilities for the unified trading system.
@@ -545,4 +545,4 @@ if __name__ == "__main__":
     print(f"Next trading day: {get_next_trading_day()}")
     print(f"Previous trading day: {get_previous_trading_day()}")
     
-    print("\n✅ Time utilities test completed successfully!")
+    print("\nâœ… Time utilities test completed successfully!")

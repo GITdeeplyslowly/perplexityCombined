@@ -1,4 +1,4 @@
-"""
+﻿"""
 unified_gui.py - Unified Trading Interface for both Backtesting and Live Trading
 
 Provides a comprehensive GUI for:
@@ -939,9 +939,9 @@ class UnifiedTradingGUI(tk.Tk):
                 self.max_lots.set(f"{max_affordable_lots} lots max")
             if hasattr(self, 'position_value'):
                 position_value = recommended_quantity * current_price
-                self.position_value.set(f"â‚¹{position_value:,.0f}")
+                self.position_value.set(f"Ã¢â€šÂ¹{position_value:,.0f}")
 
-            logger.info(f"Position Sizing: {recommended_lots} lots = {recommended_quantity:,} units @ â‚¹{current_price:.2f}")
+            logger.info(f"Position Sizing: {recommended_lots} lots = {recommended_quantity:,} units @ Ã¢â€šÂ¹{current_price:.2f}")
 
         except (ValueError, ZeroDivisionError) as e:
             logger.error(f"Position calculation error: {e}")
@@ -961,7 +961,7 @@ class UnifiedTradingGUI(tk.Tk):
 
             # Capital validation
             if capital < 10000:
-                errors.append("Minimum capital requirement: â‚¹10,000")
+                errors.append("Minimum capital requirement: Ã¢â€šÂ¹10,000")
 
             # Risk validation
             if risk_pct < 0.1:
@@ -972,7 +972,7 @@ class UnifiedTradingGUI(tk.Tk):
             # Position size validation
             min_position_value = lot_size * price
             if min_position_value > capital * 0.95:
-                errors.append(f"Insufficient capital for even 1 lot (â‚¹{min_position_value:,.0f} required)")
+                errors.append(f"Insufficient capital for even 1 lot (Ã¢â€šÂ¹{min_position_value:,.0f} required)")
 
             # Stop loss validation
             if sl_points <= 0:
@@ -1174,7 +1174,7 @@ class UnifiedTradingGUI(tk.Tk):
                 result = messagebox.askokcancel(
                     "Session Configuration Warnings",
                     "The following potential issues were found:\n\n" +
-                    "\n".join([f"â€¢ {w}" for w in warnings]) +
+                    "\n".join([f"Ã¢â‚¬Â¢ {w}" for w in warnings]) +
                     f"\n\nEffective trading window: {effective_minutes} minutes" +
                     "\n\nDo you want to use this configuration anyway?"
                 )
@@ -1192,7 +1192,7 @@ class UnifiedTradingGUI(tk.Tk):
 
         except ValueError:
             messagebox.showwarning("Input Error", "Please enter valid numbers")
-            self.session_status.set("âš ï¸ Invalid number format")
+            self.session_status.set("Ã¢Å¡ Ã¯Â¸Â Invalid number format")
 
     def _apply_session_config(self, start_hour, start_min, end_hour, end_min,
                          start_buffer, end_buffer):
@@ -1232,9 +1232,9 @@ class UnifiedTradingGUI(tk.Tk):
         self.symbol_token_map = {}
 
         # Capital management variables
-        self.capital_usable = tk.StringVar(value="â‚¹0 (0%)")
+        self.capital_usable = tk.StringVar(value="Ã¢â€šÂ¹0 (0%)")
         self.max_lots = tk.StringVar(value="0 lots (0 shares)")
-        self.max_risk = tk.StringVar(value="â‚¹0 (0%)")
+        self.max_risk = tk.StringVar(value="Ã¢â€šÂ¹0 (0%)")
         self.recommended_lots = tk.StringVar(value="0 lots (0 shares)")
 
         # Session configuration variables

@@ -1,4 +1,4 @@
-"""
+﻿"""
 config_loader.py - Compatibility layer for the new defaults-based configuration
 
 This module provides backward compatibility for code that still uses config_loader.

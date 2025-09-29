@@ -1,4 +1,4 @@
-"""
+﻿"""
 defaults.py - Single Source of Truth for All Configuration Defaults
 
 This file contains all default values used by both GUI and non-GUI components.
@@ -11,22 +11,18 @@ from typing import Dict, Any
 # Single Source of Truth for defaults used by GUI and runners.
 DEFAULT_CONFIG: Dict[str, Any] = {
     "logging": {
-        # Must be a path containing a directory (no empty dirname)
-        "logfile": os.path.join("logs", "unified_gui.log"),
-        # Canonical verbosity string (valid logging level)
-        "verbosity": "INFO",
-        "console_output": True,
-        "file_rotation": True,
-
-        # --- Strict settings required by downstream code (no fallbacks) ---
-        "enable_smart_logger": False,
-        "tick_log_interval": 100,
-        "log_progress": True,
-        "max_signal_reasons": 5,
+        # Canonical single key for file path
+        "logfile": os.path.join("logs", "trading_bot.log"),
         "log_to_file": True,
-        # alias for logfile for compatibility
-        "log_file": os.path.join("logs", "unified_gui.log"),
-        "log_level_overrides": {}
+        "console_output": True,
+        "verbosity": "INFO",
+        "tick_log_interval": 1000,
+        "max_file_size": 10 * 1024 * 1024,
+        "backup_count": 5,
+        "log_level_overrides": {},
+        # optional structured JSON event stream
+        "json_event_log": False,
+        "json_event_file": os.path.join("logs", "events.jsonl")
     },
     "strategy": {
         "strategy_version": 1,
@@ -50,6 +46,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "consecutive_green_bars": 3,
         "atr_len": 14,
         "indicator_update_mode": "tick",
+        # Add noise filter parameters
+        "noise_filter_enabled": True,
+        "noise_filter_percentage": 0.0001,  # 0.01% threshold
+        "noise_filter_min_ticks": 1.0,      # Minimum number of ticks to consider
         # nan/recovery thresholds (kept here for future use)
         "nan_streak_threshold": 7,
         "nan_recovery_threshold": 3

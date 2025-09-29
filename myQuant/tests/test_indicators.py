@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 from core.indicators import calculate_all_indicators
 from core.config_accessor import ConfigAccessor
 

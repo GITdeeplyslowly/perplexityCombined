@@ -1,4 +1,4 @@
-class TestConfigAccessor:
+﻿class TestConfigAccessor:
     def test_is_indicator_enabled(self):
         config_accessor = ConfigAccessor()
         assert hasattr(config_accessor, 'is_indicator_enabled')

@@ -1,4 +1,4 @@
-"""
+﻿"""
 utils/cache_manager.py
 
 Simple symbol/token cache manager replicating angelalgo windsurf approach
@@ -70,11 +70,11 @@ def fetch_and_cache_symbols(path: str = DEFAULT_CACHE_PATH, url: str = DEFAULT_M
         # Save to cache in angelalgo windsurf format
         save_cache(symbol_token_map, path)
         
-        print(f"✅ Cached {len(symbol_token_map)} symbols to {path}")
+        print(f"âœ… Cached {len(symbol_token_map)} symbols to {path}")
         return symbol_token_map
         
     except Exception as e:
-        print(f"❌ Error fetching symbols: {e}")
+        print(f"âŒ Error fetching symbols: {e}")
         return {}
 
 def save_cache(symbol_token_map: dict, path: str = DEFAULT_CACHE_PATH):
@@ -94,10 +94,10 @@ def save_cache(symbol_token_map: dict, path: str = DEFAULT_CACHE_PATH):
         with open(path, "w", encoding="utf-8") as f:
             json.dump(cache_data, f, indent=2)
             
-        print(f"✅ Symbol cache saved to {path}")
+        print(f"âœ… Symbol cache saved to {path}")
         
     except Exception as e:
-        print(f"❌ Error saving cache: {e}")
+        print(f"âŒ Error saving cache: {e}")
 
 def refresh_symbol_cache(path: str = DEFAULT_CACHE_PATH) -> int:
     """
@@ -187,7 +187,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "refresh":
         print("Refreshing Angel One SmartAPI symbol cache...")
         count = refresh_symbol_cache()
-        print(f"✅ Loaded {count} symbols into cache.")
+        print(f"âœ… Loaded {count} symbols into cache.")
         print(f"Last refresh: {cache_last_refresh()}")
     else:
         print("Testing cache manager (angelalgo windsurf style)...")
@@ -205,7 +205,7 @@ if __name__ == "__main__":
         else:
             print("No symbols loaded. Refreshing the cache...")
             count = refresh_symbol_cache()
-            print(f"✅ Refreshed cache with {count} symbols.")
+            print(f"âœ… Refreshed cache with {count} symbols.")
 
 def _ft_load_symbols(self):
     """Load symbols exactly like angelalgo windsurf approach with a listbox"""
