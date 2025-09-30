@@ -25,8 +25,9 @@ from utils.time_utils import is_within_session, ensure_tz_aware, apply_buffer_to
 from utils.config_helper import ConfigAccessor
 from types import MappingProxyType
 from core.indicators import IncrementalEMA, IncrementalMACD, IncrementalVWAP, IncrementalATR
-# Use new core logger primitives (no legacy adapters). STRICT: fail-fast if requested.
-from utils.logger import HighPerfLogger, increment_tick_counter, get_tick_counter, format_tick_message
+ 
+ # Use new core logger primitives (no legacy adapters). STRICT: fail-fast if requested.
+ from utils.logger import HighPerfLogger, increment_tick_counter, get_tick_counter, format_tick_message
 
 # Module uses HighPerfLogger via self.perf_logger (no module-level stdlib logger)
 
@@ -181,6 +182,14 @@ class ModularIntradayStrategy:
         self.last_signal_time = None
         self.green_bars_count = 0
         self.last_bar_data = None
+
+        # Feature-flagged event logger (STRICT: if config requests it, creation must succeed)
+        enable_smart = bool(self.config.get('logging', {}).get('enable_smart_logger', False))
+        if enable_smart:
+            # Fail-fast: let constructor raise on misconfiguration (no silent fallback)
+            self.smart_logger = HighPerfLogger(__name__ + ".events", self.config)
+        else:
+            self.smart_logger = None
 
         # --- Indicator / parameter initialization (ensure trackers exist before any processing) ---
         # Consecutive green bars for re-entry
@@ -575,7 +584,10 @@ class ModularIntradayStrategy:
             max_reasons = int(self.config_accessor.get_logging_param('max_signal_reasons'))
             # If max_reasons is None, do not limit reasons (defaults are in defaults.py only)
             reasons = signal_reasons if max_reasons is None else signal_reasons[:max_reasons]
-            self.perf_logger.session_start(f"[SIGNAL] BUY @ {current_time} Price={row['close']:.2f} Reasons={' ; '.join(reasons)}")
+            if getattr(self, "smart_logger", None):
+                self.smart_logger.log_signal_event('BUY', current_time, reasons, row['close'])
+            else:
+                self.perf_logger.session_start(f"[SIGNAL] BUY @ {current_time} Price={row['close']:.2f} Reasons={' ; '.join(reasons)}")
             
             return TradingSignal(
                 action='BUY',
@@ -594,7 +606,10 @@ class ModularIntradayStrategy:
             max_reasons = int(self.config_accessor.get_logging_param('max_signal_reasons'))
             hold_reasons = failed_reasons if max_reasons is None else failed_reasons[:max_reasons]
 
-            self.perf_logger.session_start(f"[HOLD] @ {current_time} | Reasons: {'; '.join(hold_reasons)}")
+            if getattr(self, "smart_logger", None):
+                self.smart_logger.log_signal_event('HOLD', current_time, hold_reasons, row['close'])
+            else:
+                self.perf_logger.session_start(f"[HOLD] @ {current_time} | Reasons: {'; '.join(hold_reasons)}")
             
             return TradingSignal(
                 action='HOLD',
@@ -670,11 +685,11 @@ class ModularIntradayStrategy:
         try:
             success = position_manager.close_position_full(position_id, exit_price, timestamp, reason)
             if success:
-                # Unified exit logging with comprehensive details
-                pos = position_manager.positions.get(position_id, {})
-                pnl = getattr(pos, 'last_realized_pnl', 0) or pos.get('pnl', 0)
-                symbol = pos.get('symbol', 'N/A')
-                self.perf_logger.session_start(f"Strategy exit executed: {position_id} @ {exit_price:.2f} - {reason} PnL={pnl:.2f} Symbol={symbol}")
+                self.perf_logger.session_start(f"Strategy exit executed: {position_id} @ {exit_price:.2f} - {reason}")
+                if getattr(self, "smart_logger", None):
+                    pos = position_manager.positions.get(position_id, {})
+                    pnl = getattr(pos, 'last_realized_pnl', 0) or pos.get('pnl', 0)
+                    self.smart_logger.log_position_event('CLOSE', {'symbol': pos.get('symbol', 'N/A'), 'pnl': pnl, 'reason': reason})
             return success
         except Exception as e:
             self.perf_logger.session_start(f"Strategy exit failed: {e}")
@@ -791,13 +806,14 @@ class ModularIntradayStrategy:
                 self.daily_stats['trades_today'] += 1
             self.last_signal_time = current_time
             
-            # Unified position opening logging with quantity details
-            qty = 0
-            try:
-                qty = position_manager.positions[position_id].current_quantity if position_id in position_manager.positions else 0
-            except Exception:
+            if getattr(self, "smart_logger", None):
                 qty = 0
-            self.perf_logger.session_start(f"Position opened: {position_id} @ {entry_price:.2f} Qty={qty} Symbol={symbol}")
+                try:
+                    qty = position_manager.positions[position_id].current_quantity if position_id in position_manager.positions else 0
+                except Exception:
+                    qty = 0
+                self.smart_logger.log_position_event('OPEN', {'symbol': symbol, 'quantity': qty, 'price': entry_price})
+            self.perf_logger.session_start(f"Position opened: {position_id} @ {entry_price:.2f}")
             return position_id
         # If position not opened, emit concise lifecycle event and return None
         self.perf_logger.session_start("Position manager returned None")
@@ -1177,7 +1193,7 @@ def entry_signal(self, row: pd.Series) -> bool:
                     raise KeyError('rsi_upper')
             except KeyError as e:
                 # Propagate but emit concise lifecycle event
-                self.perf_logger.session_start(f"Missing required RSI parameter: {e}")
+                self_obj.perf_logger.session_start(f"Missing required RSI parameter: {e}")
                 raise
             
             if rsi_lower < rsi_val < rsi_upper:
@@ -1205,7 +1221,7 @@ def entry_signal(self, row: pd.Series) -> bool:
             signal_reasons.append("BB: Data not available")
 
     # Store signal reasons for logging/debugging
-    self.perf_logger.session_start(f"Signal reasons: {signal_reasons}")
+    self_obj.last_signal_reasons = signal_reasons
     
     # Must have at least one enabled indicator with valid signal
     if not signal_conditions:
@@ -1213,4 +1229,5 @@ def entry_signal(self, row: pd.Series) -> bool:
         
     # All enabled indicators must agree (pass their conditions)
     return all(signal_conditions)
+# ...existing code...
 

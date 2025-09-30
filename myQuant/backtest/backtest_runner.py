@@ -125,7 +125,7 @@ class BacktestRunner:
         
         # High-performance logger for backtest events
         self.perf_logger = HighPerfLogger(__name__, self.config)
-        # smart_logger removed (all event logging uses HighPerfLogger)
+        # All event logging uses self.perf_logger for consistency
 
         # Create strict config accessor (will raise KeyError on missing keys)
         from utils.config_helper import ConfigAccessor
@@ -422,11 +422,8 @@ class BacktestRunner:
                 signals_detected += 1
                 entries_attempted += 1
 
-                if self.smart_logger is not None:
-                    # Fail-fast: allow exceptions to surface if event emission fails.
-                    self.smart_logger.signal_generated('BUY', float(row.get('close', float('nan'))), reason="", run_id=None)
-                else:
-                    logger.info(f"SIGNAL DETECTED at {now}: Price={row['close']:.2f}")
+                # Unified signal detection logging
+                self.perf_logger.session_start(f"SIGNAL DETECTED at {now}: Price={row['close']:.2f}")
                 
                 position_id = strategy.open_long(row, now, position_manager)
                 in_position = position_id is not None
@@ -438,13 +435,10 @@ class BacktestRunner:
                         lots = position.current_quantity // position.lot_size if position.lot_size > 0 else position.current_quantity
                         logger.info(f"TRADE EXECUTED: {lots} lots ({position.current_quantity} units) @ {row['close']:.2f}")
                     trades_executed += 1
-                    if self.smart_logger is not None:
-                        # Fail-fast on structured event emission
-                        pos = position_manager.positions.get(position_id, {})
-                        qty = getattr(pos, 'current_quantity', pos.get('quantity', 0)) if pos else 0
-                        self.smart_logger.trade_executed('OPEN', float(row['close']), int(qty), reason="Runner open", trade_id=position_id, run_id=None)
-                    else:
-                        logger.info(f"TRADE EXECUTED: {position_id} @ {row['close']:.2f}")
+                    # Unified trade execution logging
+                    pos = position_manager.positions.get(position_id, {})
+                    qty = getattr(pos, 'current_quantity', pos.get('quantity', 0)) if pos else 0
+                    self.perf_logger.session_start(f"TRADE EXECUTED: {position_id} @ {row['close']:.2f} Qty={qty}")
                 else:
                     logger.warning(f"TRADE FAILED: Signal detected but position not opened")
             
@@ -470,12 +464,8 @@ class BacktestRunner:
             
             # FIXED: Add periodic progress logging
             if processed_bars % 1000 == 0:
-                # Emit progress via structured event if enabled, else plain logger.info
-                if self.smart_logger is not None:
-                    # Fail-fast on event emission
-                    self.smart_logger.event_logger.info(json.dumps({"type": "progress", "processed": processed_bars, "total": len(df_with_indicators), "trades": trades_executed}))
-                else:
-                    logger.info(f"Progress: {processed_bars:,} bars processed, Signals: {signals_detected}, Entries: {entries_attempted}, Trades: {trades_executed}")
+                # Unified progress logging
+                self.perf_logger.session_start(f"Progress: {processed_bars:,} bars processed, Signals: {signals_detected}, Entries: {entries_attempted}, Trades: {trades_executed}")
         
         logger.info(f"Backtest completed: {signals_detected} signals, {trades_executed} trades executed")
         
@@ -536,23 +526,11 @@ class BacktestRunner:
         otherwise print a small set of sample rows for debugging (legacy behavior).
         Non-destructive: does not change pipeline.
         """
-        if self.smart_logger is not None:
-            # Fail-fast: emit structured stage event (allow exceptions to surface)
-            rows_loaded = len(df_stage)
-            first_ts = df_stage.index.min() if hasattr(df_stage, 'index') else None
-            last_ts = df_stage.index.max() if hasattr(df_stage, 'index') else None
-            self.smart_logger.event_logger.info(json.dumps({"type": "stage", "tag": tag, "rows_loaded": rows_loaded, "range": [str(first_ts), str(last_ts)]}))
-        else:
-             # Preserve legacy behavior: show limited samples to aid debugging
-             sample_count = min(sample_count, len(df_stage))
-             for i in range(sample_count):
-                 try:
-                     row = df_stage.iloc[i]
-                     ts = getattr(row, 'name', 'N/A')
-                     close = row.get('close', 'N/A')
-                     logger.info(f"{tag} Sample {i+1}/{sample_count} idx={i} time={ts} close={close}")
-                 except Exception:
-                     logger.debug("Failed to log sample row", exc_info=True)
+        # Simplified stage logging via performance logger
+        rows_loaded = len(df_stage)
+        first_ts = df_stage.index.min() if hasattr(df_stage, 'index') else None  
+        last_ts = df_stage.index.max() if hasattr(df_stage, 'index') else None
+        self.perf_logger.session_start(f"Stage {tag}: {rows_loaded} rows loaded, range: {first_ts} to {last_ts}")
 
     def _process_row_signal_and_trade(self, row: pd.Series, now: datetime,
                                       strategy, position_manager, instrument_params: dict,
@@ -568,29 +546,18 @@ class BacktestRunner:
                 processed_counters['signals_detected'] += 1
                 processed_counters['entries_attempted'] += 1
 
-                if self.smart_logger is not None:
-                    # Strategy already logs reasons; provide concise event for runner
-                    try:
-                        self.smart_logger.signal_generated('BUY', float(row.get('close', float('nan'))), reason="", run_id=None)
-                    except Exception:
-                        logger.debug("smart_logger.log_signal_event failed", exc_info=True)
-                else:
-                    logger.info(f"SIGNAL DETECTED at {now}: Price={row.get('close', 'N/A')}")
+                # Unified signal logging
+                self.perf_logger.session_start(f"SIGNAL DETECTED at {now}: Price={row.get('close', 'N/A')}")
 
                 position_id = strategy.open_long(row, now, position_manager)
                 in_position = position_id is not None
 
                 if in_position:
                     processed_counters['trades_executed'] += 1
-                    if self.smart_logger is not None:
-                        try:
-                            pos = position_manager.positions.get(position_id, {})
-                            qty = getattr(pos, 'current_quantity', pos.get('quantity', 0)) if pos else 0
-                            self.smart_logger.trade_executed('OPEN', float(row.get('close', float('nan'))), int(qty), reason="Runner open", trade_id=position_id, run_id=None)
-                        except Exception:
-                            logger.debug("smart_logger.log_position_event(OPEN) failed", exc_info=True)
-                    else:
-                        logger.info(f"TRADE EXECUTED: {position_id} @ {row.get('close', 'N/A')}")
+                    # Unified trade logging
+                    pos = position_manager.positions.get(position_id, {})
+                    qty = getattr(pos, 'current_quantity', pos.get('quantity', 0)) if pos else 0
+                    self.perf_logger.session_start(f"TRADE EXECUTED: {position_id} @ {row.get('close', 'N/A')} Qty={qty}")
             # Exit handling (if in_position)
             elif in_position:
                 # Strategy decides when to exit; runner logs closes via smart_logger when present
@@ -605,16 +572,11 @@ class BacktestRunner:
                         exit_price = float(row.get('close', float('nan')))
                         closed = position_manager.close_position_full(position_to_close, exit_price, now, reason="Runner Exit")
                         if closed:
-                            if self.smart_logger is not None:
-                                try:
-                                    pos = position_manager.positions.get(position_to_close, {})
-                                    pnl = getattr(pos, 'last_realized_pnl', 0) or pos.get('pnl', 0)
-                                    qty = int(getattr(pos, 'current_quantity', pos.get('quantity', 0)) if pos else 0)
-                                    self.smart_logger.trade_executed('CLOSE', float(exit_price), qty, reason="Runner Exit", trade_id=position_to_close, run_id=None)
-                                except Exception:
-                                    logger.debug("smart_logger.log_position_event(CLOSE) failed", exc_info=True)
-                            else:
-                                logger.info(f"POSITION CLOSED by runner: {position_to_close} @ {exit_price}")
+                            # Unified position close logging
+                            pos = position_manager.positions.get(position_to_close, {})
+                            pnl = getattr(pos, 'last_realized_pnl', 0) or pos.get('pnl', 0)
+                            qty = int(getattr(pos, 'current_quantity', pos.get('quantity', 0)) if pos else 0)
+                            self.perf_logger.session_start(f"POSITION CLOSED by runner: {position_to_close} @ {exit_price} PnL={pnl:.2f} Qty={qty}")
                             in_position = False
         except Exception as e:
             logger.exception(f"Error in row processing: {e}")
