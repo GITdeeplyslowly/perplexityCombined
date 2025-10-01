@@ -13,6 +13,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "logging": {
         # Canonical single key for file path
         "logfile": os.path.join("logs", "trading_bot.log"),
+        # legacy alias kept for compatibility with older callers
+        "log_file": os.path.join("logs", "trading_bot.log"),
+        "verbosity": "INFO",
+        # Whether progress/logging of tick-level events is enabled
+        "log_progress": False,
+        # Maximum number of reason strings to include in signal logs (None == unlimited)
+        "max_signal_reasons": 5,
         "log_to_file": True,
         "console_output": True,
         "verbosity": "INFO",

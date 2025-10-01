@@ -143,8 +143,8 @@ class ModularIntradayStrategy:
         self.no_trade_start_minutes = int(no_trade_start if no_trade_start is not None else (self.start_buffer_minutes or 0))
         self.no_trade_end_minutes = int(no_trade_end if no_trade_end is not None else (self.end_buffer_minutes or 0))
 
-        # Logging section - use strict API and convert types
-        self.enable_smart_logger = bool(self.config_accessor.get_logging_param('enable_smart_logger'))
+        # Logging section - consolidated logging API. Use HighPerfLogger (self.perf_logger).
+        # Legacy "smart logger" flag removed from runtime reads.
         self.verbosity = self.config_accessor.get_logging_param('verbosity')
         self.log_progress = bool(self.config_accessor.get_logging_param('log_progress'))
         self.max_signal_reasons = int(self.config_accessor.get_logging_param('max_signal_reasons'))
@@ -153,11 +153,12 @@ class ModularIntradayStrategy:
         self.log_level_overrides = self.config_accessor.get_logging_param('log_level_overrides') or {}
 
         # Backtest section -> use strict 'backtest' section via get('backtest.key')
-        self.allow_short = bool(self.config_accessor.get('backtest.allow_short'))
-        self.close_at_session_end = bool(self.config_accessor.get('backtest.close_at_session_end'))
-        self.save_results = bool(self.config_accessor.get('backtest.save_results'))
-        self.results_dir = str(self.config_accessor.get('backtest.results_dir'))
-        self.backtest_log_level = str(self.config_accessor.get('backtest.log_level'))
+        # Use ConfigAccessor convenience helpers for backtest section (consistent SSOT access)
+        self.allow_short = bool(self.config_accessor.get_backtest_param('allow_short'))
+        self.close_at_session_end = bool(self.config_accessor.get_backtest_param('close_at_session_end'))
+        self.save_results = bool(self.config_accessor.get_backtest_param('save_results'))
+        self.results_dir = str(self.config_accessor.get_backtest_param('results_dir'))
+        self.backtest_log_level = str(self.config_accessor.get_backtest_param('log_level'))
 
         # NOTE: researchStrategy is backtest-only. All forward-test / live settings are handled
         # by liveStrategy.py (forward-test harness). Do not read 'live' keys here.
@@ -1109,7 +1110,7 @@ def entry_signal(self, row: pd.Series) -> bool:
     signal_reasons = []
 
     # EMA Crossover
-    if self.config.get('use_ema_crossover', False):
+    if self.config_accessor.get_strategy_param('use_ema_crossover', False):
         if 'ema_bullish' in row:
             # Use pre-calculated continuous ema_bullish state
             if row['ema_bullish']:
@@ -1123,7 +1124,7 @@ def entry_signal(self, row: pd.Series) -> bool:
             signal_reasons.append("EMA Cross: Data not available")
 
     # VWAP
-    if self.config.get('use_vwap', False):
+    if self.config_accessor.get_strategy_param('use_vwap', False):
         if 'vwap' in row and not pd.isna(row['vwap']):
             if row['close'] > row['vwap']:
                 signal_conditions.append(True)
@@ -1136,7 +1137,7 @@ def entry_signal(self, row: pd.Series) -> bool:
             signal_reasons.append("VWAP: Data not available")
 
     # MACD
-    if self.config.get('use_macd', False):
+    if self.config_accessor.get_strategy_param('use_macd', False):
         if all(x in row and not pd.isna(row[x]) for x in ['macd', 'macd_signal']):
             macd_val = row['macd']
             macd_signal = row['macd_signal']
@@ -1151,7 +1152,7 @@ def entry_signal(self, row: pd.Series) -> bool:
             signal_reasons.append("MACD: Data not available")
         
     # Higher Timeframe Trend
-    if self.config.get('use_htf_trend', False):
+    if self.config_accessor.get_strategy_param('use_htf_trend', False):
         if 'htf_trend' in row and not pd.isna(row['htf_trend']):
             if row['htf_trend'] > 0:  # Positive trend
                 signal_conditions.append(True)
@@ -1164,15 +1165,15 @@ def entry_signal(self, row: pd.Series) -> bool:
             signal_reasons.append("HTF Trend: Data not available")
             
     # RSI
-    if self.config.get('use_rsi_filter', False):
+    if self.config_accessor.get_strategy_param('use_rsi_filter', False):
         if 'rsi' in row and not pd.isna(row['rsi']):
             rsi_val = row['rsi']
             try:
-                rsi_lower = self.config.get('rsi_lower')
+                rsi_lower = self.config_accessor.get_strategy_param('rsi_lower')
                 if rsi_lower is None:
                     raise KeyError('rsi_lower')
                     
-                rsi_upper = self.config.get('rsi_upper')
+                rsi_upper = self.config_accessor.get_strategy_param('rsi_upper')
                 if rsi_upper is None:
                     raise KeyError('rsi_upper')
             except KeyError as e:
@@ -1191,7 +1192,7 @@ def entry_signal(self, row: pd.Series) -> bool:
             signal_reasons.append("RSI: Data not available")
             
     # Bollinger Bands
-    if self.config.get('use_bb', False):
+    if self.config_accessor.get_strategy_param('use_bb', False):
         if all(x in row and not pd.isna(row[x]) for x in ['bb_upper', 'bb_lower']):
             price = row['close']
             if row['bb_lower'] < price < row['bb_upper']:

@@ -314,7 +314,8 @@ class PositionManager:
         logger.info("Entry price: â‚¹%.2f per unit", actual_entry_price)
         logger.info("Stop loss: â‚¹%.2f", stop_loss_price)
         logger.info("Take profit levels: %s", [f'â‚¹{tp:.2f}' for tp in tp_levels])
-        logger.info("Position value: â‚¹%,.2f", quantity * actual_entry_price)
+        # Format numeric value with grouping first, then pass as %s to logger to avoid %-format parsing issues.
+        logger.info("Position value: ₹%s", f"{quantity * actual_entry_price:,.2f}")
         return position_id
 
     def close_position_partial(self, position_id: str, exit_price: float,

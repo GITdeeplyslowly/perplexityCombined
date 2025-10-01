@@ -8,7 +8,7 @@ Provides a comprehensive GUI for:
 - Visualizing results
 - Managing configurations
 """
-
+import subprocess
 import os
 import json
 import threading
@@ -18,6 +18,9 @@ from tkinter import ttk, filedialog, messagebox
 from datetime import datetime
 import numpy as np
 import pytz
+import pandas as pd
+import numpy as np
+from datetime import datetime
 
 from types import MappingProxyType
 from typing import Dict, Any
@@ -53,6 +56,90 @@ def now_ist():
     return datetime.now(pytz.timezone('Asia/Kolkata'))
 
 class UnifiedTradingGUI(tk.Tk):
+    
+    def _initialize_all_variables(self):
+        """Create minimal tkinter Variable placeholders from runtime_config (SSOT) — fail fast."""
+        # runtime_config is created in __init__ before this is called
+        try:
+            strategy_config = self.runtime_config['strategy']
+            risk_config = self.runtime_config['risk']
+            capital_config = self.runtime_config['capital']
+            instrument_config = self.runtime_config['instrument']
+            session_config = self.runtime_config['session']
+            logging_config = self.runtime_config['logging']
+        except KeyError as e:
+            missing = str(e).strip("'")
+            logger.error("DEFAULT_CONFIG missing required section/key: %s", missing)
+            messagebox.showerror("Configuration Error", f"DEFAULT_CONFIG missing required section/key: {missing}")
+            raise
+
+        # Strategy toggles / params (placeholders)
+        self.bt_use_ema_crossover = tk.BooleanVar(value=strategy_config['use_ema_crossover'])
+        self.bt_use_macd = tk.BooleanVar(value=strategy_config['use_macd'])
+        self.bt_use_vwap = tk.BooleanVar(value=strategy_config['use_vwap'])
+        self.bt_use_rsi_filter = tk.BooleanVar(value=strategy_config['use_rsi_filter'])
+        self.bt_use_htf_trend = tk.BooleanVar(value=strategy_config['use_htf_trend'])
+        self.bt_use_bollinger_bands = tk.BooleanVar(value=strategy_config['use_bollinger_bands'])
+        self.bt_use_stochastic = tk.BooleanVar(value=strategy_config['use_stochastic'])
+        self.bt_use_atr = tk.BooleanVar(value=strategy_config['use_atr'])
+
+        self.bt_fast_ema = tk.StringVar(value=str(strategy_config['fast_ema']))
+        self.bt_slow_ema = tk.StringVar(value=str(strategy_config['slow_ema']))
+        self.bt_macd_fast = tk.StringVar(value=str(strategy_config['macd_fast']))
+        self.bt_macd_slow = tk.StringVar(value=str(strategy_config['macd_slow']))
+        self.bt_macd_signal = tk.StringVar(value=str(strategy_config['macd_signal']))
+        self.bt_rsi_length = tk.StringVar(value=str(strategy_config['rsi_length']))
+        self.bt_rsi_oversold = tk.StringVar(value=str(strategy_config['rsi_oversold']))
+        self.bt_rsi_overbought = tk.StringVar(value=str(strategy_config['rsi_overbought']))
+        self.bt_htf_period = tk.StringVar(value=str(strategy_config['htf_period']))
+        self.bt_consecutive_green_bars = tk.StringVar(value=str(strategy_config['consecutive_green_bars']))
+
+        # Risk placeholders (required — no fallbacks)
+        self.bt_base_sl_points = tk.StringVar(value=str(risk_config['base_sl_points']))
+        self.bt_use_trail_stop = tk.BooleanVar(value=risk_config['use_trail_stop'])
+        self.bt_trail_activation = tk.StringVar(value=str(risk_config['trail_activation_points']))
+        self.bt_trail_distance = tk.StringVar(value=str(risk_config['trail_distance_points']))
+        self.bt_risk_per_trade_percent = tk.StringVar(value=str(risk_config['risk_per_trade_percent']))
+
+        tp_points = risk_config['tp_points']
+        self.bt_tp_points = [tk.StringVar(value=str(pt)) for pt in tp_points]
+        tp_percents = risk_config['tp_percents']
+        self.bt_tp_percents = [tk.StringVar(value=str(int(p * 100))) for p in tp_percents]
+
+        # Instrument placeholders (required)
+        self.bt_symbol = tk.StringVar(value=str(instrument_config['symbol']))
+        self.bt_exchange = tk.StringVar(value=str(instrument_config['exchange']))
+        self.bt_lot_size = tk.StringVar(value=str(instrument_config['lot_size']))
+
+        # Capital placeholders (required)
+        self.bt_initial_capital = tk.StringVar(value=str(capital_config['initial_capital']))
+        self.bt_available_capital = tk.StringVar(value=str(capital_config['initial_capital']))
+
+        # Session placeholders (required)
+        self.bt_is_intraday = tk.BooleanVar(value=session_config['is_intraday'])
+        self.bt_session_start_hour = tk.StringVar(value=str(session_config['start_hour']))
+        self.bt_session_start_min = tk.StringVar(value=str(session_config['start_min']))
+        self.bt_session_end_hour = tk.StringVar(value=str(session_config['end_hour']))
+        self.bt_session_end_min = tk.StringVar(value=str(session_config['end_min']))
+
+        # Data / misc placeholders
+        self.bt_data_file = tk.StringVar(value="")
+        self.bt_current_price = tk.StringVar(value="0")
+
+        # Logger UI placeholders
+        self.logger_levels = {}
+        for logger_name in ["core.indicators", "core.researchStrategy", "backtest.backtest_runner", "utils.simple_loader"]:
+            self.logger_levels[logger_name] = tk.StringVar(value="DEFAULT")
+        self.logger_tick_interval = tk.StringVar(value=str(logging_config['tick_log_interval']))
+
+        # Noise filter placeholders (strategy section)
+        self.bt_noise_filter_enabled = tk.BooleanVar(value=strategy_config.get('noise_filter_enabled', False))
+        self.bt_noise_filter_percentage = tk.StringVar(value=strategy_config.get('noise_filter_percentage', 0.0) * 100)
+        self.bt_noise_filter_min_ticks = tk.StringVar(value=strategy_config.get('noise_filter_min_ticks', 1.0))
+
+        # mark placeholders ready
+        self._widgets_initialized = True
+
     def __init__(self, master=None):
         super().__init__(master)
 
@@ -64,11 +151,12 @@ class UnifiedTradingGUI(tk.Tk):
         # 1. Build runtime config from defaults (factory may apply normalization & user prefs)
         self.runtime_config = create_config_from_defaults()
 
-        # 2. Merge persisted user preferences into runtime_config BEFORE widget creation
-        self._merge_user_preferences_into_runtime_config()
-
-        # 3. Initialize all GUI variables (this sets tk.Variable instances)
+        # 2. Initialize all GUI variables (this sets tk.Variable instances)
+        #    Must happen before applying user prefs which write into tk.Variables.
         self._initialize_all_variables()
+
+        # 3. Merge persisted user preferences into runtime_config and apply to widgets
+        self._merge_user_preferences_into_runtime_config()
 
         # 4. Initialize GUI variables from runtime_config (single source for widgets)
         self._initialize_variables_from_runtime_config()
@@ -475,809 +563,105 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Entry(params_frame, textvariable=self.ft_rsi_length, width=8).grid(row=2, column=1, padx=2)
 
         ttk.Label(params_frame, text="RSI Oversold:").grid(row=2, column=2, sticky="e", padx=2)
-        self.ft_rsi_oversold = tk.StringVar(value="30")
-        ttk.Entry(params_frame, textvariable=self.ft_rsi_oversold, width=8).grid(row=2, column=3, padx=2)
+        ttk.Entry(params_frame, textvariable=self.bt_rsi_oversold, width=8).grid(row=2, column=3, padx=2)
 
         ttk.Label(params_frame, text="RSI Overbought:").grid(row=2, column=4, sticky="e", padx=2)
-        self.ft_rsi_overbought = tk.StringVar(value="70")
-        ttk.Entry(params_frame, textvariable=self.ft_rsi_overbought, width=8).grid(row=2, column=5, padx=2)
+        ttk.Entry(params_frame, textvariable=self.bt_rsi_overbought, width=8).grid(row=2, column=5, padx=2)
 
         # HTF Parameters
         ttk.Label(params_frame, text="HTF Period:").grid(row=3, column=0, sticky="e", padx=2)
-        self.ft_htf_period = tk.StringVar(value="20")
-        ttk.Entry(params_frame, textvariable=self.ft_htf_period, width=8).grid(row=3, column=1, padx=2)
+        ttk.Entry(params_frame, textvariable=self.bt_htf_period, width=8).grid(row=3, column=1, padx=2)
         # Consecutive Green Bars
         ttk.Label(params_frame, text="Green Bars Req:").grid(row=3, column=2, sticky="e", padx=2)
         ttk.Entry(params_frame, textvariable=self.bt_consecutive_green_bars, width=8).grid(row=3, column=3, padx=2)
         row += 1
 
-        # Risk Management
-        ttk.Label(frame, text="Risk Management:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        bt_risk_frame = ttk.Frame(frame)  # Create the risk frame
-        bt_risk_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        row += 1
+        # Add Run Forward Test button
+        ttk.Button(frame, text="Run Forward Test", command=self._ft_run_forward_test).grid(row=row, column=0, columnspan=3, pady=10)
 
-        ttk.Label(bt_risk_frame, text="Stop Loss Points:").grid(row=0, column=0, sticky="e", padx=2)
-        self.ft_base_sl_points = tk.StringVar(value="15")
-        ttk.Entry(bt_risk_frame, textvariable=self.ft_base_sl_points, width=8).grid(row=0, column=1, padx=2)
-
-        ttk.Label(bt_risk_frame, text="TP1 Points:").grid(row=0, column=2, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[0], width=8).grid(row=0, column=3, padx=2)
-        ttk.Label(bt_risk_frame, text="TP2 Points:").grid(row=0, column=4, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[1], width=8).grid(row=0, column=5, padx=2)
-        ttk.Label(bt_risk_frame, text="TP3 Points:").grid(row=1, column=0, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[2], width=8).grid(row=1, column=1, padx=2)
-
-        ttk.Label(bt_risk_frame, text="TP4 Points:").grid(row=1, column=2, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[3], width=8).grid(row=1, column=3, padx=2)
-
-        self.ft_use_trail_stop = tk.BooleanVar(value=True)
-        ttk.Checkbutton(bt_risk_frame, text="Use Trailing Stop", variable=self.ft_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
-
-        ttk.Label(bt_risk_frame, text="Trail Activation Points:").grid(row=2, column=0, sticky="e", padx=2)
-        self.ft_trail_activation_points = tk.StringVar(value="25")
-        ttk.Entry(bt_risk_frame, textvariable=self.ft_trail_activation_points, width=8).grid(row=2, column=1, padx=2)
-
-        ttk.Label(bt_risk_frame, text="Trail Distance Points:").grid(row=2, column=2, sticky="e", padx=2)
-        self.ft_trail_distance_points = tk.StringVar(value="10")
-        ttk.Entry(bt_risk_frame, textvariable=self.ft_trail_distance_points, width=8).grid(row=2, column=3, padx=2)
-
-        ttk.Label(bt_risk_frame, text="Risk % per Trade:").grid(row=2, column=4, sticky="e", padx=2)
-        self.ft_risk_per_trade_percent = tk.StringVar(value="1.0")
-        ttk.Entry(bt_risk_frame, textvariable=self.ft_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
-        row += 1
-
-        # --- Instrument Settings ---
-        ttk.Label(frame, text="Instrument Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        instrument_frame = ttk.Frame(frame)
-        instrument_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        ttk.Label(instrument_frame, text="Symbol:").grid(row=0, column=0, sticky="e", padx=2)
-        ttk.Entry(instrument_frame, textvariable=self.bt_symbol, width=16).grid(row=0, column=1, padx=2)
-        ttk.Label(instrument_frame, text="Exchange:").grid(row=0, column=2, sticky="e", padx=2)
-        ttk.Entry(instrument_frame, textvariable=self.bt_exchange, width=10).grid(row=0, column=3, padx=2)
-        ttk.Label(instrument_frame, text="Lot Size:").grid(row=0, column=4, sticky="e", padx=2)
-        ttk.Entry(instrument_frame, textvariable=self.bt_lot_size, width=8).grid(row=0, column=5, padx=2)
-        row += 1
-
-        # --- Capital Settings ---
-        ttk.Label(frame, text="Capital Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        capital_frame = ttk.Frame(frame)
-        capital_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        ttk.Label(capital_frame, text="Initial Capital:").grid(row=0, column=0, sticky="e", padx=2)
-        ttk.Entry(capital_frame, textvariable=self.bt_initial_capital, width=14).grid(row=0, column=1, padx=2)
-        row += 1
-
-        # --- Session Settings ---
-        ttk.Label(frame, text="Session Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        session_frame = ttk.Frame(frame)
-        session_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        ttk.Label(session_frame, text="Start (HH:MM):").grid(row=0, column=0, sticky="e", padx=2)
-        ttk.Entry(session_frame, textvariable=self.bt_session_start_hour, width=4).grid(row=0, column=1, padx=1)
-        ttk.Label(session_frame, text=":").grid(row=0, column=2)
-        ttk.Entry(session_frame, textvariable=self.bt_session_start_min, width=4).grid(row=0, column=3, padx=1)
-        ttk.Label(session_frame, text="End (HH:MM):").grid(row=0, column=4, sticky="e", padx=2)
-        ttk.Entry(session_frame, textvariable=self.bt_session_end_hour, width=4).grid(row=0, column=5, padx=1)
-        ttk.Label(session_frame, text=":").grid(row=0, column=6)
-        ttk.Entry(session_frame, textvariable=self.bt_session_end_min, width=4).grid(row=0, column=7, padx=1)
-        ttk.Label(session_frame, text="Intraday:").grid(row=1, column=0, sticky="e", padx=2)
-        ttk.Checkbutton(session_frame, variable=self.bt_is_intraday).grid(row=1, column=1, sticky="w", padx=2)
-        row += 1
-
-        # Trading Controls
-        ttk.Label(frame, text="Trading Controls", font=('Arial', 12, 'bold')).grid(row=row, column=0, columnspan=3, sticky="w", pady=(15,5))
-        row += 1
-
-        self.ft_paper_trading = tk.BooleanVar(value=True)
-        ttk.Checkbutton(frame, text="Simulation Mode (No Real Orders)", variable=self.ft_paper_trading, state="disabled").grid(row=row, column=0, sticky="w", padx=5, pady=2)
-        ttk.Label(frame, text="Order execution is simulation-only.", foreground="red").grid(row=row, column=1, columnspan=2, sticky="w", padx=5, pady=2)
-        row += 2
-
-        ttk.Button(frame, text="Start Forward Test", command=self._ft_run_forward_test).grid(row=row, column=0, pady=5)
-        ttk.Button(frame, text="Stop", command=self._ft_stop_forward_test).grid(row=row, column=1, pady=5)
-        row += 1
-
-        self.ft_result_box = tk.Text(frame, height=16, width=110, state="disabled")
-        self.ft_result_box.grid(row=row, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
-        frame.rowconfigure(row, weight=1)
-
-        # Add run button frame
-        run_button_frame = ttk.Frame(frame)
-        run_button_frame.grid(row=row, column=0, columnspan=3, pady=10)
-        ttk.Button(
-            run_button_frame,
-            text="Start Forward Test",
-            command=self._ft_run_forward_test
-        ).grid(row=0, column=0, padx=10)
-
-    def _ft_refresh_cache(self):
-        try:
-            count = refresh_symbol_cache()
-            self.ft_cache_status.set(f"Cache refreshed: {count} symbols loaded.")
-            messagebox.showinfo("Cache Refreshed", f"Symbol cache updated successfully. Loaded {count} symbols.")
-        except Exception as e:
-            error_msg = f"Cache refresh failed: {e}"
-            self.ft_cache_status.set(error_msg)
-            messagebox.showerror("Cache Error", f"Could not refresh cache: {e}")
-
-    def _refresh_symbols_thread(self):
-        """Background thread to refresh symbol cache"""
-        try:
-            # Define run_once for the callback if not already defined
-            def run_once(func):
-                has_run = {'value': False}
-                def wrapper(*args, **kwargs):
-                    if not has_run['value']:
-                        has_run['value'] = True
-                        return func(*args, **kwargs)
-                return wrapper
-
-            symbols = refresh_symbol_cache(force_refresh=True, progress_callback=run_once(self._update_refresh_status))
-
-            # Update the symbol listbox with new data
-            self.ft_symbols_listbox.delete(0, tk.END)  # Clear existing entries
-            for symbol in sorted(symbols.keys()):
-                self.ft_symbols_listbox.insert(tk.END, symbol)
-
-            self.ft_cache_status.set(f"Cache refreshed: {len(symbols)} symbols")
-            logger.info(f"Symbol cache refreshed: {len(symbols)} symbols")
-        except Exception as e:
-            error_msg = f"Failed to refresh symbols: {e}"
-            self.ft_cache_status.set(error_msg)
-            logger.error(error_msg)
-
-    def _ft_load_symbols(self):
-        """Load symbols exactly like angelalgo windsurf approach"""
-        try:
-            # Load the simple symbol:token mapping
-            symbol_token_map = load_symbol_cache()
-
-            if not symbol_token_map:
-                messagebox.showwarning("No Symbols", "No symbols found. Try refreshing the cache first.")
-                return
-
-            # Store the mapping for later use
-            self.symbol_token_map = symbol_token_map
-
-            # Get text typed in symbol box
-            typed_text = self.ft_symbol.get().upper()
-
-            # Filter symbols matching the typed text
-            if typed_text:
-                # First try exact matches
-                exact_matches = [s for s in symbol_token_map.keys() if s.upper() == typed_text]
-                if exact_matches:
-                    matching_symbols = exact_matches
-                else:
-                    # Then try contains matches
-                    matching_symbols = [s for s in symbol_token_map.keys() if typed_text in s.upper()]
-
-                # Sort and limit results
-                matching_symbols = sorted(matching_symbols)[:100]  # Limit to 100 for performance
-            else:
-                # If no text entered, show first 50 symbols as preview
-                matching_symbols = sorted(symbol_token_map.keys())[:50]
-
-            # Update dropdown with filtered symbols
-            self.ft_symbols_listbox.delete(0, tk.END)  # Clear existing entries
-            for symbol in matching_symbols:
-                self.ft_symbols_listbox.insert(tk.END, symbol)
-
-            # Show dropdown if there are matches
-            if matching_symbols:
-                self.ft_symbols_listbox.event_generate('<Down>')
-
-            # Update status
-            if typed_text:
-                self.ft_cache_status.set(f"Found {len(matching_symbols)} symbols matching '{typed_text}'")
-            else:
-                self.ft_cache_status.set(f"Loaded {len(symbol_token_map)} symbols. Type to search...")
-
-        except Exception as e:
-            error_msg = f"Failed to load symbols: {e}"
-            self.ft_cache_status.set(error_msg)
-            logger.error(error_msg)
-
-    def _ft_update_symbol_details(self, event=None):
-        """Update token field when symbol is selected (exactly like angelalgo windsurf)"""
-        try:
-            selected_symbol = self.ft_symbols_listbox.get(self.ft_symbols_listbox.curselection())
-
-            # Clear token first
-            self.ft_token.set("")
-
-            if hasattr(self, 'symbol_token_map') and selected_symbol in self.symbol_token_map:
-                # Direct match found
-                token = self.symbol_token_map[selected_symbol]
-                self.ft_token.set(token)
-                logger.info(f"Selected symbol: {selected_symbol}, Token: {token}")
-            elif hasattr(self, 'symbol_token_map') and selected_symbol:
-                # Try to find exact matches first
-                exact_matches = [s for s in self.symbol_token_map.keys() if s.upper() == selected_symbol.upper()]
-                if exact_matches:
-                    exact_symbol = exact_matches[0]
-                    token = self.symbol_token_map[exact_symbol]
-                    self.ft_symbol.set(exact_symbol)  # Update to exact symbol name
-                    self.ft_token.set(token)
-                    logger.info(f"Auto-corrected to exact match: {exact_symbol}, Token: {token}")
-                else:
-                    # Try partial matches if no exact match found
-                    matching_symbols = [s for s in self.symbol_token_map.keys() if selected_symbol.upper() in s.upper()]
-                    if len(matching_symbols) == 1:
-                        single_match = matching_symbols[0]
-                        token = self.symbol_token_map[single_match]
-                        self.ft_symbol.set(single_match)  # Update to matched symbol
-                        self.ft_token.set(token)
-                        logger.info(f"Auto-corrected to partial match: {single_match}, Token: {token}")
-                    elif len(matching_symbols) > 1:
-                        # Multiple matches - update dropdown with these matches
-                        self.ft_symbols_listbox.delete(0, tk.END)  # Clear existing entries
-                        for symbol in sorted(matching_symbols)[:100]:
-                            self.ft_symbols_listbox.insert(tk.END, symbol)
-                        self.ft_symbols_listbox.event_generate('<Down>')  # Show dropdown
-                        logger.info(f"Found {len(matching_symbols)} matches for '{selected_symbol}'")
-                    else:
-                        logger.warning(f"Symbol '{selected_symbol}' not found in cache")
-
-        except Exception as e:
-            logger.warning(f"Symbol details update error: {e}")
-            self.ft_token.set("")
-
-    def _ft_run_forward_test(self):
-        """Run forward test with current GUI configuration"""
-        try:
-            # Build configuration similar to backtest but with forward test specifics
-            config = create_config_from_defaults()
-            
-            # Strategy settings 
-            config['strategy']['use_ema_crossover'] = self.bt_use_ema_crossover.get()
-            config['strategy']['use_macd'] = self.bt_use_macd.get()
-            config['strategy']['use_vwap'] = self.bt_use_vwap.get()
-            config['strategy']['use_rsi_filter'] = self.bt_use_rsi_filter.get()
-            config['strategy']['use_htf_trend'] = self.bt_use_htf_trend.get()
-            config['strategy']['fast_ema'] = int(self.bt_fast_ema.get())
-            config['strategy']['slow_ema'] = int(self.bt_slow_ema.get())
-            config['strategy']['consecutive_green_bars'] = int(self.bt_consecutive_green_bars.get())
-            
-            # Add noise filter settings
-            config['strategy']['noise_filter_enabled'] = self.bt_noise_filter_enabled.get()
-            config['strategy']['noise_filter_percentage'] = float(self.bt_noise_filter_percentage.get()) / 100.0
-            config['strategy']['noise_filter_min_ticks'] = float(self.bt_noise_filter_min_ticks.get())
-            
-            # Risk settings
-            config['risk']['base_sl_points'] = float(self.bt_base_sl_points.get())
-            config['risk']['use_trail_stop'] = self.bt_use_trail_stop.get()
-            config['risk']['trail_activation_points'] = float(self.bt_trail_activation.get())
-            config['risk']['trail_distance_points'] = float(self.bt_trail_distance.get())
-            config['risk']['tp_points'] = [float(var.get()) for var in self.bt_tp_points]
-            config['risk']['tp_percents'] = [float(var.get())/100.0 for var in self.bt_tp_percents]
-            
-            # Capital, instrument and session settings
-            # (using same variables as backtest for now)
-            config['capital']['initial_capital'] = float(self.bt_initial_capital.get())
-            config['instrument']['symbol'] = self.bt_symbol.get()
-            config['instrument']['exchange'] = self.bt_exchange.get()
-            config['instrument']['lot_size'] = int(self.bt_lot_size.get())
-            config['session']['is_intraday'] = self.bt_is_intraday.get()
-            config['session']['start_hour'] = int(self.bt_session_start_hour.get())
-            config['session']['start_min'] = int(self.bt_session_start_min.get())
-            config['session']['end_hour'] = int(self.bt_session_end_hour.get())
-            config['session']['end_min'] = int(self.bt_session_end_min.get())
-            
-            # Validate and freeze config
-            validation = validate_config(config)
-            if not validation.get('valid', False):
-                errs = validation.get('errors', []) or ["Unknown validation failure"]
-                messagebox.showerror("Configuration Validation Failed",
-                                    "Please fix configuration issues:\n\n" + "\n".join(errs))
-                return
-                
-            # Freeze config to make it immutable
-            frozen_config = freeze_config(config)
-            
-            # Here you would create and start your live trader
-            # live_trader = LiveTrader(config=frozen_config)
-            # live_trader.start()
-            
-            messagebox.showinfo("Forward Test", "Forward test configuration validated successfully. Implementation pending.")
-            
-        except Exception as e:
-            logger.exception(f"Forward test setup failed: {e}")
-            messagebox.showerror("Forward Test Error", f"Failed to set up forward test: {e}")
-
-    # --- Status Tab ---
-    def _build_log_tab(self):
-        frame = self.log_tab
-        row = 0
-
-        ttk.Label(frame, text="Unified Trading System Status & Logs", font=('Arial', 14, 'bold')).grid(row=row, column=0, sticky="w", pady=10)
-        row += 1
-
-        ttk.Label(frame, text=f"Log File: {LOG_FILENAME}").grid(row=row, column=0, sticky="w", pady=2)
-        row += 1
-
-        # Add log level overrides section
-        ttk.Label(frame, text="Logger Level Overrides", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        
-        log_levels_frame = ttk.Frame(frame)
-        log_levels_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        row += 1
-        
-        # Add some common loggers that users might want to override
-        common_loggers = [
-            "core.indicators", 
-            "core.researchStrategy",
-            "backtest.backtest_runner",
-            "utils.simple_loader"
-        ]
-        
-        # Create controls for each logger
-        for i, logger_name in enumerate(common_loggers):
-            ttk.Label(log_levels_frame, text=f"{logger_name}:").grid(row=i//2, column=(i%2)*2, sticky="e", padx=5)
-            if not hasattr(self, 'logger_levels'):
-                self.logger_levels = {}
-            if logger_name not in self.logger_levels:
-                self.logger_levels[logger_name] = tk.StringVar(value="DEFAULT")
-            ttk.Combobox(
-                log_levels_frame,
-                textvariable=self.logger_levels[logger_name],
-                values=["DEFAULT", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-                width=10,
-                state='readonly'
-            ).grid(row=i//2, column=(i%2)*2+1, sticky="w", padx=5, pady=2)
-
-        # Tick log interval control (SSOT editable via GUI only)
-        ttk.Label(frame, text="Tick Log Interval (ticks):").grid(row=row, column=0, sticky="e", padx=5, pady=(8,2))
-        ttk.Entry(frame, textvariable=self.logger_tick_interval, width=10).grid(row=row, column=1, sticky="w", padx=5, pady=(8,2))
-        row += 1
-
-        ttk.Button(frame, text="View Log File", command=self._open_log_file).grid(row=row, column=0, sticky="w", pady=5)
-        row += 1
-
-        self.status_text = tk.Text(frame, height=25, width=110, state='disabled')
-        self.status_text.grid(row=row, column=0, padx=5, pady=5, sticky="nsew")
-        frame.rowconfigure(row, weight=1)
-        frame.columnconfigure(0, weight=1)
-
-        self._update_status_box()
-
-    def _update_status_box(self):
-        self.status_text.config(state="normal")
-        self.status_text.delete("1.0", "end")
-
-        status_info = (
-            "UNIFIED TRADING SYSTEM STATUS\n"
-            + "=" * 50 + "\n\n"
-            "System Status: Ready\n"
-            "Trading Mode: Simulation Only (No Real Orders)\n"
-            "Available Modes: Backtest & Forward Test\n\n"
-            f"Current Time: {now_ist().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            "BACKTEST MODE:\n"
-            "- Load historical CSV data\n"
-            "- Configure strategy parameters\n"
-            "- Run complete simulation\n"
-            "- View detailed results\n\n"
-            "FORWARD TEST MODE:\n"
-            "- Connect to SmartAPI for live data\n"
-            "- Manual symbol cache management\n"
-            "- Real-time tick processing\n"
-            "- Simulated order execution\n\n"
-            "Recent Activity:\n"
+    def _bt_browse_csv(self):
+        """Browse for CSV file"""
+        file = filedialog.askopenfilename(
+            title="Select Data File",
+            filetypes=[
+                ("CSV and LOG files", "*.csv;*.log"),
+                ("CSV files", "*.csv"),
+                ("LOG files", "*.log"),
+                ("All files", "*.*")
+            ]
         )
+        if file:
+            self.bt_data_file.set(file)
 
-        self.status_text.insert("end", status_info)
-
-        # Add recent log entries
+    def _bt_run_backtest(self):
+        """Run backtest with GUI configuration (enforces frozen config)"""
         try:
-            if os.path.exists(LOG_FILENAME):
-                with open(LOG_FILENAME, "r") as f:
-                    lines = f.readlines()[-10:]  # Last 10 lines
-                    for line in lines:
-                        self.status_text.insert("end", line)
-        except Exception:
-            self.status_text.insert("end", "No recent log entries.\n")
-
-        self.status_text.config(state="disabled")
-
-    def _open_log_file(self):
-        import subprocess
-        import sys
-
-        if os.path.exists(LOG_FILENAME):
-            if sys.platform.startswith('darwin'):  # macOS
-                subprocess.call(('open', LOG_FILENAME))
-            elif os.name == 'nt':  # Windows
-                os.startfile(LOG_FILENAME)
-            elif os.name == 'posix':  # Linux
-                subprocess.call(('xdg-open', LOG_FILENAME))
-        else:
-            messagebox.showinfo("Log File", "No log file found yet.")
-
-    def _on_close(self):
-        if messagebox.askokcancel("Exit", "Do you want to quit?"):
-            # Stop any running threads
-            if self._backtest_thread and self._backtest_thread.is_alive():
-                logger.info("Stopping backtest thread...")
-            if self._forward_thread and self._forward_thread.is_alive():
-                logger.info("Stopping forward test thread...")
-            self.destroy()
-
-    def _update_capital_calculations(self, event=None):
-        """Update all capital calculations in real-time with lot-based display"""
-        try:
-            available_capital = float(self.bt_initial_capital.get().replace(',', ''))
-            risk_percentage = float(self.bt_risk_per_trade_percent.get())
-            lot_size = int(self.bt_lot_size.get())
-            # Remove default/fallback for current_price, as price comes from data in backtest/forward test
-            current_price = float(self.bt_current_price.get())
-            stop_loss_points = float(self.bt_base_sl_points.get())
-
-            risk_per_unit = stop_loss_points
-            max_risk_amount = available_capital * (risk_percentage / 100)
-            raw_quantity = int(max_risk_amount / risk_per_unit) if risk_per_unit > 0 else 0
-
-            if lot_size > 1:
-                max_affordable_lots = int((available_capital * 0.95) // (lot_size * current_price))
-                risk_based_lots = max(1, raw_quantity // lot_size) if raw_quantity > 0 else 0
-                recommended_lots = min(max_affordable_lots, risk_based_lots)
-                recommended_quantity = recommended_lots * lot_size
-            else:
-                recommended_lots = raw_quantity
-                recommended_quantity = raw_quantity
-                max_affordable_lots = recommended_lots
-
-            if hasattr(self, 'recommended_lots'):
-                self.recommended_lots.set(f"{recommended_lots} lots ({recommended_quantity:,} total units)")
-            if hasattr(self, 'max_lots'):
-                self.max_lots.set(f"{max_affordable_lots} lots max")
-            if hasattr(self, 'position_value'):
-                position_value = recommended_quantity * current_price
-                self.position_value.set(f"Ã¢â€šÂ¹{position_value:,.0f}")
-
-            logger.info(f"Position Sizing: {recommended_lots} lots = {recommended_quantity:,} units @ Ã¢â€šÂ¹{current_price:.2f}")
-
-        except (ValueError, ZeroDivisionError) as e:
-            logger.error(f"Position calculation error: {e}")
-
-    def _validate_position_parameters(self) -> dict:
-        """Validate all position parameters and provide feedback"""
-
-        try:
-            capital = float(self.bt_available_capital.get().replace(',', ''))
-            risk_pct = float(self.bt_risk_percentage.get())
-            price = float(self.bt_current_price.get())
-            sl_points = float(self.bt_base_sl_points.get())
-            lot_size = int(self.bt_lot_size.get())
-
-            warnings = []
-            errors = []
-
-            # Capital validation
-            if capital < 10000:
-                errors.append("Minimum capital requirement: Ã¢â€šÂ¹10,000")
-
-            # Risk validation
-            if risk_pct < 0.1:
-                warnings.append("Very low risk percentage may limit trading opportunities")
-            elif risk_pct > 5.0:
-                warnings.append("Risk percentage above 5% is aggressive")
-
-            # Position size validation
-            min_position_value = lot_size * price
-            if min_position_value > capital * 0.95:
-                errors.append(f"Insufficient capital for even 1 lot (Ã¢â€šÂ¹{min_position_value:,.0f} required)")
-
-            # Stop loss validation
-            if sl_points <= 0:
-                errors.append("Stop loss must be positive")
-            elif sl_points > price * 0.1:
-                warnings.append("Stop loss seems very wide (>10% of price)")
-
-            return {
-                "valid": len(errors) == 0,
-                "errors": errors,
-                "warnings": warnings,
-                "capital": capital,
-                "risk_pct": risk_pct,
-                "lot_size": lot_size,
-                "price": price,
-                "sl_points": sl_points
-            }
-
-        except ValueError:
-            return {
-                "valid": False,
-                "errors": ["Please enter valid numeric values"],
-                "warnings": []
-            }
-
-    def _build_instrument_panel(self, frame, row):
-        """Build instrument selection and configuration panel"""
-
-        instrument_frame = ttk.LabelFrame(frame, text="Instrument Configuration", padding=5)
-        instrument_frame.grid(row=row, column=0, columnspan=3, sticky="ew", pady=5)
-
-        # Instrument presets
-        ttk.Label(instrument_frame, text="Instrument:").grid(row=0, column=0, sticky="e", padx=5)
-
-        self.bt_instrument_type = tk.StringVar(value="NIFTY")
-        instrument_combo = ttk.Combobox(instrument_frame, textvariable=self.bt_instrument_type,
-                                       values=["NIFTY", "BANKNIFTY", "FINNIFTY", "SENSEX", "BANKEX", "CUSTOM"],
-                                       width=12, state="readonly")
-        instrument_combo.grid(row=0, column=1, padx=5)
-        instrument_combo.bind('<<ComboboxSelected>>', self._on_instrument_change)
-
-        # Lot size gets auto-updated based on instrument
-        ttk.Label(instrument_frame, text="Lot Size:").grid(row=0, column=2, sticky="e", padx=5)
-        self.bt_lot_size_display = ttk.Label(instrument_frame, text="75", relief="sunken", width=10)
-        self.bt_lot_size_display.grid(row=0, column=3, padx=5)
-
-        return row + 1
-
-    def _on_instrument_change(self, event=None):
-        """Update lot size and other parameters when instrument changes"""
-        instrument = self.bt_instrument_type.get()
-
-        lot_sizes = {
-            "NIFTY": 75,
-            "BANKNIFTY": 25,
-            "FINNIFTY": 25,
-            "SENSEX": 10,
-            "BANKEX": 15,
-            "CUSTOM": 75, # Default for custom
-            "STOCK":1
-        }
-
-        lot_size = lot_sizes.get(instrument, 75)
-        self.bt_lot_size.set(str(lot_size))
-        self.bt_lot_size_display.config(text=str(lot_size))
-
-        # Trigger capital recalculation
-        self._update_capital_calculations()
-
-    def start_backtest(self):
-        """Start backtesting with current configuration"""
-        try:
-            # Validate the configuration before starting backtest
-            self._validate_indicator_configuration()
-
-             # Get config from GUI elements
-            config = self._get_backtest_config()
-
-             # Start backtest process...
-        except Exception as e:
-            messagebox.showerror("Backtest Error", str(e))
-
-    def _validate_indicator_configuration(self):
-        """Ensure at least one indicator is enabled and configuration is valid"""
-        enabled_indicators = [
-            self.bt_use_ema_crossover.get(),
-            self.bt_use_macd.get(),
-            self.bt_use_vwap.get(),
-            self.bt_use_rsi_filter.get(),
-            self.bt_use_bb.get(),
-            self.bt_use_htf_trend.get()
-        ]
-
-        if not any(enabled_indicators):
-            raise ValueError("At least one indicator must be enabled")
-
-        # Validate that required data exists for enabled indicators
-        data_file = self.bt_data_path.get()
-        if self.bt_use_vwap.get():
-            # Check if data file has volume data for VWAP calculation
+            frozen_config = self.build_config_from_gui()
+            if frozen_config is None:
+                logger.warning("Backtest aborted: invalid or unfrozen configuration")
+                return
+ 
+            # Data path: prefer backtest.data_path in config, fallback to file chooser input
+            data_path = None
             try:
-                self._validate_data_columns(data_file, ['volume', 'high', 'low'])
+                data_path = frozen_config.get("backtest", {}).get("data_path") or self.bt_data_file.get()
             except Exception:
-                raise ValueError("Selected data file doesn't have required columns for VWAP calculation")
-        logger.info(f"EMA: {self.bt_use_ema_crossover.get()}, MACD: {self.bt_use_macd.get()}, VWAP: {self.bt_use_vwap.get()}, HTF: {self.bt_use_htf_trend.get()}, ATR: {self.bt_use_atr.get()}")
+                data_path = dict(frozen_config).get("backtest", {}).get("data_path") or self.bt_data_file.get()
 
-    def _build_session_timing_panel(self, frame, row):
-        """Build comprehensive user-controlled session timing panel"""
+            if not data_path:
+                messagebox.showerror("Missing Data", "Please select a data file for backtest.")
+                return
+ 
+            # Construct runner with frozen config (strict)
+            runner = BacktestRunner(config=frozen_config, data_path=data_path)
+            results = runner.run()
+            self.display_backtest_results(results)
+        except Exception as e:
+            logger.exception("Backtest run failed: %s", e)
+            messagebox.showerror("Backtest Error", f"Backtest failed: {e}")
 
-        # Session Timing Header
-        ttk.Label(frame, text="Session Timing", font=('Arial', 10, 'bold')).grid(
-            row=row, column=0, sticky="w", padx=5, pady=(10,2)
-        )
-        row += 1
+    def _validate_nested_config(self, config):
+        """Validate the nested configuration structure"""
+        required_sections = ['strategy', 'risk', 'capital', 'instrument', 'session']
+        for section in required_sections:
+            if section not in config:
+                raise ValueError(f"Missing required configuration section: {section}")
+        logger.info("Configuration validation passed")
 
-        session_frame = ttk.Frame(frame)
-        session_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        row += 1
+    def display_backtest_results(self, results):
+        """Display backtest results in the results box"""
+        if hasattr(self, 'bt_result_box'):
+            self.bt_result_box.config(state="normal")
+            self.bt_result_box.delete(1.0, tk.END)
+            self.bt_result_box.insert(tk.END, f"Backtest Results:\n{results}\n")
+            self.bt_result_box.config(state="disabled")
 
-        # Session Start
-        ttk.Label(session_frame, text="Session Start:").grid(row=0, column=0, sticky="e", padx=2)
-        ttk.Entry(session_frame, textvariable=self.session_start_hour, width=4).grid(row=0, column=1, padx=2)
-        ttk.Label(session_frame, text=":").grid(row=0, column=2)
-        ttk.Entry(session_frame, textvariable=self.session_start_min, width=4).grid(row=0, column=3, padx=2)
+    def _merge_user_preferences_into_runtime_config(self):
+        """Load and merge user preferences into runtime_config BEFORE widget initialization"""
+        prefs_file = "user_preferences.json"
+        if os.path.exists(prefs_file):
+            try:
+                with open(prefs_file, 'r') as f:
+                    content = f.read().strip()
+                    if not content:
+                        logger.warning(f"Empty preferences file: {prefs_file}")
+                        return
+                    user_prefs = json.loads(content)
 
-        # Session End
-        ttk.Label(session_frame, text="Session End:").grid(row=0, column=4, sticky="e", padx=(10,2))
-        ttk.Entry(session_frame, textvariable=self.session_end_hour, width=4).grid(row=0, column=5, padx=2)
-        ttk.Label(session_frame, text=":").grid(row=0, column=6)
-        ttk.Entry(session_frame, textvariable=self.session_end_min, width=4).grid(row=0, column=7, padx=2)
+                # Shallow merge per-section (preserve keys not represented in prefs)
+                for section, params in user_prefs.items():
+                    if section in self.runtime_config and isinstance(params, dict):
+                        self.runtime_config[section].update(params)
 
-        # Buffers
-        ttk.Label(session_frame, text="Start Buffer (min):").grid(row=1, column=0, sticky="e", padx=2)
-        ttk.Entry(session_frame, textvariable=self.start_buffer, width=6).grid(row=1, column=1, columnspan=3, padx=2)
+                logger.info(f"User preferences merged into runtime config from {prefs_file}")
+            except Exception:
+                logger.exception("Failed to merge user preferences into runtime config")
 
-        ttk.Label(session_frame, text="End Buffer (min):").grid(row=1, column=4, sticky="e", padx=(10,2))
-        ttk.Entry(session_frame, textvariable=self.end_buffer, width=6).grid(row=1, column=5, columnspan=3, padx=2)
+    def _initialize_variables_from_runtime_config(self):
+        """Initialize GUI variables systematically from runtime_config (replaces _initialize_variables_from_defaults)"""
+        # Variables are initialized in _initialize_all_variables() to avoid duplication
+        pass
 
-        # Session validation status and check button
-        ttk.Label(session_frame, textvariable=self.session_status).grid(
-            row=2, column=0, columnspan=4, sticky="w", pady=(5,0))
-        ttk.Button(session_frame, text="Check Configuration",
-                  command=self._check_session_configuration).grid(
-            row=2, column=4, columnspan=4, pady=(5,0))
-
-        # Timezone selector
-        ttk.Label(session_frame, text="Timezone:").grid(row=3, column=0, sticky="e", padx=2, pady=(5,0))
-        timezone_entry = ttk.Entry(session_frame, textvariable=self.timezone, width=15)
-        timezone_entry.grid(row=3, column=1, columnspan=7, sticky="w", padx=2, pady=(5,0))
-
-        return row
-
-    def _check_session_configuration(self):
-        """Check session configuration with warnings only"""
-        try:
-            # Get values from UI
-            start_hour = int(self.session_start_hour.get())
-            start_min = int(self.session_start_min.get())
-            end_hour = int(self.session_end_hour.get())
-            end_min = int(self.session_end_min.get())
-            start_buffer = int(self.start_buffer.get())
-            end_buffer = int(self.end_buffer.get())
-
-            # Check for potential issues
-            warnings = []
-
-            # Time format validation
-            if not (0 <= start_hour <= 23 and 0 <= end_hour <= 23):
-                warnings.append("Hours should be between 0-23")
-
-            if not (0 <= start_min <= 59 and 0 <= end_min <= 59):
-                warnings.append("Minutes should be between 0-59")
-
-            # Start must be before end
-            start_minutes = start_hour * 60 + start_min
-            end_minutes = end_hour * 60 + end_min
-            if start_minutes >= end_minutes:
-                warnings.append("Session end must be after session start")
-
-            # Check if session is outside typical market hours
-            if start_hour < 9 or (start_hour == 9 and start_min < 15):
-                warnings.append(f"Session start {start_hour:02d}:{start_min:02d} is earlier than standard market open (09:15)")
-
-            if end_hour > 15 or (end_hour == 15 and end_min > 30):
-                warnings.append(f"Session end {end_hour:02d}:{end_min:02d} is later than standard market close (15:30)")
-
-            # Check if buffers are reasonable
-            session_duration = end_minutes - start_minutes
-            total_buffers = start_buffer + end_buffer
-            if total_buffers >= session_duration:
-                warnings.append(
-                    f"Total buffers ({total_buffers}min) should be less than session duration ({session_duration}min)")
-
-            # Effective trading window calculation
-            effective_minutes = session_duration - total_buffers
-
-            # Show warnings but allow proceeding
-            if warnings:
-                result = messagebox.askokcancel(
-                    "Session Configuration Warnings",
-                    "The following potential issues were found:\n\n" +
-                    "\n".join([f"Ã¢â‚¬Â¢ {w}" for w in warnings]) +
-                    f"\n\nEffective trading window: {effective_minutes} minutes" +
-                    "\n\nDo you want to use this configuration anyway?"
-                )
-
-                if result:  # User confirmed
-                    self._apply_session_config(start_hour, start_min, end_hour, end_min,
-                                             start_buffer, end_buffer)
-                    self.session_status.set("Using with warnings")
-                else:
-                    self.session_status.set("Review recommended")
-            else:
-                self._apply_session_config(start_hour, start_min, end_hour, end_min,
-                                         start_buffer, end_buffer)
-                self.session_status.set("Configuration looks good")
-
-        except ValueError:
-            messagebox.showwarning("Input Error", "Please enter valid numbers")
-            self.session_status.set("Ã¢Å¡ Ã¯Â¸Â Invalid number format")
-
-    def _apply_session_config(self, start_hour, start_min, end_hour, end_min,
-                         start_buffer, end_buffer):
-        """Apply user configuration regardless of validation status"""
-        # Ensure config attribute exists
-        if not hasattr(self, 'config'):
-            self.config = {}
-
-        # Ensure session section exists
-        if 'session' not in self.config:
-            self.config['session'] = {}
-
-        # Apply all settings
-        self.config['session'].update({
-            'start_hour': start_hour,
-            'start_min': start_min,
-            'end_hour': end_hour,
-            'end_min': end_min,
-            'start_buffer_minutes': start_buffer,
-            'end_buffer_minutes': end_buffer,
-            'timezone': self.timezone.get()
-        })
-
-        # Calculate effective window for informational purposes
-        start_minutes = start_hour * 60 + start_min
-        end_minutes = end_hour * 60 + end_min
-        effective_minutes = (end_minutes - start_minutes) - (start_buffer + end_buffer)
-
-        logger.info(f"User defined session: {start_hour:02d}:{start_min:02d}-{end_hour:02d}:{end_min:02d} " +
-                   f"with {start_buffer}+{end_buffer}min buffers (effective: {effective_minutes}min)")
-
-    def _initialize_all_variables(self):
-        """Initialize all variables used by GUI components"""
-        # Thread management
-        self._backtest_thread = None
-        self._forward_thread = None
-        self.symbol_token_map = {}
-        
-        # Capital management variables
-        self.capital_usable = tk.StringVar(value="Ã¢â€šÂ¹0 (0%)")
-        self.max_lots = tk.StringVar(value="0 lots (0 shares)")
-        self.max_risk = tk.StringVar(value="Ã¢â€šÂ¹0 (0%)")
-        self.recommended_lots = tk.StringVar(value="0 lots (0 shares)")
-
-        # Session configuration variables
-        self.session_start_hour = tk.StringVar(value="9")
-        self.session_start_min = tk.StringVar(value="15")
-        self.session_end_hour = tk.StringVar(value="15")
-        self.session_end_min = tk.StringVar(value="30")
-        self.start_buffer = tk.StringVar(value="5")
-        self.end_buffer = tk.StringVar(value="20")
-        self.timezone = tk.StringVar(value="Asia/Kolkata")
-        self.session_status = tk.StringVar(value="Not checked")
-
-        # Forward test session configuration variables
-        self.ft_session_start_hour = tk.StringVar(value="9")
-        self.ft_session_start_min = tk.StringVar(value="15")
-        self.ft_session_end_hour = tk.StringVar(value="15")
-        self.ft_session_end_min = tk.StringVar(value="30")
-        # Missing forward-test buffer/timezone variables (previously caused NameError)
-        session_config = self.runtime_config.get('session', {})
-        risk_config = self.runtime_config.get('risk', {})
-
-        self.ft_start_buffer = tk.StringVar(value=str(session_config['start_buffer_minutes']))
-        self.ft_end_buffer = tk.StringVar(value=str(session_config['end_buffer_minutes']))
-        self.ft_timezone = tk.StringVar(value=session_config['timezone'])
-
-        # Add missing forward test TP variables (fixes NameError in _ft_run_forward_test)
-        tp_points = risk_config['tp_points']
-        self.ft_tp1_points = tk.StringVar(value=str(tp_points[0]))
-        self.ft_tp2_points = tk.StringVar(value=str(tp_points[1]))
-        self.ft_tp3_points = tk.StringVar(value=str(tp_points[2]))
-        self.ft_tp4_points = tk.StringVar(value=str(tp_points[3]))
-
-        # Logger level overrides - ADD THIS SECTION
-        self.logger_levels = {}
-        for logger_name in ["core.indicators", "core.researchStrategy", "backtest.backtest_runner", "utils.simple_loader"]:
-            self.logger_levels[logger_name] = tk.StringVar(value="DEFAULT")
-        # Tick logging interval (SSOT-controlled value shown/edited in GUI)
-        # Stored as stringvar for the widget; converted to int when building config
-        self.logger_tick_interval = tk.StringVar(
-            value=str(DEFAULT_CONFIG.get('logging', {}).get('tick_log_interval', 100))
-        )
-
-        # Noise filter settings - just declare variables without values
-        self.bt_noise_filter_enabled = tk.BooleanVar()
-        self.bt_noise_filter_percentage = tk.StringVar()
-        self.bt_noise_filter_min_ticks = tk.StringVar()
     def _create_gui_framework(self):
         """Create the core GUI framework - notebook and tabs"""
         # Create notebook for tabs
@@ -1376,13 +760,12 @@ class UnifiedTradingGUI(tk.Tk):
         # Risk Management
         ttk.Label(frame, text="Risk Management:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
         row += 1
-        bt_risk_frame = ttk.Frame(frame)  # Create the risk frame
+        bt_risk_frame = ttk.Frame(frame)
         bt_risk_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
         row += 1
 
         ttk.Label(bt_risk_frame, text="Stop Loss Points:").grid(row=0, column=0, sticky="e", padx=2)
-        self.ft_base_sl_points = tk.StringVar(value="15")
-        ttk.Entry(bt_risk_frame, textvariable=self.ft_base_sl_points, width=8).grid(row=0, column=1, padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_base_sl_points, width=8).grid(row=0, column=1, padx=2)
 
         ttk.Label(bt_risk_frame, text="TP1 Points:").grid(row=0, column=2, sticky="e", padx=2)
         ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[0], width=8).grid(row=0, column=3, padx=2)
@@ -1394,20 +777,16 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Label(bt_risk_frame, text="TP4 Points:").grid(row=1, column=2, sticky="e", padx=2)
         ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[3], width=8).grid(row=1, column=3, padx=2)
 
-        self.ft_use_trail_stop = tk.BooleanVar(value=True)
-        ttk.Checkbutton(bt_risk_frame, text="Use Trailing Stop", variable=self.ft_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
+        ttk.Checkbutton(bt_risk_frame, text="Use Trailing Stop", variable=self.bt_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
 
         ttk.Label(bt_risk_frame, text="Trail Activation Points:").grid(row=2, column=0, sticky="e", padx=2)
-        self.ft_trail_activation_points = tk.StringVar(value="25")
-        ttk.Entry(bt_risk_frame, textvariable=self.ft_trail_activation_points, width=8).grid(row=2, column=1, padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_trail_activation, width=8).grid(row=2, column=1, padx=2)
 
         ttk.Label(bt_risk_frame, text="Trail Distance Points:").grid(row=2, column=2, sticky="e", padx=2)
-        self.ft_trail_distance_points = tk.StringVar(value="10")
-        ttk.Entry(bt_risk_frame, textvariable=self.ft_trail_distance_points, width=8).grid(row=2, column=3, padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_trail_distance, width=8).grid(row=2, column=3, padx=2)
 
         ttk.Label(bt_risk_frame, text="Risk % per Trade:").grid(row=2, column=4, sticky="e", padx=2)
-        self.ft_risk_per_trade_percent = tk.StringVar(value="1.0")
-        ttk.Entry(bt_risk_frame, textvariable=self.ft_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
+        ttk.Entry(bt_risk_frame, textvariable=self.bt_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
         row += 1
 
         # --- Instrument Settings ---
@@ -1478,186 +857,111 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Entry(noise_filter_frame, textvariable=self.bt_noise_filter_min_ticks, width=10).grid(row=0, column=4, sticky="w", padx=5)
         row += 1
 
-    def _bt_browse_csv(self):
-        """Browse for CSV file"""
-        file = filedialog.askopenfilename(
-            title="Select Data File",
-            filetypes=[
-                ("CSV and LOG files", "*.csv;*.log"),
-                ("CSV files", "*.csv"),
-                ("LOG files", "*.log"),
-                ("All files", "*.*")
-            ]
-        )
-        if file:
-            self.bt_data_file.set(file)
+    def _build_log_tab(self):
+        """Build the logging tab"""
+        frame = self.log_tab
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+        
+        # Create scrolled text widget for logs
+        self.log_text = tk.Text(frame, wrap="word", state="disabled")
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.log_text.yview)
+        self.log_text.configure(yscrollcommand=scrollbar.set)
+        
+        self.log_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        scrollbar.grid(row=0, column=1, sticky="ns", pady=5)
 
-    def _bt_run_backtest(self):
-        """Run backtest with GUI configuration (enforces frozen config)"""
+    def _ft_refresh_cache(self):
+        """Refresh symbol cache for forward testing"""
         try:
-            frozen_config = self.build_config_from_gui()
-            if frozen_config is None:
-                logger.warning("Backtest aborted: invalid or unfrozen configuration")
-                return
- 
-            # Data path: prefer backtest.data_path in config, fallback to file chooser input
-            data_path = None
-            try:
-                data_path = frozen_config.get("backtest", {}).get("data_path") or self.bt_data_file.get()
-            except Exception:
-                # frozen_config is MappingProxyType; use dict() to inspect if needed
-                data_path = dict(frozen_config).get("backtest", {}).get("data_path") or self.bt_data_file.get()
- 
-            if not data_path:
-                messagebox.showerror("Missing Data", "Please select a data file for backtest.")
-                return
- 
-            # Construct runner with frozen config (strict)
-            runner = BacktestRunner(config=frozen_config, data_path=data_path)
-            results = runner.run()
-            self.display_backtest_results(results)
+            refresh_symbol_cache()
+            self.ft_cache_status.set("Cache refreshed successfully")
+            logger.info("Symbol cache refreshed")
         except Exception as e:
-            logger.exception("Backtest run failed: %s", e)
-            messagebox.showerror("Backtest Error", f"Backtest failed: {e}")
+            self.ft_cache_status.set(f"Cache refresh failed: {e}")
+            logger.error(f"Cache refresh failed: {e}")
 
-    def _validate_nested_config(self, config):
-        """Validate the nested configuration structure"""
-        required_sections = ['strategy', 'risk', 'capital', 'instrument', 'session']
-        for section in required_sections:
-            if section not in config:
-                raise ValueError(f"Missing required configuration section: {section}")
-        logger.info("Configuration validation passed")
-
-    def display_backtest_results(self, results):
-        """Display backtest results in the results box"""
-        if hasattr(self, 'bt_result_box'):
-            self.bt_result_box.config(state="normal")
-            self.bt_result_box.delete(1.0, tk.END)
-            self.bt_result_box.insert(tk.END, f"Backtest Results:\n{results}\n")
-            self.bt_result_box.config(state="disabled")
-
-    def _merge_user_preferences_into_runtime_config(self):
-        """Load and merge user preferences into runtime_config BEFORE widget initialization"""
-        prefs_file = "user_preferences.json"
-        if os.path.exists(prefs_file):
-            try:
-                with open(prefs_file, 'r') as f:
-                    content = f.read().strip()
-                    if not content:
-                        logger.warning(f"Empty preferences file: {prefs_file}")
-                        return
-                    user_prefs = json.loads(content)
-
-                # Shallow merge per-section (preserve keys not represented in prefs)
-                for section, params in user_prefs.items():
-                    if section in self.runtime_config and isinstance(params, dict):
-                        self.runtime_config[section].update(params)
-
-                logger.info(f"User preferences merged into runtime config from {prefs_file}")
-            except Exception:
-                logger.exception("Failed to merge user preferences into runtime config")
-
-    def _initialize_variables_from_runtime_config(self):
-        """Initialize GUI variables systematically from runtime_config (replaces _initialize_variables_from_defaults)"""
-        # This method is called in __init__ but was missing
-        strategy_config = self.runtime_config.get('strategy', {})
-        risk_config = self.runtime_config.get('risk', {})
-        capital_config = self.runtime_config.get('capital', {})
-        instrument_config = self.runtime_config.get('instrument', {})
-        session_config = self.runtime_config.get('session', {})
-        
-        # Strategy variables - systematic initialization from runtime config
-        self.bt_use_ema_crossover = tk.BooleanVar(value=strategy_config.get('use_ema_crossover', True))
-        self.bt_use_macd = tk.BooleanVar(value=strategy_config.get('use_macd', True))
-        self.bt_use_vwap = tk.BooleanVar(value=strategy_config.get('use_vwap', True))
-        self.bt_use_rsi_filter = tk.BooleanVar(value=strategy_config.get('use_rsi_filter', False))
-        self.bt_use_htf_trend = tk.BooleanVar(value=strategy_config.get('use_htf_trend', False))
-        self.bt_use_bollinger_bands = tk.BooleanVar(value=strategy_config.get('use_bollinger_bands', False))
-        self.bt_use_stochastic = tk.BooleanVar(value=strategy_config.get('use_stochastic', False))
-        self.bt_use_atr = tk.BooleanVar(value=strategy_config.get('use_atr', True))
-        
-        # EMA parameters
-        self.bt_fast_ema = tk.StringVar(value=str(strategy_config.get('fast_ema', 9)))
-        self.bt_slow_ema = tk.StringVar(value=str(strategy_config.get('slow_ema', 21)))
-        
-        # MACD parameters
-        self.bt_macd_fast = tk.StringVar(value=str(strategy_config.get('macd_fast', 12)))
-        self.bt_macd_slow = tk.StringVar(value=str(strategy_config.get('macd_slow', 26)))
-        self.bt_macd_signal = tk.StringVar(value=str(strategy_config.get('macd_signal', 9)))
-        
-        # RSI parameters
-        self.bt_rsi_length = tk.StringVar(value=str(strategy_config.get('rsi_length', 14)))
-        self.bt_rsi_oversold = tk.StringVar(value=str(strategy_config.get('rsi_oversold', 30)))
-        self.bt_rsi_overbought = tk.StringVar(value=str(strategy_config.get('rsi_overbought', 70)))
-        
-        # HTF parameter
-        self.bt_htf_period = tk.StringVar(value=str(strategy_config.get('htf_period', 20)))
-        self.bt_consecutive_green_bars = tk.StringVar(value=strategy_config.get('consecutive_green_bars', 3))
-        
-        # Risk management
-        self.bt_base_sl_points = tk.StringVar(value=str(risk_config.get('base_sl_points', 15.0)))
-        tp_points = risk_config.get('tp_points', [10.0, 25.0, 50.0, 100.0])
-        self.bt_tp_points = [tk.StringVar(value=str(p)) for p in tp_points]
-        tp_percents = risk_config.get('tp_percents', [0.25, 0.25, 0.25, 0.25])
-        self.bt_tp_percents = [tk.StringVar(value=str(p*100)) for p in tp_percents]
-        self.bt_use_trail_stop = tk.BooleanVar(value=risk_config.get('use_trail_stop', False))
-        self.bt_trail_activation = tk.StringVar(value=str(risk_config.get('trail_activation_points', 5.0)))
-        self.bt_trail_distance = tk.StringVar(value=str(risk_config.get('trail_distance_points', 7.0)))
-        self.bt_risk_per_trade_percent = tk.StringVar(value=str(risk_config.get('risk_per_trade_percent', 1.0)))
-        
-        # Capital settings
-        self.bt_initial_capital = tk.StringVar(value=str(capital_config.get('initial_capital', 100000.0)))
-        
-        # Instrument settings
-        self.bt_symbol = tk.StringVar(value=instrument_config.get('symbol', 'NIFTY'))
-        self.bt_exchange = tk.StringVar(value=instrument_config.get('exchange', 'NSE_FO'))
-        self.bt_lot_size = tk.StringVar(value=str(instrument_config.get('lot_size', 75)))
-        
-        # Session settings
-        self.bt_is_intraday = tk.BooleanVar(value=session_config.get('is_intraday', True))
-        self.bt_session_start_hour = tk.StringVar(value=str(session_config.get('start_hour', 9)))
-        self.bt_session_start_min = tk.StringVar(value=str(session_config.get('start_min', 15)))
-        self.bt_session_end_hour = tk.StringVar(value=str(session_config.get('end_hour', 15)))
-        self.bt_session_end_min = tk.StringVar(value=str(session_config.get('end_min', 30)))
-
-        # Noise filter settings - initialize from runtime_config (no hardcoded values)
-        self.bt_noise_filter_enabled = tk.BooleanVar(value=strategy_config.get('noise_filter_enabled', True))
-        self.bt_noise_filter_percentage = tk.StringVar(value=str(strategy_config.get('noise_filter_percentage', 0.0001) * 100))
-        self.bt_noise_filter_min_ticks = tk.StringVar(value=strategy_config.get('noise_filter_min_ticks', 1.0))
-
-    def _validate_data_columns(self, data_file, required_columns):
-        """Validate that CSV file has required columns"""
+    def _ft_load_symbols(self):
+        """Load and filter symbols based on user input"""
         try:
-            import pandas as pd
-            df = pd.read_csv(data_file, nrows=1)  # Read just header
-            available_columns = [col.lower() for col in df.columns]
-            missing_columns = []
+            symbol_filter = self.ft_symbol.get().strip().upper()
+            if not symbol_filter:
+                messagebox.showwarning("Input Required", "Please enter a symbol filter")
+                return
+                
+            # Load symbol cache
+            cache = load_symbol_cache()
+            if not cache:
+                messagebox.showerror("Cache Error", "Symbol cache not loaded. Please refresh cache first.")
+                return
+                
+            # Filter symbols
+            matching_symbols = [symbol for symbol in cache.keys() if symbol_filter in symbol]
             
-            for col in required_columns:
-                if col.lower() not in available_columns:
-                    missing_columns.append(col)
+            # Clear and populate listbox
+            self.ft_symbols_listbox.delete(0, tk.END)
+            for symbol in sorted(matching_symbols)[:100]:  # Limit to 100 results
+                self.ft_symbols_listbox.insert(tk.END, symbol)
+                
+            self.ft_cache_status.set(f"Found {len(matching_symbols)} matches for '{symbol_filter}'")
+            logger.info(f"Loaded {len(matching_symbols)} symbols matching '{symbol_filter}'")
             
-            if missing_columns:
-                raise ValueError(f"Missing required columns: {missing_columns}")
-            
-            logger.info(f"Data validation passed for {data_file}")
-            return True
         except Exception as e:
-            logger.error(f"Data validation failed: {e}")
-            raise
+            self.ft_cache_status.set(f"Symbol loading failed: {e}")
+            logger.error(f"Symbol loading failed: {e}")
 
-    def _update_refresh_status(self, status_message):
-        """Update refresh status for symbol cache operations"""
-        if hasattr(self, 'ft_cache_status'):
-            self.ft_cache_status.set(status_message)
-        logger.info(f"Symbol cache status: {status_message}")
-def main():
-    """Main entry point for the unified trading GUI"""
-    try:
-        app = UnifiedTradingGUI()
-        app.mainloop()
-    except Exception as e:
-        print(f"Failed to start GUI application: {e}")
+    def _ft_update_symbol_details(self, event):
+        """Update symbol details when selection changes"""
+        try:
+            selection = self.ft_symbols_listbox.curselection()
+            if not selection:
+                return
+                
+            selected_symbol = self.ft_symbols_listbox.get(selection[0])
+            self.ft_symbol.set(selected_symbol)
+            
+            # Load token information
+            cache = load_symbol_cache()
+            if cache and selected_symbol in cache:
+                token_info = cache[selected_symbol]
+                self.ft_token.set(str(token_info.get('token', '')))
+                logger.info(f"Selected symbol: {selected_symbol}, Token: {token_info.get('token', 'N/A')}")
+            
+        except Exception as e:
+            logger.warning(f"Symbol details update error: {e}")
+            self.ft_token.set("")
+
+    def _ft_run_forward_test(self):
+        """Run forward test with current configuration"""
+        try:
+            # Build configuration from GUI
+            config = self.build_config_from_gui()
+            if config is None:
+                return
+                
+            # Validate required fields
+            if not self.ft_symbol.get().strip():
+                messagebox.showerror("Missing Symbol", "Please select a symbol for forward testing")
+                return
+                
+            if not self.ft_token.get().strip():
+                messagebox.showerror("Missing Token", "Please select a valid symbol with token information")
+                return
+            
+            # Start forward test (this would integrate with your live trading system)
+            messagebox.showinfo("Forward Test", "Forward test functionality will be implemented here")
+            logger.info("Forward test initiated")
+            
+        except Exception as e:
+            logger.exception(f"Forward test failed: {e}")
+            messagebox.showerror("Forward Test Error", f"Failed to start forward test: {e}")
+
 
 if __name__ == "__main__":
-    main()
+    try:
+        app = UnifiedTradingGUI()
+        logger.info("Starting GUI main loop")
+        app.mainloop()
+    except Exception as e:
+        logger.exception("Failed to start GUI application: %s", e)
+        print(f"Failed to start GUI application: {e}")

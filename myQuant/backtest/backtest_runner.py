@@ -437,7 +437,7 @@ class BacktestRunner:
                     trades_executed += 1
                     # Unified trade execution logging
                     pos = position_manager.positions.get(position_id, {})
-                    qty = getattr(pos, 'current_quantity', pos.get('quantity', 0)) if pos else 0
+                    qty = getattr(pos, 'current_quantity', getattr(pos, 'quantity', getattr(pos, 'initial_quantity', 0))) if pos else 0
                     self.perf_logger.session_start(f"TRADE EXECUTED: {position_id} @ {row['close']:.2f} Qty={qty}")
                 else:
                     logger.warning(f"TRADE FAILED: Signal detected but position not opened")
@@ -556,7 +556,7 @@ class BacktestRunner:
                     processed_counters['trades_executed'] += 1
                     # Unified trade logging
                     pos = position_manager.positions.get(position_id, {})
-                    qty = getattr(pos, 'current_quantity', pos.get('quantity', 0)) if pos else 0
+                    qty = getattr(pos, 'current_quantity', getattr(pos, 'quantity', getattr(pos, 'initial_quantity', 0))) if pos else 0
                     self.perf_logger.session_start(f"TRADE EXECUTED: {position_id} @ {row.get('close', 'N/A')} Qty={qty}")
             # Exit handling (if in_position)
             elif in_position:
@@ -574,8 +574,8 @@ class BacktestRunner:
                         if closed:
                             # Unified position close logging
                             pos = position_manager.positions.get(position_to_close, {})
-                            pnl = getattr(pos, 'last_realized_pnl', 0) or pos.get('pnl', 0)
-                            qty = int(getattr(pos, 'current_quantity', pos.get('quantity', 0)) if pos else 0)
+                            pnl = getattr(pos, 'last_realized_pnl', getattr(pos, 'pnl', 0))
+                            qty = int(getattr(pos, 'current_quantity', getattr(pos, 'quantity', getattr(pos, 'initial_quantity', 0))) if pos else 0)
                             self.perf_logger.session_start(f"POSITION CLOSED by runner: {position_to_close} @ {exit_price} PnL={pnl:.2f} Qty={qty}")
                             in_position = False
         except Exception as e:

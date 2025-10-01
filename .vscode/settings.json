@@ -2,5 +2,6 @@
   "editor.formatOnPaste": false,
   "editor.formatOnSave": false,
   "editor.formatOnType": false,
-  "editor.codeActionsOnSave": {}
+  "editor.codeActionsOnSave": {},
+  "python.REPL.enableREPLSmartSend": false
 }
