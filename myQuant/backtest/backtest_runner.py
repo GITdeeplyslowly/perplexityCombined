@@ -851,14 +851,8 @@ def filter_data_by_session(df, session_config):
         return df
     
     # Create session start and end times
-    start_time = time(
-        session_config.get('start_hour', 9), 
-        session_config.get('start_min', 15)
-    )
-    end_time = time(
-        session_config.get('end_hour', 15), 
-        session_config.get('end_min', 30)
-    )
+    start_time = time(session_config["start_hour"], session_config["start_min"])
+    end_time = time(session_config["end_hour"], session_config["end_min"])
     
     # Filter dataframe
     mask = df.index.map(lambda x: start_time <= x.time() <= end_time)

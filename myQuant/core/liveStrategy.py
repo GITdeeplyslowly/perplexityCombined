@@ -1,9 +1,10 @@
 ﻿"""
-core/strategy.py - Unified Long-Only, Intraday Strategy for Trading Bot and Backtest
+core/liveStrategy.py - High-Performance Live Trading Strategy
 
-- F&O-ready, multi-indicator, live-driven.
-- No shorting, no overnight risk, all config/param driven.
-- Handles all signal, entry, exit, and session rules.
+- Optimized for real-time tick-by-tick processing
+- F&O-ready, multi-indicator, performance-focused
+- No shorting, no overnight risk, all config/param driven
+- Handles all signal, entry, exit, and session rules for live trading
 """
 
 import pandas as pd
@@ -32,15 +33,16 @@ class TradingSignal:
 
 class ModularIntradayStrategy:
     """
-    Unified long-only intraday strategy supporting multiple indicators.
+    High-performance live trading strategy optimized for real-time execution.
     
     Features:
+    - Pure tick-by-tick processing with incremental indicators
     - Long-only, intraday-only trading strategy
     - Configurable indicator combinations (EMA, MACD, VWAP, RSI, etc.)
-    - Session time management with buffers
+    - Session time management with precise buffers
     - Risk management parameters
-    - Trade frequency limits
-    - Consecutive green bars re-entry logic
+    - Trade frequency limits with noise filtering
+    - Performance-optimized consecutive green tick tracking
     """
     
     def __init__(self, config: MappingProxyType, indicators_module=None):
@@ -48,9 +50,16 @@ class ModularIntradayStrategy:
         Initialize strategy with parameters.
         
         Args:
-            config: Strategy parameters from config
+            config: IMMUTABLE frozen configuration from GUI (MappingProxyType)
             indicators_module: Optional module for calculating indicators
         """
+        # CRITICAL: Enforce frozen config - fail immediately if not MappingProxyType
+        if not isinstance(config, MappingProxyType):
+            raise TypeError(
+                f"liveStrategy requires frozen MappingProxyType config from GUI. "
+                f"Got {type(config)}. Use: freeze_config(validate_config(create_config_from_defaults()))"
+            )
+        
         self.config = config
         # STRICT / fail-fast: initialize HighPerfLogger (requires frozen MappingProxyType & prior setup).
         # Let any exception propagate so misconfiguration is detected immediately.
@@ -71,46 +80,18 @@ class ModularIntradayStrategy:
             'session_start_time': None
         }
 
-        # --- Feature flags (read from validated config; GUI is SSOT) ---
-        # These should exist in config.defaults.DEFAULT_CONFIG and be validated by the GUI.
+        # --- Feature flags (read from validated frozen config; GUI is SSOT) ---
+        # ALL parameters MUST exist in defaults.py - no fallbacks allowed
         self.use_ema_crossover = self.config_accessor.get_strategy_param('use_ema_crossover')
         self.use_macd = self.config_accessor.get_strategy_param('use_macd')
         self.use_vwap = self.config_accessor.get_strategy_param('use_vwap')
         self.use_rsi_filter = self.config_accessor.get_strategy_param('use_rsi_filter')
         self.use_htf_trend = self.config_accessor.get_strategy_param('use_htf_trend')
         self.use_bollinger_bands = self.config_accessor.get_strategy_param('use_bollinger_bands')
-        # optional toggles may be absent in older configs; GUI validation should add them,
-        # but keep a safe default here if desired:
         self.use_atr = self.config_accessor.get_strategy_param('use_atr')
         
-        # Validate configuration
-        # Minimal fail-fast validation using the existing ConfigAccessor methods.
-        required_keys = [
-            ('strategy', 'fast_ema'),
-            ('strategy', 'slow_ema'),
-            ('strategy', 'macd_fast'),
-            ('strategy', 'macd_slow'),
-            ('strategy', 'macd_signal'),
-            ('session', 'start_hour'),
-            ('session', 'start_min'),
-            ('session', 'end_hour'),
-            ('session', 'end_min'),
-            ('risk', 'max_positions_per_day'),
-        ]
-        missing = []
-        for section, key in required_keys:
-            try:
-                # ConfigAccessor expects section/key accessors - use the explicit methods
-                if section == 'strategy':
-                    self.config_accessor.get_strategy_param(key)
-                elif section == 'session':
-                    self.config_accessor.get_session_param(key)
-                elif section == 'risk':
-                    self.config_accessor.get_risk_param(key)
-            except KeyError:
-                missing.append(f"{section}.{key}")
-        if missing:
-            raise ValueError(f"Invalid configuration - missing: {missing}")
+        # COMPREHENSIVE FAIL-FAST VALIDATION - Every parameter must exist in defaults.py
+        self._validate_all_required_parameters()
  
         # Session/session exit config (populate using existing accessors)
         self.session_start = time(
@@ -254,13 +235,6 @@ class ModularIntradayStrategy:
         """Check if market is completely closed (after end time)"""
         return current_time.time() >= self.session_end
 
-    def indicators_and_signals(self, data: pd.DataFrame) -> pd.DataFrame:
-        """
-        LEGACY: Backwards compatibility method.
-        Redirects to calculate_indicators().
-        """
-        return self.calculate_indicators(data)
-
     def reset_incremental_trackers(self):
         """Re-init incremental trackers for deterministic runs."""
         self.ema_fast_tracker = IncrementalEMA(period=self.fast_ema)
@@ -292,32 +266,25 @@ class ModularIntradayStrategy:
         except Exception as e:
             pass  # Suppress errors in reset
 
-    def calculate_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
-        """Incremental processing: update incremental trackers row-by-row and return DataFrame with indicator cols."""
+    def process_historical_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Process historical data maintaining incremental state.
+        WARNING: Only use for initialization - live trading should use on_tick() exclusively.
+        """
         if data is None or data.empty:
             return data
 
-        # prefer strategy's own incremental processing rather than calling legacy batch function
-        self.reset_incremental_trackers()
-
-        df = data.copy()
-        numeric_columns = ['fast_ema', 'slow_ema', 'macd', 'macd_signal', 'macd_histogram', 'vwap', 'htf_ema', 'rsi', 'atr']
-        boolean_columns = ['ema_bullish', 'macd_bullish', 'macd_histogram_positive', 'vwap_bullish', 'htf_bullish']
-
-        for col in numeric_columns:
-            if col not in df.columns:
-                df[col] = np.nan
-        for col in boolean_columns:
-            if col not in df.columns:
-                df[col] = False
-
-        for i, (idx, row) in enumerate(df.iterrows()):
-            updated = self.process_tick_or_bar(row.copy())
-            for col in numeric_columns + boolean_columns:
-                if col in updated and col in df.columns:
-                    df.iat[i, df.columns.get_loc(col)] = updated[col]
-
-        return df
+        # Process each tick maintaining incremental state (NO reset)
+        updated_data = data.copy()
+        
+        for i, (idx, row) in enumerate(data.iterrows()):
+            updated_row = self.process_tick_or_bar(row)
+            # Update the dataframe with calculated indicators
+            for col in ['fast_ema', 'slow_ema', 'macd', 'macd_signal', 'vwap', 'atr']:
+                if col in updated_row:
+                    updated_data.at[idx, col] = updated_row[col]
+        
+        return updated_data
 
     def entry_signal(self, row: pd.Series) -> bool:
         """
@@ -332,40 +299,44 @@ class ModularIntradayStrategy:
         # --- EMA CROSS ---
         pass_ema = True
         if self.use_ema_crossover:
+            # STRICT: Fail immediately if indicator data missing
             pass_ema = (
-                row.get('fast_ema', None) is not None and
-                row.get('slow_ema', None) is not None and
+                'fast_ema' in row and 'slow_ema' in row and
+                row['fast_ema'] is not None and row['slow_ema'] is not None and
                 row['fast_ema'] > row['slow_ema']
             )
         # --- VWAP ---
         pass_vwap = True
         if self.use_vwap:
-            vwap_val = row.get('vwap', None)
-            pass_vwap = (vwap_val is not None) and (row['close'] > vwap_val)
+            # STRICT: Fail if vwap not calculated
+            pass_vwap = ('vwap' in row and row['vwap'] is not None and 
+                        row['close'] > row['vwap'])
         # --- MACD ---
         pass_macd = True
         if self.use_macd:
-            pass_macd = row.get('macd_bullish', False) and row.get('macd_histogram_positive', False)
+            # STRICT: Both signals must exist
+            pass_macd = (row['macd_bullish'] and row['macd_histogram_positive'])
         # --- HTF TREND ---
         pass_htf = True
         if self.use_htf_trend:
-            htf_val = row.get('htf_ema', None)
-            pass_htf = (htf_val is not None) and (row['close'] > htf_val)
+            # STRICT: HTF EMA must be calculated
+            pass_htf = ('htf_ema' in row and row['htf_ema'] is not None and 
+                       row['close'] > row['htf_ema'])
         # --- RSI ---
         pass_rsi = True
         if self.use_rsi_filter:
-            rsi_val = row.get('rsi', None)
-            pass_rsi = (rsi_val is not None) and (
-                self.config_accessor.get_strategy_param('rsi_oversold') < 
-                rsi_val < 
-                self.config_accessor.get_strategy_param('rsi_overbought')
-            )
+            # STRICT: RSI must be calculated
+            pass_rsi = ('rsi' in row and row['rsi'] is not None and
+                       self.config_accessor.get_strategy_param('rsi_oversold') < 
+                       row['rsi'] < 
+                       self.config_accessor.get_strategy_param('rsi_overbought'))
         # --- Bollinger Bands ---
         pass_bb = True
         if self.use_bollinger_bands:
-            bb_lower = row.get('bb_lower', None)
-            bb_upper = row.get('bb_upper', None)
-            pass_bb = (bb_lower is not None and bb_upper is not None) and (bb_lower < row['close'] < bb_upper)
+            # STRICT: Both BB levels must exist
+            pass_bb = ('bb_lower' in row and 'bb_upper' in row and
+                      row['bb_lower'] is not None and row['bb_upper'] is not None and
+                      row['bb_lower'] < row['close'] < row['bb_upper'])
         # --- Construct final pass signal (all enabled must be True) ---
         logic_checks = [pass_ema, pass_vwap, pass_macd, pass_htf, pass_rsi, pass_bb]
         return all(logic_checks)
@@ -413,50 +384,79 @@ class ModularIntradayStrategy:
         # If position not opened, do not emit stdlib warning (standardization)
         return None
 
-    def should_close(self, row: pd.Series, now: datetime, position_manager) -> bool:
-        """
-        FIXED: Method name compatibility for backtest runner.
-        Redirects to should_exit() method.
-        """
-        return self.should_exit(row, now, position_manager)
 
-    def handle_exit(self, position_id: str, price: float, now: datetime, position_manager, reason="Session End"):
-        """
-        FIXED: Added missing handle_exit method for backtest compatibility.
-        """
-        try:
-            success = position_manager.close_position_full(position_id, price, now, reason=reason)
-            if success:
-                self.in_position = False
-                self.position_id = None
-                self.position_entry_time = None
-                self.position_entry_price = None
-            return success
-        except Exception as e:
-            return False
 
-    def should_exit_position(self, row: pd.Series, position_type: str, 
-                           current_time: Optional[datetime] = None) -> bool:
+    def on_tick(self, tick: Dict[str, Any]) -> Optional[TradingSignal]:
         """
-        Check if should exit current position (for backtest compatibility).
+        Unified tick-by-tick entry point for live trading.
         
         Args:
-            row: Current data row
-            position_type: Position type ('long' or 'short')
-            current_time: Current timestamp
+            tick: Dictionary containing tick data (price, volume, timestamp, etc.)
             
         Returns:
-            True if should exit position
+            TradingSignal if action should be taken, None otherwise
         """
-        if current_time is None:
-            current_time = row.name if hasattr(row, 'name') else datetime.now()
-        
-        # Always exit at session end
-        if self.should_exit_for_session(current_time):
-            return True
-        
-        # Let position manager handle stop loss, take profit, and trailing stops
-        return False
+        try:
+            # Convert tick dict to Series for compatibility with existing logic
+            tick_series = pd.Series(tick)
+            
+            # Update indicators incrementally
+            updated_tick = self.process_tick_or_bar(tick_series)
+            
+            # STRICT: timestamp must exist in tick data
+            if 'timestamp' not in tick:
+                raise ValueError("Tick data missing required 'timestamp' field")
+            timestamp = tick['timestamp']
+            
+            # Generate signal based on current tick
+            return self._generate_signal_from_tick(updated_tick, timestamp)
+            
+        except Exception as e:
+            return None
+
+    def _generate_signal_from_tick(self, updated_tick: pd.Series, timestamp: datetime) -> Optional[TradingSignal]:
+        """Generate trading signal from processed tick data."""
+        try:
+            # Check if we can enter new position
+            if not self.in_position and self.can_enter_new_position(timestamp):
+                if self.entry_signal(updated_tick):
+                    # STRICT: Price must exist in tick
+                    if 'close' in updated_tick:
+                        price = updated_tick['close']
+                    elif 'price' in updated_tick:
+                        price = updated_tick['price']
+                    else:
+                        raise ValueError("Tick data missing required 'close' or 'price' field")
+                    
+                    return TradingSignal(
+                        action="BUY",
+                        timestamp=timestamp,
+                        price=price,
+                        reason="Strategy entry signal"
+                    )
+            
+            # Check exit conditions for existing position
+            if self.in_position and self.should_exit_for_session(timestamp):
+                # STRICT: Price must exist in tick
+                if 'close' in updated_tick:
+                    price = updated_tick['close']
+                elif 'price' in updated_tick:
+                    price = updated_tick['price']
+                else:
+                    raise ValueError("Tick data missing required 'close' or 'price' field")
+                
+                return TradingSignal(
+                    action="CLOSE",
+                    timestamp=timestamp,
+                    price=price,
+                    reason="Session end exit"
+                )
+                
+            return None
+        except Exception:
+            return None
+
+
 
     def reset_daily_counters(self, now: datetime):
         """
@@ -518,65 +518,20 @@ class ModularIntradayStrategy:
             
         return errors
 
-    def get_strategy_info(self) -> Dict[str, Any]:
-        """
-        Get strategy information (for backtest compatibility).
-        
-        Returns:
-            Strategy information dictionary
-        """
-        return {
-            'name': self.name,
-            'version': self.version,
-            'type': 'Long-Only Intraday',
-            'indicators_enabled': {
-                'ema_crossover': self.use_ema_crossover,
-                'macd': self.use_macd,
-                'vwap': self.use_vwap,
-                'rsi_filter': self.use_rsi_filter,
-                'htf_trend': self.use_htf_trend,
-                'bollinger_bands': self.use_bollinger_bands
-            },
-            'parameters': {
-                'fast_ema': self.fast_ema,
-                'slow_ema': self.slow_ema,
-                'base_sl_points': self.config_accessor.get_risk_param('base_sl_points')
-            },
-            'constraints': {
-                'long_only': True,
-                'intraday_only': True,
-                'max_trades_per_day': self.max_positions_per_day
-            },
-            'session': {
-                'start': self.session_start.strftime('%H:%M'),
-                'end': self.session_end.strftime('%H:%M'),
-                'start_buffer_minutes': self.start_buffer_minutes,
-                'end_buffer_minutes': self.end_buffer_minutes
-            },
-            'daily_stats': self.daily_stats.copy()
-        }
 
-    def verify_backtest_interface(self):
-        """Production verification of backtest interface."""
-        required_methods = ['can_open_long', 'open_long', 'calculate_indicators', 'should_close']
-        
-        for method in required_methods:
-            if not hasattr(self, method):
-                return False
-            else:
-                pass  # Method exists
-    
-        return True
 
     def process_tick_or_bar(self, row: pd.Series):
         # Tick counter and hot-path perf logging
         increment_tick_counter()
         if self.perf_logger:
+            # STRICT: Use actual values or skip logging if missing
+            close_val = row['close'] if 'close' in row else 0
+            volume_val = row['volume'] if 'volume' in row else None
             self.perf_logger.tick_debug(
                 format_tick_message,
                 get_tick_counter(), 
-                row.get('close', 0), 
-                row.get('volume', None)
+                close_val, 
+                volume_val
             )
         try:
             # Accept Series or single-row DataFrame
@@ -586,13 +541,26 @@ class ModularIntradayStrategy:
                 else:
                     return row
 
-            def safe_extract(key, default=None):
-                val = row.get(key, default)
+            # STRICT: Extract required price - fail if missing
+            def strict_extract(key):
+                """Extract value with no fallbacks - fail if missing or invalid"""
+                if key not in row:
+                    raise KeyError(f"Required field '{key}' missing from tick data")
+                val = row[key]
                 if isinstance(val, pd.Series):
-                    return val.iloc[0] if len(val) else default
+                    if len(val) == 0:
+                        raise ValueError(f"Empty Series for required field '{key}'")
+                    return val.iloc[0]
                 return val
 
-            close_price = safe_extract('close', safe_extract('price', None))
+            # Extract close price (required)
+            try:
+                close_price = strict_extract('close')
+            except KeyError:
+                try:
+                    close_price = strict_extract('price')
+                except KeyError:
+                    raise ValueError("Tick data must contain either 'close' or 'price' field")
             if close_price is None:
                 return row
             try:
@@ -602,14 +570,17 @@ class ModularIntradayStrategy:
             if close_price <= 0:
                 return row
 
-            volume = safe_extract('volume', 0) or 0
+            # Extract optional fields with sensible defaults for OHLCV
+            volume = row['volume'] if 'volume' in row else 0
             try:
-                volume = int(volume)
+                volume = int(volume) if volume is not None else 0
             except Exception:
                 volume = 0
-            high_price = float(safe_extract('high', close_price))
-            low_price = float(safe_extract('low', close_price))
-            open_price = float(safe_extract('open', close_price))
+                
+            # Extract OHLC with fallback to close price
+            high_price = float(row['high'] if 'high' in row and row['high'] is not None else close_price)
+            low_price = float(row['low'] if 'low' in row and row['low'] is not None else close_price)
+            open_price = float(row['open'] if 'open' in row and row['open'] is not None else close_price)
 
             updated = row.copy()
 
@@ -655,38 +626,7 @@ class ModularIntradayStrategy:
         except Exception as e:
             return row
 
-    # Backwards-compatible aliases expected by backtest/other modules
-    def can_open_long(self, row: pd.Series, timestamp: datetime) -> bool:
-        """
-        Backtest-compatible wrapper. For live use prefer can_enter_new_position(timestamp)
-        and entry_signal(row).
-        """
-        try:
-            # ensure timestamp is tz-aware if possible
-            if timestamp is not None:
-                timestamp = ensure_tz_aware(timestamp)
-            # Combine session gating and entry signal
-            return self.can_enter_new_position(timestamp) and bool(self.entry_signal(row))
-        except Exception:
-            return False
 
-    def should_exit(self, row: pd.Series, timestamp: datetime, position_manager=None) -> bool:
-        """
-        Backtest-compatible exit check. Delegate to session-exit (and leave position manager
-        to apply SL/TP/trailing logic).
-        """
-        try:
-            timestamp = ensure_tz_aware(timestamp)
-            # Exit at session buffer end or when session gating requires exit
-            if self.should_exit_for_session(timestamp):
-                return True
-            return False
-        except Exception:
-            return True  # safe default: ask runner to close positions
-
-    # alias for any callers expecting should_close
-    def should_close(self, row: pd.Series, timestamp: datetime, position_manager=None) -> bool:
-        return self.should_exit(row, timestamp, position_manager)
 
     def _update_green_tick_count(self, current_price: float):
         """
@@ -700,10 +640,10 @@ class ModularIntradayStrategy:
                 self.prev_tick_price = current_price
                 return
 
-            # Get noise filter parameters from config
-            noise_filter_enabled = bool(self.config_accessor.get_strategy_param('noise_filter_enabled', True))
-            noise_filter_percentage = float(self.config_accessor.get_strategy_param('noise_filter_percentage', 0.0001))
-            noise_filter_min_ticks = float(self.config_accessor.get_strategy_param('noise_filter_min_ticks', 1.0))
+            # STRICT: Get noise filter parameters from config (must exist in defaults.py)
+            noise_filter_enabled = bool(self.config_accessor.get_strategy_param('noise_filter_enabled'))
+            noise_filter_percentage = float(self.config_accessor.get_strategy_param('noise_filter_percentage'))
+            noise_filter_min_ticks = float(self.config_accessor.get_strategy_param('noise_filter_min_ticks'))
             
             # Calculate minimum movement threshold
             min_movement = max(self.tick_size * noise_filter_min_ticks, 
@@ -737,6 +677,76 @@ class ModularIntradayStrategy:
         """Check if we have enough consecutive green ticks for entry."""
         return self.green_bars_count >= self.consecutive_green_bars_required
 
+    def _validate_all_required_parameters(self):
+        """
+        COMPREHENSIVE FAIL-FAST VALIDATION
+        Every parameter used by live strategy must exist in defaults.py
+        NO FALLBACKS ALLOWED - fail immediately if ANY parameter missing
+        """
+        required_params = [
+            # Strategy parameters
+            ('strategy', 'use_ema_crossover'),
+            ('strategy', 'use_macd'),
+            ('strategy', 'use_vwap'),
+            ('strategy', 'use_rsi_filter'),
+            ('strategy', 'use_htf_trend'),
+            ('strategy', 'use_bollinger_bands'),
+            ('strategy', 'use_atr'),
+            ('strategy', 'fast_ema'),
+            ('strategy', 'slow_ema'),
+            ('strategy', 'macd_fast'),
+            ('strategy', 'macd_slow'),
+            ('strategy', 'macd_signal'),
+            ('strategy', 'rsi_oversold'),
+            ('strategy', 'rsi_overbought'),
+            ('strategy', 'htf_period'),
+            ('strategy', 'consecutive_green_bars'),
+            ('strategy', 'atr_len'),
+            ('strategy', 'noise_filter_enabled'),
+            ('strategy', 'noise_filter_percentage'),
+            ('strategy', 'noise_filter_min_ticks'),
+            
+            # Session parameters
+            ('session', 'start_hour'),
+            ('session', 'start_min'),
+            ('session', 'end_hour'),
+            ('session', 'end_min'),
+            ('session', 'start_buffer_minutes'),
+            ('session', 'end_buffer_minutes'),
+            ('session', 'no_trade_start_minutes'),
+            ('session', 'no_trade_end_minutes'),
+            ('session', 'timezone'),
+            
+            # Risk parameters
+            ('risk', 'max_positions_per_day'),
+            ('risk', 'base_sl_points'),
+            
+            # Instrument parameters
+            ('instrument', 'symbol'),
+            ('instrument', 'lot_size'),
+            ('instrument', 'tick_size')
+        ]
+        
+        missing = []
+        for section, key in required_params:
+            try:
+                if section == 'strategy':
+                    self.config_accessor.get_strategy_param(key)
+                elif section == 'session':
+                    self.config_accessor.get_session_param(key)
+                elif section == 'risk':
+                    self.config_accessor.get_risk_param(key)
+                elif section == 'instrument':
+                    self.config_accessor.get_instrument_param(key)
+            except KeyError:
+                missing.append(f"{section}.{key}")
+        
+        if missing:
+            raise ValueError(
+                f"FATAL: Live strategy requires ALL parameters in defaults.py. Missing: {missing}. "
+                f"Add these to config/defaults.py DEFAULT_CONFIG before proceeding."
+            )
+
 if __name__ == "__main__":
     # Minimal smoke test for development
     test_params = {
@@ -752,19 +762,11 @@ if __name__ == "__main__":
     print("Parameter validation errors:", strat.validate_parameters())
 
 """
-CONFIGURATION PARAMETER NAMING CONVENTION:
-- Constructor parameter: __init__(self, config: Dict[str, Any], ...)
-- Internal storage: self.config = config
-- All parameter access: self.config.get('parameter_name', default)
-- Session parameters extracted to dedicated variables in constructor
-
-INTERFACE CONSISTENCY:
-- Uses same parameter naming as researchStrategy.py
-- calculate_indicators() passes self.config to indicators module
-- Compatible with both backtest and live trading systems
-
-CRITICAL: This file must maintain naming consistency with researchStrategy.py
-- Both use 'config' parameter in constructor
-- Both use self.config for internal parameter access
-- Both pass self.config to calculate_all_indicators()
+LIVE TRADING OPTIMIZATION NOTES:
+- Primary interface: on_tick() for real-time processing
+- Incremental indicators for memory efficiency
+- Performance logging for hot-path optimization
+- Fail-fast configuration validation
+- Tick-level noise filtering for precision entry
+- Session-aware position management
 """

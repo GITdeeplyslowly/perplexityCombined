@@ -1331,11 +1331,12 @@ class UnifiedTradingGUI(tk.Tk):
             self.ft_token.set("")
 
     def _ft_run_forward_test(self):
-        """Run forward test with current configuration"""
+        """Run forward test with current configuration using frozen config"""
         try:
-            # Build configuration from GUI
-            config = self.build_config_from_gui()
-            if config is None:
+            # Get validated and frozen config from GUI (returns MappingProxyType)
+            frozen_config = self.build_config_from_gui()
+            if frozen_config is None:
+                logger.warning("Forward test aborted: invalid or unfrozen configuration")
                 return
                 
             # Validate required fields
@@ -1347,9 +1348,51 @@ class UnifiedTradingGUI(tk.Tk):
                 messagebox.showerror("Missing Token", "Please select a valid symbol with token information")
                 return
             
-            # Start forward test (this would integrate with your live trading system)
-            messagebox.showinfo("Forward Test", "Forward test functionality will be implemented here")
-            logger.info("Forward test initiated")
+            # Update config with forward test symbol/token information
+            # Note: We need to create a new config with FT-specific values
+            config_dict = dict(frozen_config)
+            config_dict['instrument']['symbol'] = self.ft_symbol.get().strip()
+            config_dict['instrument']['token'] = self.ft_token.get().strip()
+            config_dict['instrument']['exchange'] = self.ft_exchange.get()
+            
+            # Re-validate and freeze with FT-specific values
+            validation = validate_config(config_dict)
+            if not validation.get('valid', False):
+                errors = validation.get('errors', ['Unknown validation error'])
+                messagebox.showerror("Configuration Validation Failed",
+                                     "Please fix configuration issues:\n\n" + "\n".join(errors))
+                return
+            
+            ft_frozen_config = freeze_config(config_dict)
+            
+            # Import LiveTrader here to avoid circular imports
+            try:
+                from live.trader import LiveTrader
+            except ImportError as e:
+                logger.error(f"Failed to import LiveTrader: {e}")
+                messagebox.showerror("Import Error", f"Could not import LiveTrader: {e}")
+                return
+            
+            # Create LiveTrader with frozen config
+            trader = LiveTrader(frozen_config=ft_frozen_config)
+            
+            # Start forward test in background thread to avoid blocking GUI
+            import threading
+            def run_forward_test():
+                try:
+                    logger.info("Starting forward test with frozen configuration")
+                    trader.start(run_once=False, result_box=getattr(self, 'bt_result_box', None))
+                except Exception as e:
+                    logger.exception(f"Forward test thread failed: {e}")
+                    # Note: Can't use messagebox from thread - log error instead
+            
+            test_thread = threading.Thread(target=run_forward_test, daemon=True)
+            test_thread.start()
+            
+            messagebox.showinfo("Forward Test", 
+                               f"Forward test started for {self.ft_symbol.get()} with frozen config.\n"
+                               f"Check the results tab for live updates.")
+            logger.info(f"Forward test initiated for {self.ft_symbol.get()} with frozen MappingProxyType config")
             
         except Exception as e:
             logger.exception(f"Forward test failed: {e}")

@@ -24,14 +24,16 @@ class BrokerAdapter:
     def __init__(self, config_path: str):
         config = load_config(config_path)
         self.params = config
-        self.live_params = config.get("live", {})
-        self.instrument = config.get("instrument", {})
-        self.symbol = self.instrument.get("symbol", "")
-        self.exchange = self.instrument.get("exchange", "NSE_FO")
-        self.lot_size = self.instrument.get("lot_size", 1)
-        self.tick_size = self.instrument.get("tick_size", 0.05)
-        self.product_type = self.instrument.get("product_type", "INTRADAY")
-        self.paper_trading = self.live_params.get("paper_trading", True)
+        
+        # Use strict config access - fail immediately if sections missing
+        self.live_params = config["live"]
+        self.instrument = config["instrument"]
+        self.symbol = self.instrument["symbol"]
+        self.exchange = self.instrument["exchange"]
+        self.lot_size = self.instrument["lot_size"]
+        self.tick_size = self.instrument["tick_size"]
+        self.product_type = self.instrument["product_type"]
+        self.paper_trading = self.live_params["paper_trading"]
 
         self.tick_buffer: List[Dict] = []
         self.df_tick = pd.DataFrame(columns=["timestamp", "price", "volume"])
@@ -82,10 +84,11 @@ class BrokerAdapter:
                     return
             else:
                 # Use credentials from config (legacy mode)
-                self.connection = self.SmartConnect(api_key=live.get("api_key"))
-                client_code = live.get("client_code")
-                pin = live.get("pin")
-                totp = live.get("totp_token")
+                # Use strict config access - fail immediately if credentials missing
+                self.connection = self.SmartConnect(api_key=live["api_key"])
+                client_code = live["client_code"]
+                pin = live["pin"]
+                totp = live["totp_token"]
                 session = self.connection.generateSession(client_code, pin, totp)
                 self.auth_token = session["data"]["jwtToken"]
                 self.feed_token = self.connection.getfeedToken()
@@ -108,7 +111,7 @@ class BrokerAdapter:
             self._buffer_tick(tick)
             return tick
         try:
-            ltp = self.connection.ltpData(self.exchange, self.symbol, self.instrument.get("instrument_token", ""))
+            ltp = self.connection.ltpData(self.exchange, self.symbol, self.instrument["instrument_token"])
             price = float(ltp["data"]["ltp"])
             tick = {"timestamp": now_ist(), "price": price, "volume": 1000}
             self.last_price = price
@@ -158,7 +161,7 @@ class BrokerAdapter:
         """Graceful SmartAPI logout (no effect in simulation)."""
         if self.connection and not self.paper_trading:
             try:
-                client_code = self.live_params.get("client_code")
+                client_code = self.live_params["client_code"]
                 self.connection.terminateSession(client_code)
                 logger.info("Broker session terminated.")
             except Exception as e:

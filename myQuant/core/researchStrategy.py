@@ -35,7 +35,11 @@ def extract_scalar_value(row, key, default=0, perf_logger=None):
     If perf_logger provided, emit a concise lifecycle event when extraction fails.
     """
     try:
-        value = row.get(key, default)
+        if key not in row:
+            if perf_logger:
+                perf_logger.session_start(f"Missing key '{key}', using default {default}")
+            return default
+        value = row[key]
         # If value is a Series, take the first element
         if isinstance(value, pd.Series):
             if len(value) > 0:

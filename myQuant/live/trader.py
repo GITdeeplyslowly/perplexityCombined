@@ -12,39 +12,62 @@ import time
 import yaml
 import logging
 import importlib
+from types import MappingProxyType
 from core.position_manager import PositionManager
 from live.broker_adapter import BrokerAdapter
 from utils.time_utils import now_ist
+from utils.config_helper import validate_config, freeze_config
 
 def load_config(config_path: str):
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
-def get_strategy(params):
+def get_strategy(config):
+    """Get strategy instance with frozen MappingProxyType config - strict validation"""
+    if not isinstance(config, MappingProxyType):
+        raise TypeError(f"get_strategy requires frozen MappingProxyType config, got {type(config)}")
+    
     strat_module = importlib.import_module("core.liveStrategy")
     ind_mod = importlib.import_module("core.indicators")
-    return strat_module.ModularIntradayStrategy(params, ind_mod)
+    return strat_module.ModularIntradayStrategy(config, ind_mod)
 
 class LiveTrader:
-    def __init__(self, config_path: str = None, config_dict: dict = None):
-        if config_dict is not None:
-            config = config_dict
+    def __init__(self, config_path: str = None, config_dict: dict = None, frozen_config: MappingProxyType = None):
+        """Initialize LiveTrader with frozen config validation
+        
+        Args:
+            config_path: Path to YAML config file (legacy)
+            config_dict: Raw dict config (legacy) 
+            frozen_config: MappingProxyType from GUI workflow (preferred)
+        """
+        # Accept frozen config directly from GUI (preferred path)
+        if frozen_config is not None:
+            if not isinstance(frozen_config, MappingProxyType):
+                raise TypeError(f"frozen_config must be MappingProxyType, got {type(frozen_config)}")
+            config = frozen_config
+        elif config_dict is not None:
+            # Legacy path - validate and freeze raw dict
+            validation = validate_config(config_dict)
+            if not validation.get('valid', False):
+                errors = validation.get('errors', ['Unknown validation error'])
+                raise ValueError(f"Invalid config: {errors}")
+            config = freeze_config(config_dict)
         else:
-            config = load_config(config_path or "config/strategy_config.yaml")
+            # File path - load, validate, freeze
+            raw_config = load_config(config_path or "config/strategy_config.yaml")
+            validation = validate_config(raw_config)
+            if not validation.get('valid', False):
+                errors = validation.get('errors', ['Unknown validation error'])
+                raise ValueError(f"Invalid config from {config_path}: {errors}")
+            config = freeze_config(raw_config)
+        
         self.config = config
-        strategy_params = config.get('strategy', config)
-        risk_params = config.get('risk', {})
-        session_params = config.get('session', {})
-        instrument_params = config.get('instrument', {})
-        capital = config.get('capital', {}).get('initial_capital', 100000)
-
-        self.strategy = get_strategy(strategy_params)
-        self.position_manager = PositionManager({
-            **strategy_params, **risk_params,
-            **instrument_params,
-            "initial_capital": capital,
-            "session": session_params,
-        })
+        
+        # Pass complete frozen config to strategy (not partial params)
+        self.strategy = get_strategy(config)
+        
+        # Pass frozen config directly to PositionManager (it expects MappingProxyType)
+        self.position_manager = PositionManager(config)
         self.broker = BrokerAdapter(config_path or "config/strategy_config.yaml")
         self.is_running = False
         self.active_position_id = None
@@ -119,9 +142,8 @@ class LiveTrader:
 
 if __name__ == "__main__":
     import argparse
-    from utils.logging_utils import setup_logging, get_log_file_path
-    log_file = get_log_file_path("forward_test")
-    setup_logging(log_level="INFO", log_file=log_file)
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     parser = argparse.ArgumentParser(description="Unified Forward Test Runner (Paper Trading)")
     parser.add_argument("--config", default="config/strategy_config.yaml", help="Config YAML path")
     args = parser.parse_args()
