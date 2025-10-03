@@ -15,7 +15,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "logfile": os.path.join("logs", "trading_bot.log"),
         # legacy alias kept for compatibility with older callers
         "log_file": os.path.join("logs", "trading_bot.log"),
-        "verbosity": "INFO",
         # Whether progress/logging of tick-level events is enabled
         "log_progress": False,
         # Maximum number of reason strings to include in signal logs (None == unlimited)
@@ -34,13 +33,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "strategy": {
         "strategy_version": 1,
         "use_ema_crossover": True,
-        "use_macd": True,
-        "use_vwap": True,
+        "use_macd": False,
+        "use_vwap": False,
         "use_rsi_filter": False,
         "use_htf_trend": False,
         "use_bollinger_bands": False,
         "use_stochastic": False,
-        "use_atr": True,
+        "use_atr": False,
+        "use_consecutive_green": True,
         "fast_ema": 9,
         "slow_ema": 21,
         "macd_fast": 12,
@@ -66,7 +66,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "base_sl_points": 15.0,
         "tp_points": [10.0, 25.0, 50.0, 100.0],
         "tp_percents": [0.25, 0.25, 0.25, 0.25],
-        "use_trail_stop": False,
+        "use_trail_stop": True,
         "trail_activation_points": 5.0,
         "trail_distance_points": 7.0,
         "risk_per_trade_percent": 1.0,

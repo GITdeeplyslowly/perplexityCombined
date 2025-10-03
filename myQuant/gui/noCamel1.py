@@ -7,6 +7,16 @@ Provides a comprehensive GUI for:
 - Starting/stopping live trading
 - Visualizing results
 - Managing configurations
+
+IMPORTANT: CollapsibleFrame Behavior Convention
+==============================================
+All indicators and risk components follow consistent checkbox behavior:
+- CHECKED (✓) = Functionality ENABLED + Parameters VISIBLE (expanded)
+- UNCHECKED (✗) = Functionality DISABLED + Parameters HIDDEN (collapsed)
+
+This ensures uniform user experience across all sections where the checkbox
+state directly controls both the logical enable/disable state AND the visual
+expand/collapse state of parameter sections.
 """
 import subprocess
 import os
@@ -44,12 +54,57 @@ frozen_cfg = freeze_config(base_cfg)
 setup_from_config(frozen_cfg)
 logger = logging.getLogger(__name__)
 
-# Add: canonical log filename from SSOT defaults (no hardcoded fallback outside defaults.py)
-# use 'logfile' canonical key from defaults.py
-LOG_FILENAME = DEFAULT_CONFIG.get('logging', {}).get('logfile')
-if not LOG_FILENAME:
-    # defensive fallback only for developer convenience (DEFAULT_CONFIG should supply this)
-    LOG_FILENAME = os.path.join('logs', 'trading.log')
+class CollapsibleFrame(ttk.Frame):
+    """Collapsible frame that can hide/show content"""
+    
+    def __init__(self, parent, title, collapsed=False, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.collapsed = collapsed
+        self.title = title
+        
+        # Create header frame with toggle button
+        self.header_frame = ttk.Frame(self)
+        self.header_frame.pack(fill='x', pady=(0,5))
+        
+        # Toggle button (arrow + title)  
+        self.toggle_var = tk.BooleanVar(value=not collapsed)
+        self.toggle_btn = ttk.Checkbutton(
+            self.header_frame,
+            text=f"{'▼' if not collapsed else '▶'} {self.title}",
+            variable=self.toggle_var,
+            command=self.toggle_content,
+            style='CollapsibleHeader.TCheckbutton'
+        )
+        self.toggle_btn.pack(side='left')
+        
+        # Enable keyboard activation with Enter/Space
+        self.toggle_btn.bind('<Return>', lambda e: self.toggle_content())
+        self.toggle_btn.bind('<space>', lambda e: self.toggle_content())
+        
+        # Content frame
+        self.content_frame = ttk.Frame(self)
+        if not collapsed:
+            self.content_frame.pack(fill='both', expand=True, padx=(20,0))
+    
+    def toggle_content(self):
+        """Toggle visibility of content frame"""
+        if self.toggle_var.get():
+            self.content_frame.pack(fill='both', expand=True, padx=(20,0))
+            self.toggle_btn.config(text=f"▼ {self.title}")
+        else:
+            self.content_frame.pack_forget()
+            self.toggle_btn.config(text=f"▶ {self.title}")
+    
+    def get_content_frame(self):
+        """Return the content frame for adding widgets"""
+        return self.content_frame
+
+# Add: canonical log filename from SSOT defaults (NO FALLBACKS)
+# FAIL FAST if logging.logfile is missing from DEFAULT_CONFIG
+try:
+    LOG_FILENAME = DEFAULT_CONFIG['logging']['logfile']
+except KeyError as e:
+    raise RuntimeError(f"DEFAULT_CONFIG missing required logging.logfile: {e}")
 
 def now_ist():
     """Return current time in India Standard Time"""
@@ -82,6 +137,7 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_use_bollinger_bands = tk.BooleanVar(value=strategy_config['use_bollinger_bands'])
         self.bt_use_stochastic = tk.BooleanVar(value=strategy_config['use_stochastic'])
         self.bt_use_atr = tk.BooleanVar(value=strategy_config['use_atr'])
+        self.bt_use_consecutive_green = tk.BooleanVar(value=strategy_config['use_consecutive_green'])
 
         self.bt_fast_ema = tk.StringVar(value=str(strategy_config['fast_ema']))
         self.bt_slow_ema = tk.StringVar(value=str(strategy_config['slow_ema']))
@@ -100,6 +156,10 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_trail_activation = tk.StringVar(value=str(risk_config['trail_activation_points']))
         self.bt_trail_distance = tk.StringVar(value=str(risk_config['trail_distance_points']))
         self.bt_risk_per_trade_percent = tk.StringVar(value=str(risk_config['risk_per_trade_percent']))
+        
+        # Risk component control variables
+        self.bt_use_stop_loss = tk.BooleanVar(value=True)  # Stop loss always enabled
+        self.bt_use_take_profit = tk.BooleanVar(value=True)  # Take profit always enabled
 
         tp_points = risk_config['tp_points']
         self.bt_tp_points = [tk.StringVar(value=str(pt)) for pt in tp_points]
@@ -124,7 +184,6 @@ class UnifiedTradingGUI(tk.Tk):
 
         # Data / misc placeholders
         self.bt_data_file = tk.StringVar(value="")
-        self.bt_current_price = tk.StringVar(value="0")
 
         # Logger UI placeholders
         self.logger_levels = {}
@@ -133,9 +192,9 @@ class UnifiedTradingGUI(tk.Tk):
         self.logger_tick_interval = tk.StringVar(value=str(logging_config['tick_log_interval']))
 
         # Noise filter placeholders (strategy section)
-        self.bt_noise_filter_enabled = tk.BooleanVar(value=strategy_config.get('noise_filter_enabled', False))
-        self.bt_noise_filter_percentage = tk.StringVar(value=strategy_config.get('noise_filter_percentage', 0.0) * 100)
-        self.bt_noise_filter_min_ticks = tk.StringVar(value=strategy_config.get('noise_filter_min_ticks', 1.0))
+        self.bt_noise_filter_enabled = tk.BooleanVar(value=strategy_config['noise_filter_enabled'])
+        self.bt_noise_filter_percentage = tk.StringVar(value=str(strategy_config['noise_filter_percentage'] * 100))
+        self.bt_noise_filter_min_ticks = tk.StringVar(value=str(strategy_config['noise_filter_min_ticks']))
 
         # mark placeholders ready
         self._widgets_initialized = True
@@ -304,6 +363,7 @@ class UnifiedTradingGUI(tk.Tk):
         config['strategy']['use_bollinger_bands'] = self.bt_use_bollinger_bands.get()
         config['strategy']['use_stochastic'] = self.bt_use_stochastic.get()
         config['strategy']['use_atr'] = self.bt_use_atr.get()
+        config['strategy']['use_consecutive_green'] = self.bt_use_consecutive_green.get()
 
         # Convert string inputs to appropriate types
         config['strategy']['fast_ema'] = int(self.bt_fast_ema.get())
@@ -320,20 +380,25 @@ class UnifiedTradingGUI(tk.Tk):
         config['strategy']['noise_filter_min_ticks'] = float(self.bt_noise_filter_min_ticks.get())
 
         # --- ADD THIS LINE ---
-        config['strategy']['strategy_version'] = DEFAULT_CONFIG['strategy'].get('strategy_version', 1)
+        config['strategy']['strategy_version'] = DEFAULT_CONFIG['strategy']['strategy_version']
         # ---------------------
 
         # Risk settings
-        config['risk']['base_sl_points'] = float(self.bt_base_sl_points.get())
+        config['risk']['base_sl_points'] = float(self.bt_base_sl_points.get()) if self.bt_use_stop_loss.get() else 0.0
         config['risk']['use_trail_stop'] = self.bt_use_trail_stop.get()
-        config['risk']['trail_activation_points'] = float(self.bt_trail_activation.get())
-        config['risk']['trail_distance_points'] = float(self.bt_trail_distance.get())
+        config['risk']['trail_activation_points'] = float(self.bt_trail_activation.get()) if self.bt_use_trail_stop.get() else 0.0
+        config['risk']['trail_distance_points'] = float(self.bt_trail_distance.get()) if self.bt_use_trail_stop.get() else 0.0
+        config['risk']['risk_per_trade_percent'] = float(self.bt_risk_per_trade_percent.get())
 
-        # Update take profit points and percentages
-        tp_points = [float(var.get()) for var in self.bt_tp_points]
-        tp_percents = [float(var.get())/100.0 for var in self.bt_tp_percents]  # Convert from percentage display
-        config['risk']['tp_points'] = tp_points
-        config['risk']['tp_percents'] = tp_percents
+        # Update take profit points and percentages (only if take profit is enabled)
+        if self.bt_use_take_profit.get():
+            tp_points = [float(var.get()) for var in self.bt_tp_points]
+            tp_percents = [float(var.get())/100.0 for var in self.bt_tp_percents]  # Convert from percentage display
+            config['risk']['tp_points'] = tp_points
+            config['risk']['tp_percents'] = tp_percents
+        else:
+            config['risk']['tp_points'] = []
+            config['risk']['tp_percents'] = []
 
         # Capital settings
         config['capital']['initial_capital'] = float(self.bt_initial_capital.get())
@@ -355,7 +420,7 @@ class UnifiedTradingGUI(tk.Tk):
 
         # --- Ensure logging config is propagated to backtest config ---
         # Include logging defaults from DEFAULT_CONFIG
-        config['logging'] = DEFAULT_CONFIG.get('logging', {}).copy()
+        config['logging'] = DEFAULT_CONFIG['logging'].copy()
  
         # Add logger level overrides from GUI
         log_level_overrides = {}
@@ -440,12 +505,12 @@ class UnifiedTradingGUI(tk.Tk):
         row = 0
 
         # Symbol Cache Section
-        ttk.Label(frame, text="Symbol Management", font=('Arial', 12, 'bold')).grid(row=row, column=0, columnspan=3, sticky="w", pady=(10,5))
+        ttk.Label(frame, text="Symbol Management", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=3, sticky="w", pady=(10,5))
         row += 1
 
         # Authentication Status
-        ttk.Label(frame, text="SmartAPI Authentication: Automatic (uses saved session)", font=('Arial', 9), foreground="blue").grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        ttk.Label(frame, text="Note: If no session exists, system will run in paper trading mode", font=('Arial', 8), foreground="gray").grid(row=row+1, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        ttk.Label(frame, text="SmartAPI Authentication: Automatic (uses saved session)", style='Info.TLabel').grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
+        ttk.Label(frame, text="Note: If no session exists, system will run in paper trading mode", style='Note.TLabel').grid(row=row+1, column=0, columnspan=3, sticky="w", padx=5, pady=2)
         row += 2
 
         ttk.Button(frame, text="Refresh Symbol Cache", command=self._ft_refresh_cache).grid(row=row, column=0, pady=3)
@@ -496,11 +561,11 @@ class UnifiedTradingGUI(tk.Tk):
 
 
         # Strategy Configuration
-        ttk.Label(frame, text="Strategy Configuration", font=('Arial', 12, 'bold')).grid(row=row, column=0, columnspan=3, sticky="w", pady=(15,5))
+        ttk.Label(frame, text="Strategy Configuration", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=3, sticky="w", pady=(15,5))
         row += 1
 
         # Indicator Toggles
-        ttk.Label(frame, text="Indicators:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=2)
+        ttk.Label(frame, text="Indicators:", style='GroupHeader.TLabel').grid(row=row, column=0, sticky="w", padx=5, pady=2)
         row += 1
 
         indicators_frame = ttk.Frame(frame)
@@ -526,7 +591,7 @@ class UnifiedTradingGUI(tk.Tk):
         row += 1
 
         # Parameters
-        ttk.Label(frame, text="Parameters:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
+        ttk.Label(frame, text="Parameters:", style='GroupHeader.TLabel').grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
         row += 1
 
         self.ft_param_frame = ttk.LabelFrame(self.ft_tab, text="Parameters")
@@ -681,181 +746,515 @@ class UnifiedTradingGUI(tk.Tk):
         self.notebook.pack(expand=1, fill="both")
 
     def _build_backtest_tab(self):
-        """Build the backtest tab with all controls"""
+        """Improved backtest tab with collapsible sections and better organization"""
         frame = self.bt_tab
-        frame.columnconfigure(1, weight=1)
-        row = 0
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(1, weight=1)
+        
+        # Create scrollable main area
+        canvas = tk.Canvas(frame)
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Bind mouse wheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        # Enable keyboard navigation
+        canvas.focus_set()
+        
+        # Pack scrollable area
+        canvas.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+        scrollbar.grid(row=1, column=1, sticky='ns')
+        
+        # Configure two-column layout
+        scrollable_frame.columnconfigure(0, weight=1)
+        scrollable_frame.columnconfigure(1, weight=1)
+        
+        # Create left and right column frames
+        left_column = ttk.Frame(scrollable_frame)
+        left_column.grid(row=0, column=0, sticky='nsew', padx=(0,5))
+        
+        right_column = ttk.Frame(scrollable_frame)
+        right_column.grid(row=0, column=1, sticky='nsew', padx=(5,0))
+        
+        # Build sections in two columns
+        # Left column: Data, Strategy, Results
+        self._build_data_section(left_column)
+        self._build_strategy_section(left_column)
+        self._build_results_section(left_column)
+        
+        # Right column: Risk, Instrument, Session
+        self._build_risk_section(right_column)
+        self._build_instrument_section(right_column)
+        self._build_session_section(right_column)
+        
+        # Action buttons at top
+        self._create_action_buttons(frame)
 
-        # Data file selection
-        ttk.Label(frame, text="Data File (.csv, .log):").grid(row=row, column=0, sticky="e")
-        self.bt_data_file = tk.StringVar()
-        ttk.Entry(frame, textvariable=self.bt_data_file, width=55).grid(row=row, column=1, padx=5, pady=5)
-        ttk.Button(frame, text="Browse", command=self._bt_browse_csv).grid(row=row, column=2, padx=5, pady=5)
-        row += 1
+    def _build_data_section(self, parent):
+        """Data file selection - always visible"""
+        section = CollapsibleFrame(parent, "Data & File Selection", collapsed=False)
+        content = section.get_content_frame()
+        content.columnconfigure(1, weight=1)
+        
+        # Data file row
+        ttk.Label(content, text="Data File:").grid(row=0, column=0, sticky='e', padx=(5,10), pady=5)
+        
+        file_frame = ttk.Frame(content)
+        file_frame.grid(row=0, column=1, sticky='ew', padx=(0,5), pady=5)
+        file_frame.columnconfigure(0, weight=1)
+        
+        ttk.Entry(file_frame, textvariable=self.bt_data_file).grid(row=0, column=0, sticky='ew', padx=(0,5))
+        ttk.Button(file_frame, text="Browse", command=self._bt_browse_csv).grid(row=0, column=1)
+        
+        section.pack(fill='x', pady=(0,10))
 
-        # Run Backtest button
-        ttk.Button(frame, text="Run Backtest", command=self._bt_run_backtest).grid(row=row, column=0, columnspan=3, pady=10)
-        row += 1
+    def _build_strategy_section(self, parent):
+        """Enhanced strategy configuration with grouped indicators and parameters"""
+        section = CollapsibleFrame(parent, "Strategy Configuration", collapsed=False)
+        content = section.get_content_frame()
+        
+        # Configure main grid layout
+        content.columnconfigure(1, weight=1)
+        
+        # Create standardized styles for all UI elements
+        self._create_ui_styles()
+        
+        # Build indicator groups with their parameters
+        self._build_trend_indicators_group(content)
+        self._build_momentum_indicators_group(content) 
+        self._build_volume_indicators_group(content)
+        self._build_pattern_indicators_group(content)
+        
+        section.pack(fill='x', pady=(0,10))
 
-        # Strategy Configuration
-        ttk.Label(frame, text="Strategy Configuration", font=('Arial', 12, 'bold')).grid(row=row, column=0, columnspan=3, sticky="w", pady=(15,5))
-        row += 1
-
-        # Indicator Toggles
-        ttk.Label(frame, text="Indicators:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=2)
-        row += 1
-        bt_indicators_frame = ttk.Frame(frame)
-        bt_indicators_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        ttk.Checkbutton(bt_indicators_frame, text="EMA Crossover", variable=self.bt_use_ema_crossover).grid(row=0, column=0, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="MACD", variable=self.bt_use_macd).grid(row=0, column=1, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="VWAP", variable=self.bt_use_vwap).grid(row=0, column=2, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="RSI Filter", variable=self.bt_use_rsi_filter).grid(row=0, column=3, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="HTF Trend", variable=self.bt_use_htf_trend).grid(row=1, column=0, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="Bollinger Bands", variable=self.bt_use_bollinger_bands).grid(row=1, column=1, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="Stochastic", variable=self.bt_use_stochastic).grid(row=1, column=2, sticky="w", padx=5)
-        ttk.Checkbutton(bt_indicators_frame, text="ATR", variable=self.bt_use_atr).grid(row=1, column=3, sticky="w", padx=5)
-        row += 1
-
-        # Parameters
-        ttk.Label(frame, text="Parameters:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        bt_params_frame = ttk.Frame(frame)
-        bt_params_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-
+    def _build_trend_indicators_group(self, parent):
+        """Trend indicators with their parameters grouped together"""
+        row_start = 0
+        
+        # Group header
+        ttk.Label(parent, text="📈 TREND INDICATORS", 
+                 style='GroupHeader.TLabel').grid(row=row_start, column=0, columnspan=6, 
+                                                 sticky='w', pady=(10,5))
+        
+        # EMA Crossover with parameters
+        row = row_start + 1
+        ema_section = CollapsibleFrame(parent, "EMA Crossover", collapsed=not self.bt_use_ema_crossover.get())
+        ema_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
+        ema_frame = ema_section.get_content_frame()
+        ema_frame.columnconfigure((1,3), weight=1)
+        
+        # Connect CollapsibleFrame toggle to indicator enable/disable
+        ema_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('ema_crossover', ema_section))
+        
         # EMA Parameters
-        ttk.Label(bt_params_frame, text="Fast EMA:").grid(row=0, column=0, sticky="e", padx=2)
-        ttk.Entry(bt_params_frame, textvariable=self.bt_fast_ema, width=8).grid(row=0, column=1, padx=2)
-
-        ttk.Label(bt_params_frame, text="Slow EMA:").grid(row=0, column=2, sticky="e", padx=2)
-        ttk.Entry(bt_params_frame, textvariable=self.bt_slow_ema, width=8).grid(row=0, column=3, padx=2)
-
+        ttk.Label(ema_frame, text="Fast Period:", style='Parameter.TLabel').grid(row=0, column=0, sticky='e', padx=(0,5))
+        self.ema_fast_entry = ttk.Entry(ema_frame, textvariable=self.bt_fast_ema, width=8, style='Standard.TEntry')
+        self.ema_fast_entry.grid(row=0, column=1, sticky='w', padx=(0,15))
+        
+        ttk.Label(ema_frame, text="Slow Period:", style='Parameter.TLabel').grid(row=0, column=2, sticky='e', padx=(0,5))
+        self.ema_slow_entry = ttk.Entry(ema_frame, textvariable=self.bt_slow_ema, width=8, style='Standard.TEntry')
+        self.ema_slow_entry.grid(row=0, column=3, sticky='w')
+        
+        # Store section reference for collapsing
+        self.ema_crossover_section = ema_section
+        
+        # MACD with parameters
+        row += 1
+        macd_section = CollapsibleFrame(parent, "MACD", collapsed=not self.bt_use_macd.get())
+        macd_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
+        macd_frame = macd_section.get_content_frame()
+        macd_frame.columnconfigure((1,3,5), weight=1)
+        
+        # Connect CollapsibleFrame toggle to indicator enable/disable
+        macd_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('macd', macd_section))
+        
         # MACD Parameters
-        ttk.Label(bt_params_frame, text="MACD Fast:").grid(row=1, column=0, sticky="e", padx=2)
-        ttk.Entry(bt_params_frame, textvariable=self.bt_macd_fast, width=8).grid(row=1, column=1, padx=2)
+        ttk.Label(macd_frame, text="Fast:", style='Parameter.TLabel').grid(row=0, column=0, sticky='e', padx=(0,5))
+        self.macd_fast_entry = ttk.Entry(macd_frame, textvariable=self.bt_macd_fast, width=6, style='Standard.TEntry')
+        self.macd_fast_entry.grid(row=0, column=1, sticky='w', padx=(0,10))
+        
+        ttk.Label(macd_frame, text="Slow:", style='Parameter.TLabel').grid(row=0, column=2, sticky='e', padx=(0,5))
+        self.macd_slow_entry = ttk.Entry(macd_frame, textvariable=self.bt_macd_slow, width=6, style='Standard.TEntry')
+        self.macd_slow_entry.grid(row=0, column=3, sticky='w', padx=(0,10))
+        
+        ttk.Label(macd_frame, text="Signal:", style='Parameter.TLabel').grid(row=0, column=4, sticky='e', padx=(0,5))
+        self.macd_signal_entry = ttk.Entry(macd_frame, textvariable=self.bt_macd_signal, width=6, style='Standard.TEntry')
+        self.macd_signal_entry.grid(row=0, column=5, sticky='w')
+        
+        # Store section reference for collapsing
+        self.macd_section = macd_section
 
-        ttk.Label(bt_params_frame, text="MACD Slow:").grid(row=1, column=2, sticky="e", padx=2)
-        ttk.Entry(bt_params_frame, textvariable=self.bt_macd_slow, width=8).grid(row=1, column=3, padx=2)
-
-        ttk.Label(bt_params_frame, text="MACD Signal:").grid(row=1, column=4, sticky="e", padx=2)
-        ttk.Entry(bt_params_frame, textvariable=self.bt_macd_signal, width=8).grid(row=1, column=5, padx=2)
-
+    def _build_momentum_indicators_group(self, parent):
+        """Momentum indicators with their parameters"""
+        # Find next available row
+        used_rows = [int(child.grid_info()['row']) for child in parent.grid_slaves() if child.grid_info()]
+        row_start = max(used_rows) + 1 if used_rows else 0
+        
+        # Group header
+        ttk.Label(parent, text="⚡ MOMENTUM INDICATORS", 
+                 style='GroupHeader.TLabel').grid(row=row_start, column=0, columnspan=6, 
+                                                 sticky='w', pady=(10,5))
+        
+        # RSI Filter with parameters
+        row = row_start + 1
+        rsi_section = CollapsibleFrame(parent, "RSI Filter", collapsed=not self.bt_use_rsi_filter.get())
+        rsi_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
+        rsi_frame = rsi_section.get_content_frame()
+        rsi_frame.columnconfigure((1,3,5), weight=1)
+        
+        # Connect CollapsibleFrame toggle to indicator enable/disable
+        rsi_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('rsi_filter', rsi_section))
+        
         # RSI Parameters
-        ttk.Label(bt_params_frame, text="RSI Length:").grid(row=2, column=0, sticky="e", padx=2)
-        ttk.Entry(bt_params_frame, textvariable=self.bt_rsi_length, width=8).grid(row=2, column=1, padx=2)
+        ttk.Label(rsi_frame, text="Period:", style='Parameter.TLabel').grid(row=0, column=0, sticky='e', padx=(0,5))
+        self.rsi_length_entry = ttk.Entry(rsi_frame, textvariable=self.bt_rsi_length, width=6, style='Standard.TEntry')
+        self.rsi_length_entry.grid(row=0, column=1, sticky='w', padx=(0,10))
+        
+        ttk.Label(rsi_frame, text="Oversold:", style='Parameter.TLabel').grid(row=0, column=2, sticky='e', padx=(0,5))
+        self.rsi_oversold_entry = ttk.Entry(rsi_frame, textvariable=self.bt_rsi_oversold, width=6, style='Standard.TEntry')
+        self.rsi_oversold_entry.grid(row=0, column=3, sticky='w', padx=(0,10))
+        
+        ttk.Label(rsi_frame, text="Overbought:", style='Parameter.TLabel').grid(row=0, column=4, sticky='e', padx=(0,5))
+        self.rsi_overbought_entry = ttk.Entry(rsi_frame, textvariable=self.bt_rsi_overbought, width=6, style='Standard.TEntry')
+        self.rsi_overbought_entry.grid(row=0, column=5, sticky='w')
+        
+        # Store section reference for collapsing
+        self.rsi_filter_section = rsi_section
 
-        ttk.Label(bt_params_frame, text="RSI Oversold:").grid(row=2, column=2, sticky="e", padx=2)
-        ttk.Entry(bt_params_frame, textvariable=self.bt_rsi_oversold, width=8).grid(row=2, column=3, padx=2)
+    def _build_volume_indicators_group(self, parent):
+        """Volume-based indicators"""
+        used_rows = [int(child.grid_info()['row']) for child in parent.grid_slaves() if child.grid_info()]
+        row_start = max(used_rows) + 1 if used_rows else 0
+        
+        # Group header  
+        ttk.Label(parent, text="📊 VOLUME INDICATORS", 
+                 style='GroupHeader.TLabel').grid(row=row_start, column=0, columnspan=6, 
+                                                 sticky='w', pady=(10,5))
+        
+        # VWAP (no parameters needed)
+        row = row_start + 1
+        vwap_section = CollapsibleFrame(parent, "Volume Weighted Average Price", collapsed=not self.bt_use_vwap.get())
+        vwap_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
+        vwap_frame = vwap_section.get_content_frame()
+        
+        # Connect CollapsibleFrame toggle to indicator enable/disable
+        vwap_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('vwap', vwap_section))
+        
+        ttk.Label(vwap_frame, text="No parameters required for VWAP", 
+                 style='Parameter.TLabel', foreground='grey').grid(row=0, column=0, sticky='w', pady=5)
+        
+        # Store section reference for collapsing
+        self.vwap_section = vwap_section
 
-        ttk.Label(bt_params_frame, text="RSI Overbought:").grid(row=2, column=4, sticky="e", padx=2)
-        ttk.Entry(bt_params_frame, textvariable=self.bt_rsi_overbought, width=8).grid(row=2, column=5, padx=2)
+    def _build_pattern_indicators_group(self, parent):
+        """Pattern recognition indicators"""
+        used_rows = [int(child.grid_info()['row']) for child in parent.grid_slaves() if child.grid_info()]
+        row_start = max(used_rows) + 1 if used_rows else 0
+        
+        # Group header
+        ttk.Label(parent, text="🔄 PATTERN INDICATORS", 
+                 style='GroupHeader.TLabel').grid(row=row_start, column=0, columnspan=6, 
+                                                 sticky='w', pady=(10,5))
+        
+        # Consecutive Green Tick Indicator (NEW - as requested)
+        row = row_start + 1
+        green_section = CollapsibleFrame(parent, "Consecutive Green Tick Pattern", collapsed=not self.bt_use_consecutive_green.get())
+        green_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
+        green_frame = green_section.get_content_frame()
+        green_frame.columnconfigure((1,3), weight=1)
+        
+        # Connect CollapsibleFrame toggle to indicator enable/disable
+        green_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('consecutive_green', green_section))
+        
+        # Parameters for consecutive green (existing + noise filter)
+        ttk.Label(green_frame, text="Required Green Bars:", style='Parameter.TLabel').grid(row=0, column=0, sticky='e', padx=(0,5))
+        self.green_bars_entry = ttk.Entry(green_frame, textvariable=self.bt_consecutive_green_bars, width=6, style='Standard.TEntry')
+        self.green_bars_entry.grid(row=0, column=1, sticky='w', padx=(0,15))
+        
+        # Noise Filter Parameters (as requested - specifically for consecutive green tick)
+        ttk.Label(green_frame, text="Noise Filter (%):", style='Parameter.TLabel').grid(row=0, column=2, sticky='e', padx=(0,5))
+        self.noise_filter_entry = ttk.Entry(green_frame, textvariable=self.bt_noise_filter_percentage, width=8, style='Standard.TEntry')
+        self.noise_filter_entry.grid(row=0, column=3, sticky='w')
+        
+        # Second row for additional noise filter parameters
+        ttk.Label(green_frame, text="Min Ticks:", style='Parameter.TLabel').grid(row=1, column=0, sticky='e', padx=(0,5))
+        self.noise_ticks_entry = ttk.Entry(green_frame, textvariable=self.bt_noise_filter_min_ticks, width=6, style='Standard.TEntry')
+        self.noise_ticks_entry.grid(row=1, column=1, sticky='w', padx=(0,15))
+        
+        ttk.Checkbutton(green_frame, text="Enable Noise Filter", 
+                       variable=self.bt_noise_filter_enabled).grid(row=1, column=2, columnspan=2, sticky='w', padx=(0,5))
+        
+        # Store section reference for collapsing
+        self.consecutive_green_section = green_section
 
-        # HTF Parameters
-        ttk.Label(bt_params_frame, text="HTF Period:").grid(row=3, column=0, sticky="e", padx=2)
-        ttk.Entry(bt_params_frame, textvariable=self.bt_htf_period, width=8).grid(row=3, column=1, padx=2)
-        # Consecutive Green Bars
-        ttk.Label(bt_params_frame, text="Green Bars Req:").grid(row=3, column=2, sticky="e", padx=2)
-        ttk.Entry(bt_params_frame, textvariable=self.bt_consecutive_green_bars, width=8).grid(row=3, column=3, padx=2)
-        row += 1
+    def _build_risk_section(self, parent):
+        """Risk management with collapsible components"""
+        main_section = CollapsibleFrame(parent, "Risk Management", collapsed=False)
+        content = main_section.get_content_frame()
+        
+        # Build individual risk components
+        self._build_stop_loss_section(content)
+        self._build_take_profit_section(content)
+        self._build_trailing_stop_section(content)
+        
+        main_section.pack(fill='x', pady=(0,10))
 
-        # Risk Management
-        ttk.Label(frame, text="Risk Management:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        bt_risk_frame = ttk.Frame(frame)
-        bt_risk_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        row += 1
+    def _build_stop_loss_section(self, parent):
+        """Stop Loss component"""
+        # Create checkbox variable for stop loss (always enabled in this system)
+        if not hasattr(self, 'bt_use_stop_loss'):
+            self.bt_use_stop_loss = tk.BooleanVar(value=True)
+        
+        sl_section = CollapsibleFrame(parent, "Stop Loss", collapsed=not self.bt_use_stop_loss.get())
+        sl_section.pack(fill='x', pady=(5,5))
+        sl_frame = sl_section.get_content_frame()
+        sl_frame.columnconfigure(1, weight=1)
+        
+        # Connect CollapsibleFrame toggle to component enable/disable
+        sl_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('stop_loss', sl_section))
+        
+        # Stop Loss Parameters
+        ttk.Label(sl_frame, text="Stop Loss Points:", style='Parameter.TLabel').grid(row=0, column=0, sticky='e', padx=(0,5))
+        self.sl_points_entry = ttk.Entry(sl_frame, textvariable=self.bt_base_sl_points, width=12, style='Standard.TEntry')
+        self.sl_points_entry.grid(row=0, column=1, sticky='w', padx=(0,5))
+        
+        ttk.Label(sl_frame, text="Risk % per Trade:", style='Parameter.TLabel').grid(row=1, column=0, sticky='e', padx=(0,5))
+        self.risk_percent_entry = ttk.Entry(sl_frame, textvariable=self.bt_risk_per_trade_percent, width=12, style='Standard.TEntry')
+        self.risk_percent_entry.grid(row=1, column=1, sticky='w', padx=(0,5))
+        
+        # Store section reference
+        self.stop_loss_section = sl_section
 
-        ttk.Label(bt_risk_frame, text="Stop Loss Points:").grid(row=0, column=0, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_base_sl_points, width=8).grid(row=0, column=1, padx=2)
+    def _build_take_profit_section(self, parent):
+        """Take Profit component"""
+        # Create checkbox variable for take profit 
+        if not hasattr(self, 'bt_use_take_profit'):
+            self.bt_use_take_profit = tk.BooleanVar(value=True)
+        
+        tp_section = CollapsibleFrame(parent, "Take Profit", collapsed=not self.bt_use_take_profit.get())
+        tp_section.pack(fill='x', pady=(5,5))
+        tp_frame = tp_section.get_content_frame()
+        tp_frame.columnconfigure((1,3), weight=1)
+        
+        # Connect CollapsibleFrame toggle to component enable/disable
+        tp_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('take_profit', tp_section))
+        
+        # Take Profit Parameters
+        ttk.Label(tp_frame, text="TP1 Points:", style='Parameter.TLabel').grid(row=0, column=0, sticky='e', padx=(0,5))
+        self.tp1_entry = ttk.Entry(tp_frame, textvariable=self.bt_tp_points[0], width=8, style='Standard.TEntry')
+        self.tp1_entry.grid(row=0, column=1, sticky='w', padx=(0,10))
+        
+        ttk.Label(tp_frame, text="TP2 Points:", style='Parameter.TLabel').grid(row=0, column=2, sticky='e', padx=(0,5))
+        self.tp2_entry = ttk.Entry(tp_frame, textvariable=self.bt_tp_points[1], width=8, style='Standard.TEntry')
+        self.tp2_entry.grid(row=0, column=3, sticky='w')
+        
+        ttk.Label(tp_frame, text="TP3 Points:", style='Parameter.TLabel').grid(row=1, column=0, sticky='e', padx=(0,5))
+        self.tp3_entry = ttk.Entry(tp_frame, textvariable=self.bt_tp_points[2], width=8, style='Standard.TEntry')
+        self.tp3_entry.grid(row=1, column=1, sticky='w', padx=(0,10))
+        
+        ttk.Label(tp_frame, text="TP4 Points:", style='Parameter.TLabel').grid(row=1, column=2, sticky='e', padx=(0,5))
+        self.tp4_entry = ttk.Entry(tp_frame, textvariable=self.bt_tp_points[3], width=8, style='Standard.TEntry')
+        self.tp4_entry.grid(row=1, column=3, sticky='w')
+        
+        # Store section reference
+        self.take_profit_section = tp_section
 
-        ttk.Label(bt_risk_frame, text="TP1 Points:").grid(row=0, column=2, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[0], width=8).grid(row=0, column=3, padx=2)
-        ttk.Label(bt_risk_frame, text="TP2 Points:").grid(row=0, column=4, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[1], width=8).grid(row=0, column=5, padx=2)
-        ttk.Label(bt_risk_frame, text="TP3 Points:").grid(row=1, column=0, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[2], width=8).grid(row=1, column=1, padx=2)
+    def _build_trailing_stop_section(self, parent):
+        """Trailing Stop Loss component"""
+        trail_section = CollapsibleFrame(parent, "Trailing Stop Loss", collapsed=not self.bt_use_trail_stop.get())
+        trail_section.pack(fill='x', pady=(5,5))
+        trail_frame = trail_section.get_content_frame()
+        trail_frame.columnconfigure((1,3), weight=1)
+        
+        # Connect CollapsibleFrame toggle to component enable/disable
+        trail_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('trail_stop', trail_section))
+        
+        # Trailing Stop Parameters
+        ttk.Label(trail_frame, text="Trail Activation:", style='Parameter.TLabel').grid(row=0, column=0, sticky='e', padx=(0,5))
+        self.trail_activation_entry = ttk.Entry(trail_frame, textvariable=self.bt_trail_activation, width=12, style='Standard.TEntry')
+        self.trail_activation_entry.grid(row=0, column=1, sticky='w', padx=(0,10))
+        
+        ttk.Label(trail_frame, text="Trail Distance:", style='Parameter.TLabel').grid(row=0, column=2, sticky='e', padx=(0,5))
+        self.trail_distance_entry = ttk.Entry(trail_frame, textvariable=self.bt_trail_distance, width=12, style='Standard.TEntry')
+        self.trail_distance_entry.grid(row=0, column=3, sticky='w')
+        
+        # Store section reference
+        self.trailing_stop_section = trail_section
 
-        ttk.Label(bt_risk_frame, text="TP4 Points:").grid(row=1, column=2, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_tp_points[3], width=8).grid(row=1, column=3, padx=2)
+    def _build_instrument_section(self, parent):
+        """Instrument and capital settings - collapsible"""  
+        section = CollapsibleFrame(parent, "Instrument & Capital", collapsed=False)
+        content = section.get_content_frame()
+        content.columnconfigure(1, weight=1)
+        content.columnconfigure(3, weight=1)
+        
+        # Instrument and capital settings
+        settings = [
+            ("Symbol:", self.bt_symbol, 15),
+            ("Exchange:", self.bt_exchange, 10),
+            ("Lot Size:", self.bt_lot_size, 8),
+            ("Initial Capital:", self.bt_initial_capital, 15)
+        ]
+        
+        for i, (label, var, width) in enumerate(settings):
+            row, col_pair = divmod(i, 2)
+            base_col = col_pair * 2
+            ttk.Label(content, text=label).grid(row=row, column=base_col, sticky='e', padx=5, pady=2)
+            ttk.Entry(content, textvariable=var, width=width).grid(row=row, column=base_col+1, sticky='w', padx=(0,15), pady=2)
+        
+        section.pack(fill='x', pady=(0,10))
 
-        ttk.Checkbutton(bt_risk_frame, text="Use Trailing Stop", variable=self.bt_use_trail_stop).grid(row=1, column=4, columnspan=2, sticky="w", padx=5)
+    def _build_session_section(self, parent):
+        """Session timing - collapsible"""
+        section = CollapsibleFrame(parent, "Session Settings", collapsed=True)
+        content = section.get_content_frame()
+        
+        # Time settings
+        time_frame = ttk.Frame(content)
+        time_frame.pack(fill='x', pady=5)
+        
+        ttk.Label(time_frame, text="Start:").grid(row=0, column=0, sticky='e', padx=5)
+        ttk.Entry(time_frame, textvariable=self.bt_session_start_hour, width=4).grid(row=0, column=1, padx=2)
+        ttk.Label(time_frame, text=":").grid(row=0, column=2)
+        ttk.Entry(time_frame, textvariable=self.bt_session_start_min, width=4).grid(row=0, column=3, padx=2)
+        
+        ttk.Label(time_frame, text="End:").grid(row=0, column=4, sticky='e', padx=(15,5))
+        ttk.Entry(time_frame, textvariable=self.bt_session_end_hour, width=4).grid(row=0, column=5, padx=2)
+        ttk.Label(time_frame, text=":").grid(row=0, column=6)
+        ttk.Entry(time_frame, textvariable=self.bt_session_end_min, width=4).grid(row=0, column=7, padx=2)
+        
+        ttk.Checkbutton(content, text="Intraday Trading", variable=self.bt_is_intraday).pack(anchor='w', pady=(10,0))
+        
+        section.pack(fill='x', pady=(0,10))
 
-        ttk.Label(bt_risk_frame, text="Trail Activation Points:").grid(row=2, column=0, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_trail_activation, width=8).grid(row=2, column=1, padx=2)
+    def _build_results_section(self, parent):
+        """Results display - always visible"""
+        section = CollapsibleFrame(parent, "Backtest Results", collapsed=True)
+        content = section.get_content_frame()
+        
+        # Results text box
+        self.bt_result_box = tk.Text(content, height=15, state='disabled', wrap='word')
+        results_scroll = ttk.Scrollbar(content, orient="vertical", command=self.bt_result_box.yview)
+        self.bt_result_box.configure(yscrollcommand=results_scroll.set)
+        
+        self.bt_result_box.pack(side='left', fill='both', expand=True)
+        results_scroll.pack(side='right', fill='y')
+        
+        section.pack(fill='both', expand=True, pady=(0,10))
 
-        ttk.Label(bt_risk_frame, text="Trail Distance Points:").grid(row=2, column=2, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_trail_distance, width=8).grid(row=2, column=3, padx=2)
+    def _create_ui_styles(self):
+        """Create comprehensive standardized styles for all UI elements"""
+        style = ttk.Style()
+        
+        # === FONT STANDARDS ===
+        # Main title: 12pt bold (section headers)
+        # Subheading: 10pt bold (group headers, indicator names) 
+        # Body text: 9pt normal (labels, descriptions)
+        # Input fields: 9pt normal (entries, consistent with labels)
+        # Small text: 8pt normal (notes, hints)
+        
+        # === SECTION HEADERS ===
+        style.configure('SectionHeader.TLabel', 
+                       font=('Segoe UI', 12, 'bold'), 
+                       foreground='navy')
+        
+        # === GROUP HEADERS ===  
+        style.configure('GroupHeader.TLabel', 
+                       font=('Segoe UI', 10, 'bold'), 
+                       foreground='darkblue')
+        
+        # === INDICATOR LABELS ===
+        style.configure('Indicator.TLabel', 
+                       font=('Segoe UI', 10, 'bold'), 
+                       foreground='darkgreen')
+        
+        # === STANDARD LABELS ===
+        style.configure('Standard.TLabel', 
+                       font=('Segoe UI', 9), 
+                       foreground='black')
+        
+        # === PARAMETER LABELS ===
+        style.configure('Parameter.TLabel', 
+                       font=('Segoe UI', 9), 
+                       foreground='black')
+        
+        # === INPUT ENTRIES ===
+        style.configure('Standard.TEntry', 
+                       font=('Segoe UI', 9))
+        
+        # === BUTTONS ===
+        style.configure('Standard.TButton', 
+                       font=('Segoe UI', 9))
+        
+        # === CHECKBUTTONS ===
+        style.configure('Standard.TCheckbutton', 
+                       font=('Segoe UI', 9))
+        
+        # === COLLAPSIBLE FRAME HEADERS ===
+        style.configure('CollapsibleHeader.TCheckbutton', 
+                       font=('Segoe UI', 11, 'bold'),
+                       foreground='darkslategray')
+        
+        # === SMALL TEXT/NOTES ===
+        style.configure('Note.TLabel', 
+                       font=('Segoe UI', 8), 
+                       foreground='gray')
+        
+        # === INFO TEXT ===
+        style.configure('Info.TLabel', 
+                       font=('Segoe UI', 8), 
+                       foreground='blue')
+        
+        # === DISABLED ELEMENTS ===
+        style.configure('Disabled.TLabel', 
+                       font=('Segoe UI', 9), 
+                       foreground='gray')
+        
+        style.configure('Disabled.TEntry', 
+                       font=('Segoe UI', 9),
+                       fieldbackground='lightgray')
 
-        ttk.Label(bt_risk_frame, text="Risk % per Trade:").grid(row=2, column=4, sticky="e", padx=2)
-        ttk.Entry(bt_risk_frame, textvariable=self.bt_risk_per_trade_percent, width=8).grid(row=2, column=5, padx=2)
-        row += 1
+    def _sync_collapsible_with_indicator(self, group_name, section):
+        """Sync CollapsibleFrame state with indicator enable/disable variable"""
+        # Get the appropriate variable name
+        if group_name == 'consecutive_green':
+            var_name = 'bt_use_consecutive_green'
+        elif group_name in ['stop_loss', 'take_profit']:
+            var_name = f'bt_use_{group_name}'
+        elif group_name == 'trail_stop':
+            var_name = 'bt_use_trail_stop'
+        else:
+            var_name = f'bt_use_{group_name}'
+        
+        # Get the checkbox variable
+        checkbox_var = getattr(self, var_name)
+        
+        # Sync the checkbox variable with the CollapsibleFrame state
+        # When section is expanded (toggle_var = True), indicator should be enabled
+        # When section is collapsed (toggle_var = False), indicator should be disabled
+        checkbox_var.set(section.toggle_var.get())
+        
+        # Call the original toggle_content to handle the expand/collapse
+        section.toggle_content()
 
-        # --- Instrument Settings ---
-        ttk.Label(frame, text="Instrument Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        instrument_frame = ttk.Frame(frame)
-        instrument_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        ttk.Label(instrument_frame, text="Symbol:").grid(row=0, column=0, sticky="e", padx=2)
-        ttk.Entry(instrument_frame, textvariable=self.bt_symbol, width=16).grid(row=0, column=1, padx=2)
-        ttk.Label(instrument_frame, text="Exchange:").grid(row=0, column=2, sticky="e", padx=2)
-        ttk.Entry(instrument_frame, textvariable=self.bt_exchange, width=10).grid(row=0, column=3, padx=2)
-        ttk.Label(instrument_frame, text="Lot Size:").grid(row=0, column=4, sticky="e", padx=2)
-        ttk.Entry(instrument_frame, textvariable=self.bt_lot_size, width=8).grid(row=0, column=5, padx=2)
-        row += 1
-
-        # --- Capital Settings ---
-        ttk.Label(frame, text="Capital Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        capital_frame = ttk.Frame(frame)
-        capital_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        ttk.Label(capital_frame, text="Initial Capital:").grid(row=0, column=0, sticky="e", padx=2)
-        ttk.Entry(capital_frame, textvariable=self.bt_initial_capital, width=14).grid(row=0, column=1, padx=2)
-        row += 1
-
-        # --- Session Settings ---
-        ttk.Label(frame, text="Session Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10,2))
-        row += 1
-        session_frame = ttk.Frame(frame)
-        session_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        ttk.Label(session_frame, text="Start (HH:MM):").grid(row=0, column=0, sticky="e", padx=2)
-        ttk.Entry(session_frame, textvariable=self.bt_session_start_hour, width=4).grid(row=0, column=1, padx=1)
-        ttk.Label(session_frame, text=":").grid(row=0, column=2)
-        ttk.Entry(session_frame, textvariable=self.bt_session_start_min, width=4).grid(row=0, column=3, padx=1)
-        ttk.Label(session_frame, text="End (HH:MM):").grid(row=0, column=4, sticky="e", padx=2)
-        ttk.Entry(session_frame, textvariable=self.bt_session_end_hour, width=4).grid(row=0, column=5, padx=1)
-        ttk.Label(session_frame, text=":").grid(row=0, column=6)
-        ttk.Entry(session_frame, textvariable=self.bt_session_end_min, width=4).grid(row=0, column=7, padx=1)
-        ttk.Label(session_frame, text="Intraday:").grid(row=1, column=0, sticky="e", padx=2)
-        ttk.Checkbutton(session_frame, variable=self.bt_is_intraday).grid(row=1, column=1, sticky="w", padx=2)
-        row += 1
-
-        # Results area
-        self.bt_result_box = tk.Text(frame, height=20, state="disabled", wrap="word")
-        self.bt_result_box.grid(row=row, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
-        frame.rowconfigure(row, weight=1)
-
-        # Noise Filter Section
-        ttk.Label(frame, text="Noise Filter Settings:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky="w", padx=5, pady=(10, 0))
-        row += 1
-
-        noise_filter_frame = ttk.Frame(frame)
-        noise_filter_frame.grid(row=row, column=0, columnspan=3, sticky="w", padx=5, pady=2)
-        row += 1
-
-        # Noise Filter Enable Checkbox
-        ttk.Checkbutton(
-            noise_filter_frame, 
-            text="Enable Noise Filter", 
-            variable=self.bt_noise_filter_enabled
-        ).grid(row=0, column=0, sticky="w", padx=5)
-
-        # Noise Filter Percentage
-        ttk.Label(noise_filter_frame, text="Filter Threshold (%):").grid(row=0, column=1, sticky="e", padx=5)
-        ttk.Entry(noise_filter_frame, textvariable=self.bt_noise_filter_percentage, width=10).grid(row=0, column=2, sticky="w", padx=5)
-
-        # Min Ticks
-        ttk.Label(noise_filter_frame, text="Min Ticks:").grid(row=0, column=3, sticky="e", padx=5)
-        ttk.Entry(noise_filter_frame, textvariable=self.bt_noise_filter_min_ticks, width=10).grid(row=0, column=4, sticky="w", padx=5)
-        row += 1
+    def _create_action_buttons(self, parent):
+        """Action buttons at top of interface"""
+        button_frame = ttk.Frame(parent)
+        button_frame.grid(row=0, column=0, columnspan=2, sticky='ew', pady=(5,10))
+        
+        # Run button
+        ttk.Button(button_frame, text="Run Backtest", command=self._bt_run_backtest).pack(side='left')
 
     def _build_log_tab(self):
         """Build the logging tab"""

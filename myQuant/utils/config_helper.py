@@ -11,10 +11,7 @@ import os
 
 logger = logging.getLogger(__name__)
 
-try:
-    from config.defaults import DEFAULT_CONFIG
-except Exception:
-    DEFAULT_CONFIG = {}
+from config.defaults import DEFAULT_CONFIG
 
 MISSING = object()
 

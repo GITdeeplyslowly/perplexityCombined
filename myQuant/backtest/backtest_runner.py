@@ -94,7 +94,7 @@ def get_strategy(config: dict):
     
     # FIXED: Maintain consistent nested structure, no more flattening
     logger.info("NESTED CONFIG: Using consistent nested configuration structure")
-    logger.info(f"Strategy parameters found: {list(config.get('strategy', {}).keys())}")
+    logger.info(f"Strategy parameters found: {list(config['strategy'].keys())}")
      
     # FIXED: researchStrategy only takes frozen_config, not indicators module
     return strat_mod.ModularIntradayStrategy(config)
@@ -209,11 +209,11 @@ class BacktestRunner:
         config = self.config
         
         # Extract parameters
-        strategy_params = config.get('strategy', {})
-        session_params = config.get('session', {})
-        risk_params = config.get('risk', {})
-        instrument_params = config.get('instrument', {})
-        capital = config.get('capital', {}).get('initial_capital', 100000)
+        strategy_params = config['strategy']
+        session_params = config['session']
+        risk_params = config['risk']
+        instrument_params = config['instrument']
+        capital = config['capital']['initial_capital']
         
         # Add a default for the symbol if it's missing
         if 'symbol' not in instrument_params:
@@ -227,7 +227,7 @@ class BacktestRunner:
                 logger.info(f"Section '{section}': {len(params)} parameters")
      
         # Ensure session parameters are consistent
-        session_params = config.get("session", {})
+        session_params = config["session"]
         if "intraday_end_min" not in session_params:
             session_params["intraday_end_min"] = 30  # Consistent with NSE close time
         if "exit_before_close" not in session_params:
@@ -297,7 +297,7 @@ class BacktestRunner:
         })
 
         # Get session configuration
-        session_config = config.get('session', {})
+        session_config = config['session']
         
         # Apply user-defined session filtering before processing
         if df_normalized is not None and not df_normalized.empty:
@@ -759,21 +759,21 @@ def add_indicator_signals_to_chunk(chunk_df: pd.DataFrame, config: Dict[str, Any
         chunk_df = chunk_df.join(macd_signals)
     
     # VWAP Signals
-    if config.get('use_vwap', False) and 'vwap' in chunk_df.columns:
+    if config['use_vwap'] and 'vwap' in chunk_df.columns:
         vwap_signals = calculate_vwap_signals(chunk_df['close'], chunk_df['vwap'])
         chunk_df = chunk_df.join(vwap_signals)
     
     # HTF Trend Signals
-    if config.get('use_htf_trend', False) and 'htf_ema' in chunk_df.columns:
+    if config['use_htf_trend'] and 'htf_ema' in chunk_df.columns:
         htf_signals = calculate_htf_signals(chunk_df['close'], chunk_df['htf_ema'])
         chunk_df = chunk_df.join(htf_signals)
     
     # RSI Signals
-    if config.get('use_rsi_filter', False) and 'rsi' in chunk_df.columns:
+    if config['use_rsi_filter'] and 'rsi' in chunk_df.columns:
         rsi_signals = calculate_rsi_signals(
             chunk_df['rsi'],
-            config.get('rsi_overbought', 70),
-            config.get('rsi_oversold', 30)
+            config['rsi_overbought'],
+            config['rsi_oversold']
         )
         chunk_df = chunk_df.join(rsi_signals)
     
@@ -797,9 +797,9 @@ def _validate_complete_config(config: Dict[str, Any]) -> Dict[str, Any]:
         strategy_config = config['strategy']
         
         # Validate EMA parameters if EMA is enabled
-        if strategy_config.get('use_ema_crossover', False):
-            fast_ema = strategy_config.get('fast_ema', 0)
-            slow_ema = strategy_config.get('slow_ema', 0)
+        if strategy_config['use_ema_crossover']:
+            fast_ema = strategy_config['fast_ema']
+            slow_ema = strategy_config['slow_ema']
             if fast_ema >= slow_ema:
                 validation["errors"].append("Fast EMA must be less than Slow EMA")
                 validation["valid"] = False
@@ -807,8 +807,8 @@ def _validate_complete_config(config: Dict[str, Any]) -> Dict[str, Any]:
     # Session validation
     if 'session' in config:
         session_config = config['session']
-        start_hour = session_config.get('intraday_start_hour', 9)
-        end_hour = session_config.get('intraday_end_hour', 15)
+        start_hour = session_config['start_hour']
+        end_hour = session_config['end_hour']
         if start_hour >= end_hour:
             validation["errors"].append("Session start hour must be before end hour")
             validation["valid"] = False

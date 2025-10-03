@@ -194,7 +194,7 @@ class PositionManager:
         self.positions: Dict[str, Position] = {}
         self.completed_trades: List[Trade] = []
         self.daily_pnl = 0.0
-        self.session_config = config.get('session', {})
+        self.session_config = config['session']
         logger.info(f"PositionManager initialized with capital: {self.initial_capital:,}")
 
     def _ensure_timezone(self, dt):
@@ -601,10 +601,10 @@ class PositionManager:
         if not hasattr(self, '_cached_session_end') or not hasattr(self, '_cached_end_buffer'):
             # Use session_config which is already initialized in the constructor
             self.session_end = time(
-                self.session_config.get('end_hour', 15),
-                self.session_config.get('end_min', 30)
+                self.session_config['end_hour'],
+                self.session_config['end_min']
             )
-            self.end_buffer = self.session_config.get('end_buffer_minutes', 20)
+            self.end_buffer = self.session_config['end_buffer_minutes']
             
             # Cache these values to avoid recalculation
             self._cached_session_end = self.session_end

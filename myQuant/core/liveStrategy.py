@@ -81,10 +81,7 @@ class ModularIntradayStrategy:
         self.use_bollinger_bands = self.config_accessor.get_strategy_param('use_bollinger_bands')
         # optional toggles may be absent in older configs; GUI validation should add them,
         # but keep a safe default here if desired:
-        try:
-            self.use_atr = self.config_accessor.get_strategy_param('use_atr')
-        except KeyError:
-            self.use_atr = False
+        self.use_atr = self.config_accessor.get_strategy_param('use_atr')
         
         # Validate configuration
         # Minimal fail-fast validation using the existing ConfigAccessor methods.

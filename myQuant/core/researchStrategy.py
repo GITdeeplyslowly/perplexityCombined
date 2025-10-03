@@ -140,8 +140,8 @@ class ModularIntradayStrategy:
         # No-trade guard periods (minutes before session start / before session end).
         no_trade_start = self.config_accessor.get_session_param('no_trade_start_minutes')
         no_trade_end = self.config_accessor.get_session_param('no_trade_end_minutes')
-        self.no_trade_start_minutes = int(no_trade_start if no_trade_start is not None else (self.start_buffer_minutes or 0))
-        self.no_trade_end_minutes = int(no_trade_end if no_trade_end is not None else (self.end_buffer_minutes or 0))
+        self.no_trade_start_minutes = int(no_trade_start if no_trade_start is not None else self.start_buffer_minutes)
+        self.no_trade_end_minutes = int(no_trade_end if no_trade_end is not None else self.end_buffer_minutes)
 
         # Logging section - consolidated logging API. Use HighPerfLogger (self.perf_logger).
         # Legacy "smart logger" flag removed from runtime reads.
@@ -150,7 +150,7 @@ class ModularIntradayStrategy:
         self.max_signal_reasons = int(self.config_accessor.get_logging_param('max_signal_reasons'))
         self.log_to_file = bool(self.config_accessor.get_logging_param('log_to_file'))
         self.log_file = str(self.config_accessor.get_logging_param('log_file'))
-        self.log_level_overrides = self.config_accessor.get_logging_param('log_level_overrides') or {}
+        self.log_level_overrides = self.config_accessor.get_logging_param('log_level_overrides')
 
         # Backtest section -> use strict 'backtest' section via get('backtest.key')
         # Use ConfigAccessor convenience helpers for backtest section (consistent SSOT access)
