@@ -15,14 +15,24 @@ import logging
 import pandas as pd
 import os
 
-from utils.config_loader import load_config
 from utils.time_utils import now_ist, normalize_datetime_to_ist
+from types import MappingProxyType
 
 logger = logging.getLogger(__name__)
 
 class BrokerAdapter:
-    def __init__(self, config_path: str):
-        config = load_config(config_path)
+    def __init__(self, config: MappingProxyType = None):
+        """Initialize BrokerAdapter with frozen config from upstream
+        
+        Args:
+            config: Frozen MappingProxyType config from LiveTrader
+        """
+        if config is None:
+            raise ValueError("BrokerAdapter requires frozen config from upstream (LiveTrader)")
+        
+        if not isinstance(config, MappingProxyType):
+            raise TypeError(f"BrokerAdapter requires frozen MappingProxyType, got {type(config)}")
+            
         self.params = config
         
         # Use strict config access - fail immediately if sections missing

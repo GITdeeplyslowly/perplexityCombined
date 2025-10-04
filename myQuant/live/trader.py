@@ -9,18 +9,14 @@ Unified forward-test/live simulation runner.
 """
 
 import time
-import yaml
 import logging
 import importlib
+import pandas as pd
 from types import MappingProxyType
 from core.position_manager import PositionManager
 from live.broker_adapter import BrokerAdapter
 from utils.time_utils import now_ist
-from utils.config_helper import validate_config, freeze_config
-
-def load_config(config_path: str):
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
+from utils.config_helper import validate_config, freeze_config, create_config_from_defaults
 
 def get_strategy(config):
     """Get strategy instance with frozen MappingProxyType config - strict validation"""
@@ -53,12 +49,12 @@ class LiveTrader:
                 raise ValueError(f"Invalid config: {errors}")
             config = freeze_config(config_dict)
         else:
-            # File path - load, validate, freeze
-            raw_config = load_config(config_path or "config/strategy_config.yaml")
+            # File path - use defaults.py as SSOT (config_path parameter kept for legacy compatibility)
+            raw_config = create_config_from_defaults()
             validation = validate_config(raw_config)
             if not validation.get('valid', False):
                 errors = validation.get('errors', ['Unknown validation error'])
-                raise ValueError(f"Invalid config from {config_path}: {errors}")
+                raise ValueError(f"Invalid config from defaults: {errors}")
             config = freeze_config(raw_config)
         
         self.config = config
@@ -68,7 +64,7 @@ class LiveTrader:
         
         # Pass frozen config directly to PositionManager (it expects MappingProxyType)
         self.position_manager = PositionManager(config)
-        self.broker = BrokerAdapter(config_path or "config/strategy_config.yaml")
+        self.broker = BrokerAdapter(config)  # Pass frozen config downstream
         self.is_running = False
         self.active_position_id = None
 
@@ -76,49 +72,85 @@ class LiveTrader:
         self.is_running = True
         logger = logging.getLogger(__name__)
         self.broker.connect()
-        logger.info("ðŸŸ¢ Forward testing session started.")
+        logger.info("🟢 Forward testing session started - TRUE TICK-BY-TICK PROCESSING")
+        
+        # Initialize NaN tracking from defaults - STRICT CONFIG ACCESS (fail fast if missing)
+        nan_streak = 0
+        nan_threshold = self.config['strategy']['nan_streak_threshold']
+        nan_recovery_threshold = self.config['strategy']['nan_recovery_threshold']
+        consecutive_valid_ticks = 0
+        
         try:
             while self.is_running:
+                # STEP 1: Get individual tick (no bar aggregation)
                 tick = self.broker.get_next_tick()
                 if not tick:
                     time.sleep(0.1)
                     continue
+                
                 now = tick['timestamp'] if 'timestamp' in tick else now_ist()
-                # Aggregate bars
-                bars = self.broker.get_recent_bars(last_n=100)
-                if bars.empty:
-                    continue
-                df_ind = self.strategy.calculate_indicators(bars)
-                row = df_ind.iloc[-1]
-                # Session end enforcement
-                if hasattr(self.strategy, "should_exit_session"):
-                    if self.strategy.should_exit_session(now):
+                
+                # STEP 2: Session end enforcement (before processing)
+                if hasattr(self.strategy, "should_exit_for_session"):
+                    if self.strategy.should_exit_for_session(now):
                         self.close_position("Session End")
                         logger.info("Session end: all positions flattened.")
                         break
-                # Entry logic
-                if not self.active_position_id and getattr(self.strategy, "can_enter_new_position", lambda t: True)(now) \
-                   and getattr(self.strategy, "should_enter_long", lambda r, n: False)(row, now):
-                    self.active_position_id = self.strategy.open_long(row, now, self.position_manager)
-                    if self.active_position_id:
-                        qty = self.position_manager.positions[self.active_position_id].current_quantity
-                        logger.info(f"[SIM] ENTERED LONG at â‚¹{row['close']} ({qty} contracts)")
-                        if result_box:
-                            result_box.config(state="normal")
-                            result_box.insert("end", f"Simulated BUY: {qty} @ {row['close']:.2f}\n")
-                            result_box.see("end")
-                            result_box.config(state="disabled")
-                # Position manager processes TP/SL/trail exits
-                self.position_manager.process_positions(row, now)
-                # Check if position closed (by SL/TP/Trailing/Session)
-                if self.active_position_id and self.active_position_id not in self.position_manager.positions:
-                    logger.info("Position closed (TP/SL/trailing/session).")
-                    if result_box:
-                        result_box.config(state="normal")
-                        result_box.insert("end", f"Position closed at {row['close']:.2f}\n")
-                        result_box.see("end")
-                        result_box.config(state="disabled")
-                    self.active_position_id = None
+                
+                # STEP 3: TRUE TICK-BY-TICK PROCESSING - Use on_tick() directly
+                try:
+                    signal = self.strategy.on_tick(tick)
+                    
+                    # Reset NaN streak on successful processing
+                    nan_streak = 0
+                    consecutive_valid_ticks += 1
+                    
+                except Exception as e:
+                    # NaN threshold implementation
+                    nan_streak += 1
+                    consecutive_valid_ticks = 0
+                    logger.warning(f"Tick processing failed (streak: {nan_streak}/{nan_threshold}): {e}")
+                    
+                    if nan_streak >= nan_threshold:
+                        logger.error(f"NaN streak threshold ({nan_threshold}) exceeded. Stopping trading.")
+                        self.close_position("NaN Threshold Exceeded")
+                        break
+                    continue
+                
+                # STEP 4: Process signal immediately if generated
+                if signal:
+                    current_price = tick.get('price', tick.get('ltp', 0))
+                    
+                    if signal.action == 'BUY' and not self.active_position_id:
+                        # Check if we can enter new position
+                        if getattr(self.strategy, "can_enter_new_position", lambda t: True)(now):
+                            # Create optimized tick row for position manager
+                            tick_row = self._create_tick_row(tick, signal.price, now)
+                            
+                            self.active_position_id = self.strategy.open_long(tick_row, now, self.position_manager)
+                            if self.active_position_id:
+                                qty = self.position_manager.positions[self.active_position_id].current_quantity
+                                logger.info(f"[TICK] ENTERED LONG at ₹{signal.price:.2f} ({qty} contracts) - {signal.reason}")
+                                self._update_result_box(result_box, f"Tick BUY: {qty} @ {signal.price:.2f} ({signal.reason})")
+                    
+                    elif signal.action == 'CLOSE' and self.active_position_id:
+                        self.close_position(f"Strategy Signal: {signal.reason}")
+                        self._update_result_box(result_box, f"Tick CLOSE: @ {signal.price:.2f} ({signal.reason})")
+                
+                # STEP 5: Position manager processes TP/SL/trail exits (if position exists)
+                if self.active_position_id:
+                    current_price = tick.get('price', tick.get('ltp', 0))
+                    current_tick_row = self._create_tick_row(tick, current_price, now)
+                    
+                    self.position_manager.process_positions(current_tick_row, now)
+                    
+                    # Check if position was closed by risk management
+                    if self.active_position_id not in self.position_manager.positions:
+                        logger.info("Position closed by risk management (TP/SL/trailing).")
+                        self._update_result_box(result_box, f"Risk CLOSE: @ {current_price:.2f}")
+                        self.active_position_id = None
+                
+                # STEP 6: Check for single-run mode
                 if run_once:
                     self.is_running = False
         except KeyboardInterrupt:
@@ -139,6 +171,29 @@ class LiveTrader:
             logger = logging.getLogger(__name__)
             logger.info(f"[SIM] Position closed at {last_price} for reason: {reason}")
             self.active_position_id = None
+
+    def _create_tick_row(self, tick: dict, price: float, timestamp) -> pd.Series:
+        """Create standardized tick row for position manager compatibility."""
+        return pd.Series({
+            'close': price,
+            'high': price,
+            'low': price,
+            'open': price,
+            'volume': tick.get('volume', 1000),
+            'timestamp': timestamp
+        })
+    
+    def _update_result_box(self, result_box, message: str):
+        """Update result box with thread-safe GUI operations."""
+        if result_box:
+            try:
+                result_box.config(state="normal")
+                result_box.insert("end", f"{message}\n")
+                result_box.see("end")
+                result_box.config(state="disabled")
+            except Exception as e:
+                # GUI updates can fail in threading context
+                logging.getLogger(__name__).warning(f"Result box update failed: {e}")
 
 if __name__ == "__main__":
     import argparse

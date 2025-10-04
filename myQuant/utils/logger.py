@@ -36,39 +36,39 @@ def setup_from_config(frozen_cfg: MappingProxyType) -> logging.Logger:
             return logging.getLogger()
 
         root = logging.getLogger()
-        level = getattr(logging, str(log_cfg.get('verbosity', 'INFO')).upper(), logging.INFO)
+        level = getattr(logging, str(log_cfg['verbosity']).upper(), logging.INFO)
         root.setLevel(level)
 
         datefmt = "%Y-%m-%d %H:%M:%S"
         fmt_text = "%(asctime)s %(levelname)s %(name)s: %(message)s"
         formatter = logging.Formatter(fmt_text, datefmt)
 
-        # File handler
-        if bool(log_cfg.get('log_to_file', True)):
+        # File handler - STRICT CONFIG ACCESS
+        if bool(log_cfg['log_to_file']):
             logfile = str(log_cfg['logfile'])
             dirname = os.path.dirname(logfile)
             if dirname:
                 os.makedirs(dirname, exist_ok=True)
             fh = logging.handlers.RotatingFileHandler(
                 logfile,
-                maxBytes=int(log_cfg.get('max_file_size', 10 * 1024 * 1024)),
-                backupCount=int(log_cfg.get('backup_count', 5)),
+                maxBytes=int(log_cfg['max_file_size']),
+                backupCount=int(log_cfg['backup_count']),
                 encoding='utf-8'
             )
             fh.setFormatter(formatter)
             fh.setLevel(logging.DEBUG)
             root.addHandler(fh)
 
-        # Console
-        if bool(log_cfg.get('console_output', True)):
+        # Console - STRICT CONFIG ACCESS
+        if bool(log_cfg['console_output']):
             ch = logging.StreamHandler()
             ch.setFormatter(formatter)
             ch.setLevel(level)
             root.addHandler(ch)
 
-        # Optional JSON event sink
-        if bool(log_cfg.get('json_event_log', False)):
-            evt_file = str(log_cfg.get('json_event_file', os.path.join("logs", "events.jsonl")))
+        # Optional JSON event sink - STRICT CONFIG ACCESS
+        if bool(log_cfg['json_event_log']):
+            evt_file = str(log_cfg['json_event_file'])
             evt_dir = os.path.dirname(evt_file)
             if evt_dir:
                 os.makedirs(evt_dir, exist_ok=True)
@@ -123,7 +123,7 @@ class HighPerfLogger:
         setup_from_config(frozen_cfg)
         self.logger = logging.getLogger(name)
         self._cfg = frozen_cfg
-        self._tick_interval = int(frozen_cfg['logging'].get('tick_log_interval', 1000))
+        self._tick_interval = int(frozen_cfg['logging']['tick_log_interval'])
         self._entry_block_count = 0
         self.event_logger = logging.getLogger(f"{name}.events")
 
@@ -152,7 +152,7 @@ class HighPerfLogger:
 
     def signal_generated(self, signal_type: str, price: float, reason: str = "", run_id: Optional[str] = None):
         self.logger.info(f"SIGNAL {signal_type} @ {price:.2f}: {reason}")
-        if bool(self._cfg['logging'].get('json_event_log', False)):
+        if bool(self._cfg['logging']['json_event_log']):
             evt = {"type": "signal", "name": self.logger.name, "signal": signal_type, "price": price, "reason": reason, "run_id": run_id}
             try:
                 self.event_logger.info(json.dumps(evt))
@@ -161,7 +161,7 @@ class HighPerfLogger:
 
     def trade_executed(self, action: str, price: float, quantity: int, reason: str = "", trade_id: Optional[str] = None, run_id: Optional[str] = None):
         self.logger.info(f"TRADE {action}: {quantity} @ {price:.2f} - {reason}")
-        if bool(self._cfg['logging'].get('json_event_log', False)):
+        if bool(self._cfg['logging']['json_event_log']):
             evt = {"type": "trade", "name": self.logger.name, "action": action, "price": price, "quantity": quantity, "reason": reason, "trade_id": trade_id, "run_id": run_id}
             try:
                 self.event_logger.info(json.dumps(evt))
