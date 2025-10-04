@@ -409,6 +409,14 @@ class BacktestRunner:
                     position_manager.close_position_full(pos_id, row['close'], now, "Exit Buffer")
                 logger.info(f"Session end reached at {now.time()}, closing all positions")
                 break  # Stop processing completely
+            
+            # OPTIMIZATION: Skip processing if no more trading opportunities
+            # If not in position and can't open new positions, skip entry checks
+            if not in_position and hasattr(strategy, 'daily_stats') and hasattr(strategy, 'max_positions_per_day'):
+                if strategy.daily_stats.get('trades_today', 0) >= strategy.max_positions_per_day:
+                    # Only process position management, skip entry logic
+                    position_manager.process_positions(row, now)
+                    continue
 
             # For debugging the first few iterations
             if processed_bars <= 1:

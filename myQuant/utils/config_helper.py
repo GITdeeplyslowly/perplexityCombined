@@ -40,6 +40,10 @@ def validate_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     except Exception:
         errors.append("Invalid logging section")
 
+    # Validate instrument mapping consistency
+    instrument_errors = validate_instrument_consistency(cfg)
+    errors.extend(instrument_errors.get('errors', []))
+
     return {"valid": len(errors) == 0, "errors": errors}
 
 def freeze_config(cfg: Dict[str, Any]) -> MappingProxyType:
@@ -106,3 +110,135 @@ class ConfigAccessor:
     def get_backtest_param(self, param: str, default=MISSING):
         """Get value from the 'backtest' section (convenience for backtest callers)."""
         return self._section_get("backtest", param, default)
+
+    def get_current_instrument_param(self, param_name: str, default=MISSING):
+        """
+        Get instrument parameter for currently selected symbol from instrument_mappings (SSOT).
+        
+        Args:
+            param_name: Parameter to get ('lot_size', 'tick_size', 'exchange', 'type')
+            default: Default value if parameter not found
+            
+        Returns:
+            Parameter value from instrument_mappings
+            
+        Raises:
+            KeyError: If current symbol not found in mappings or param doesn't exist
+        """
+        current_symbol = self.get_instrument_param('symbol')
+        instrument_mappings = self.get('instrument_mappings', {})
+        
+        if current_symbol not in instrument_mappings:
+            if default is MISSING:
+                raise KeyError(f"Symbol '{current_symbol}' not found in instrument_mappings")
+            return default
+            
+        instrument_info = instrument_mappings[current_symbol]
+        if param_name not in instrument_info:
+            if default is MISSING:
+                raise KeyError(f"Parameter '{param_name}' not found for symbol '{current_symbol}'")
+            return default
+            
+        return instrument_info[param_name]
+
+    def get_instrument_mapping_param(self, symbol: str, param_name: str, default=MISSING):
+        """
+        Get instrument parameter for a specific symbol from instrument_mappings (SSOT).
+        
+        Args:
+            symbol: Instrument symbol ('NIFTY', 'BANKNIFTY', etc.)
+            param_name: Parameter to get ('lot_size', 'tick_size', 'exchange', 'type')
+            default: Default value if parameter not found
+            
+        Returns:
+            Parameter value from instrument_mappings
+            
+        Raises:
+            KeyError: If symbol not found in mappings or param doesn't exist
+        """
+        instrument_mappings = self.get('instrument_mappings', {})
+        
+        if symbol not in instrument_mappings:
+            if default is MISSING:
+                raise KeyError(f"Symbol '{symbol}' not found in instrument_mappings")
+            return default
+            
+        instrument_info = instrument_mappings[symbol]
+        if param_name not in instrument_info:
+            if default is MISSING:
+                raise KeyError(f"Parameter '{param_name}' not found for symbol '{symbol}'")
+            return default
+            
+        return instrument_info[param_name]
+
+
+def validate_instrument_consistency(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Validate instrument configuration consistency.
+    
+    Ensures:
+    1. Current instrument symbol exists in instrument_mappings
+    2. All required parameters exist for each instrument
+    3. No conflicting definitions between sections
+    
+    Args:
+        cfg: Configuration dictionary to validate
+        
+    Returns:
+        Dict with validation results: {'valid': bool, 'errors': List[str]}
+    """
+    errors = []
+    
+    try:
+        # Check if instrument_mappings exists
+        if 'instrument_mappings' not in cfg:
+            errors.append("Missing required section: instrument_mappings")
+            return {"valid": False, "errors": errors}
+            
+        instrument_mappings = cfg['instrument_mappings']
+        if not isinstance(instrument_mappings, dict):
+            errors.append("instrument_mappings must be a dictionary")
+            return {"valid": False, "errors": errors}
+            
+        # Check if current instrument symbol exists in mappings
+        if 'instrument' in cfg and 'symbol' in cfg['instrument']:
+            current_symbol = cfg['instrument']['symbol']
+            if current_symbol not in instrument_mappings:
+                errors.append(f"Current instrument symbol '{current_symbol}' not found in instrument_mappings")
+        
+        # Validate each instrument mapping has required parameters
+        required_params = ['lot_size', 'exchange', 'tick_size', 'type']
+        for symbol, mapping in instrument_mappings.items():
+            if not isinstance(mapping, dict):
+                errors.append(f"Instrument mapping for '{symbol}' must be a dictionary")
+                continue
+                
+            for param in required_params:
+                if param not in mapping:
+                    errors.append(f"Missing required parameter '{param}' for instrument '{symbol}'")
+                    
+            # Validate parameter types
+            if 'lot_size' in mapping:
+                try:
+                    lot_size = int(mapping['lot_size'])
+                    if lot_size <= 0:
+                        errors.append(f"Invalid lot_size for '{symbol}': must be positive integer")
+                except (ValueError, TypeError):
+                    errors.append(f"Invalid lot_size for '{symbol}': must be numeric")
+                    
+            if 'tick_size' in mapping:
+                try:
+                    tick_size = float(mapping['tick_size'])
+                    if tick_size <= 0:
+                        errors.append(f"Invalid tick_size for '{symbol}': must be positive number")
+                except (ValueError, TypeError):
+                    errors.append(f"Invalid tick_size for '{symbol}': must be numeric")
+        
+        # Check for minimum required instruments
+        if len(instrument_mappings) == 0:
+            errors.append("instrument_mappings cannot be empty")
+            
+    except Exception as e:
+        errors.append(f"Error validating instrument configuration: {str(e)}")
+    
+    return {"valid": len(errors) == 0, "errors": errors}

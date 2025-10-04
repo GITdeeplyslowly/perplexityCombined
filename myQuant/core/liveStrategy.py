@@ -92,6 +92,9 @@ class ModularIntradayStrategy:
         
         # COMPREHENSIVE FAIL-FAST VALIDATION - Every parameter must exist in defaults.py
         self._validate_all_required_parameters()
+        
+        # Initialize instrument SSOT parameters
+        self.tick_size = float(self.config_accessor.get_current_instrument_param('tick_size'))
  
         # Session/session exit config (populate using existing accessors)
         self.session_start = time(
@@ -358,8 +361,8 @@ class ModularIntradayStrategy:
 
         # Use instrument SSOT for contract sizing (no risk.lot_size overrides)
         try:
-            lot_size = int(self.config_accessor.get_instrument_param('lot_size'))
-            tick_size = float(self.config_accessor.get_instrument_param('tick_size'))
+            lot_size = int(self.config_accessor.get_current_instrument_param('lot_size'))
+            tick_size = float(self.config_accessor.get_current_instrument_param('tick_size'))
         except KeyError as e:
             return None
 
@@ -403,9 +406,9 @@ class ModularIntradayStrategy:
             # Update indicators incrementally
             updated_tick = self.process_tick_or_bar(tick_series)
             
-            # STRICT: timestamp must exist in tick data
+            # GRACEFUL: Check for timestamp - return None if missing (live trading safe)
             if 'timestamp' not in tick:
-                raise ValueError("Tick data missing required 'timestamp' field")
+                return None
             timestamp = tick['timestamp']
             
             # Generate signal based on current tick
@@ -420,37 +423,37 @@ class ModularIntradayStrategy:
             # Check if we can enter new position
             if not self.in_position and self.can_enter_new_position(timestamp):
                 if self.entry_signal(updated_tick):
-                    # STRICT: Price must exist in tick
+                    # GRACEFUL: Extract price safely for live trading resilience
+                    price = None
                     if 'close' in updated_tick:
                         price = updated_tick['close']
                     elif 'price' in updated_tick:
                         price = updated_tick['price']
-                    else:
-                        raise ValueError("Tick data missing required 'close' or 'price' field")
                     
-                    return TradingSignal(
-                        action="BUY",
-                        timestamp=timestamp,
-                        price=price,
-                        reason="Strategy entry signal"
-                    )
+                    if price is not None:
+                        return TradingSignal(
+                            action="BUY",
+                            timestamp=timestamp,
+                            price=price,
+                            reason="Strategy entry signal"
+                        )
             
             # Check exit conditions for existing position
             if self.in_position and self.should_exit_for_session(timestamp):
-                # STRICT: Price must exist in tick
+                # GRACEFUL: Extract price safely for live trading resilience
+                price = None
                 if 'close' in updated_tick:
                     price = updated_tick['close']
                 elif 'price' in updated_tick:
                     price = updated_tick['price']
-                else:
-                    raise ValueError("Tick data missing required 'close' or 'price' field")
                 
-                return TradingSignal(
-                    action="CLOSE",
-                    timestamp=timestamp,
-                    price=price,
-                    reason="Session end exit"
-                )
+                if price is not None:
+                    return TradingSignal(
+                        action="CLOSE",
+                        timestamp=timestamp,
+                        price=price,
+                        reason="Session end exit"
+                    )
                 
             return None
         except Exception:
@@ -541,26 +544,25 @@ class ModularIntradayStrategy:
                 else:
                     return row
 
-            # STRICT: Extract required price - fail if missing
-            def strict_extract(key):
-                """Extract value with no fallbacks - fail if missing or invalid"""
+            # GRACEFUL: Extract required price - return safely if missing (live trading resilient)
+            def safe_extract(key, default=None):
+                """Extract value gracefully - return default if missing or invalid (live trading safe)"""
                 if key not in row:
-                    raise KeyError(f"Required field '{key}' missing from tick data")
+                    return default
                 val = row[key]
                 if isinstance(val, pd.Series):
                     if len(val) == 0:
-                        raise ValueError(f"Empty Series for required field '{key}'")
+                        return default
                     return val.iloc[0]
                 return val
 
-            # Extract close price (required)
-            try:
-                close_price = strict_extract('close')
-            except KeyError:
-                try:
-                    close_price = strict_extract('price')
-                except KeyError:
-                    raise ValueError("Tick data must contain either 'close' or 'price' field")
+            # Extract close price (required) - graceful fallback approach
+            close_price = safe_extract('close')
+            if close_price is None:
+                close_price = safe_extract('price')
+                if close_price is None:
+                    # No valid price found - return original row without processing
+                    return row
             if close_price is None:
                 return row
             try:
@@ -722,9 +724,7 @@ class ModularIntradayStrategy:
             ('risk', 'base_sl_points'),
             
             # Instrument parameters
-            ('instrument', 'symbol'),
-            ('instrument', 'lot_size'),
-            ('instrument', 'tick_size')
+            ('instrument', 'symbol')
         ]
         
         missing = []
@@ -740,6 +740,15 @@ class ModularIntradayStrategy:
                     self.config_accessor.get_instrument_param(key)
             except KeyError:
                 missing.append(f"{section}.{key}")
+        
+        # Additional SSOT validation: Check that current instrument exists in instrument_mappings
+        try:
+            current_symbol = self.config_accessor.get_instrument_param('symbol')
+            lot_size = self.config_accessor.get_current_instrument_param('lot_size')
+            tick_size = self.config_accessor.get_current_instrument_param('tick_size')
+            # If we get here, SSOT is properly configured
+        except KeyError as e:
+            missing.append(f"SSOT instrument mapping for current symbol: {str(e)}")
         
         if missing:
             raise ValueError(

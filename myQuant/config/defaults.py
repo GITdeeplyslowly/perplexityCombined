@@ -22,7 +22,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "log_to_file": True,
         "console_output": True,
         "verbosity": "INFO",
-        "tick_log_interval": 1000,
+        "tick_log_interval": 2500,
         "max_file_size": 10 * 1024 * 1024,
         "backup_count": 5,
         "log_level_overrides": {},
@@ -50,7 +50,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "rsi_overbought": 70,
         "rsi_oversold": 30,
         "htf_period": 20,
-        "consecutive_green_bars": 3,
+        "consecutive_green_bars": 5,
         "atr_len": 14,
         "indicator_update_mode": "tick",
         # Add noise filter parameters
@@ -63,7 +63,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "risk": {
         "max_positions_per_day": 25,
-        "base_sl_points": 15.0,
+        "base_sl_points": 10.0,
         "tp_points": [10.0, 25.0, 50.0, 100.0],
         "tp_percents": [0.25, 0.25, 0.25, 0.25],
         "use_trail_stop": True,
@@ -84,11 +84,75 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "initial_capital": 100000.0
     },
     "instrument": {
-        "symbol": "DEFAULT",
+        "symbol": "NIFTY",  # Default to Nifty options - lot_size now comes from instrument_mappings (SSOT)
         "exchange": "NSE_FO",
-        "lot_size": 1,
-        "tick_size": 0.05,
         "product_type": "INTRADAY"
+        # instrument_token: Dynamic per option contract, populated when user selects specific option
+        # lot_size and tick_size removed - instrument_mappings is now SSOT
+    },
+    # Comprehensive instrument mapping with corrected lot sizes (as of Oct 2024)
+    "instrument_mappings": {
+        # Index Options - Updated with current lot sizes
+        "NIFTY": {"lot_size": 75, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Index Options"},
+        "BANKNIFTY": {"lot_size": 15, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Index Options"},
+        "FINNIFTY": {"lot_size": 25, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Index Options"},
+        "MIDCPNIFTY": {"lot_size": 50, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Index Options"},
+        "SENSEX": {"lot_size": 10, "exchange": "BSE_FO", "tick_size": 0.05, "type": "Index Options"},
+        "BANKEX": {"lot_size": 15, "exchange": "BSE_FO", "tick_size": 0.05, "type": "Index Options"},
+        
+        # Individual Stock Options - Updated with current lot sizes (Popular F&O stocks)
+        "RELIANCE": {"lot_size": 250, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "HDFCBANK": {"lot_size": 550, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "ICICIBANK": {"lot_size": 775, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "INFY": {"lot_size": 300, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "TCS": {"lot_size": 150, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "SBIN": {"lot_size": 1500, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "LT": {"lot_size": 300, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "WIPRO": {"lot_size": 1200, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "MARUTI": {"lot_size": 100, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "BHARTIARTL": {"lot_size": 1081, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        
+        # Additional Popular Stock Options with Current Lot Sizes
+        "ADANIPORTS": {"lot_size": 1200, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "ASIANPAINT": {"lot_size": 300, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "AXISBANK": {"lot_size": 1200, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "BAJFINANCE": {"lot_size": 125, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "BAJAJFINSV": {"lot_size": 600, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "COALINDIA": {"lot_size": 2400, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "DRREDDY": {"lot_size": 150, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "EICHERMOT": {"lot_size": 200, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "GRASIM": {"lot_size": 450, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "HCLTECH": {"lot_size": 600, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "HEROMOTOCO": {"lot_size": 225, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "HINDALCO": {"lot_size": 1875, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "HINDUNILVR": {"lot_size": 300, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "INDUSINDBK": {"lot_size": 900, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "ITC": {"lot_size": 1600, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "JSWSTEEL": {"lot_size": 1200, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "KOTAKBANK": {"lot_size": 400, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "NESTLEIND": {"lot_size": 50, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "NTPC": {"lot_size": 2700, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "ONGC": {"lot_size": 3400, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "POWERGRID": {"lot_size": 2400, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "SUNPHARMA": {"lot_size": 600, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "TATAMOTORS": {"lot_size": 1500, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "TATASTEEL": {"lot_size": 6000, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "TECHM": {"lot_size": 600, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "TITAN": {"lot_size": 250, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        "ULTRACEMCO": {"lot_size": 100, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Options"},
+        
+        # Index Futures - Same lot sizes as options
+        "NIFTYFUT": {"lot_size": 75, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Index Futures"},
+        "BANKNIFTYFUT": {"lot_size": 15, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Index Futures"},
+        
+        # Stock Futures - Same lot sizes as stock options
+        "RELIANCEFUT": {"lot_size": 250, "exchange": "NSE_FO", "tick_size": 0.05, "type": "Stock Futures"},
+        
+        # Cash Market (lot size = 1 for cash)
+        "NIFTY_CASH": {"lot_size": 1, "exchange": "NSE_CM", "tick_size": 0.05, "type": "Cash Market"},
+        "BANKNIFTY_CASH": {"lot_size": 1, "exchange": "NSE_CM", "tick_size": 0.05, "type": "Cash Market"},
+        "RELIANCE_CASH": {"lot_size": 1, "exchange": "NSE_CM", "tick_size": 0.05, "type": "Cash Market"},
+        "HDFCBANK_CASH": {"lot_size": 1, "exchange": "NSE_CM", "tick_size": 0.05, "type": "Cash Market"}
     },
     "session": {
         "is_intraday": True,
@@ -114,6 +178,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "exchange_type": "NSE_FO",
         "feed_type": "LTP",
         "log_ticks": False,
-        "visual_indicator": True
+        "visual_indicator": True,
+        "api_key": "",  # REQUIRED for live trading - will fail-fast if empty
+        "client_code": "",  # REQUIRED for live trading - will fail-fast if empty
+        "pin": "",  # OPTIONAL - if empty, will try to reuse saved session
+        "totp_token": "",  # OPTIONAL - if empty, will try to reuse saved session
+        "allow_interactive_auth": False  # Enable interactive PIN/TOTP prompts when session expires
     }
 }

@@ -54,6 +54,39 @@ frozen_cfg = freeze_config(base_cfg)
 setup_from_config(frozen_cfg)
 logger = logging.getLogger(__name__)
 
+
+class GuiLogHandler(logging.Handler):
+    """Custom log handler to display logs in GUI text widget"""
+    
+    def __init__(self, text_widget):
+        super().__init__()
+        self.text_widget = text_widget
+        
+    def emit(self, record):
+        """Emit a log record to the GUI text widget"""
+        try:
+            msg = self.format(record)
+            # Use tkinter's after method to safely update GUI from any thread
+            if self.text_widget and self.text_widget.winfo_exists():
+                self.text_widget.after(0, self._append_log, msg)
+        except Exception:
+            # Ignore errors in logging to prevent infinite loops
+            pass
+    
+    def _append_log(self, msg):
+        """Safely append log message to text widget"""
+        try:
+            if self.text_widget and self.text_widget.winfo_exists():
+                self.text_widget.configure(state="normal")
+                self.text_widget.insert(tk.END, msg + "\n")
+                self.text_widget.configure(state="disabled")
+                # Auto-scroll to bottom
+                self.text_widget.see(tk.END)
+        except Exception:
+            # Ignore errors in GUI updates
+            pass
+
+
 class CollapsibleFrame(ttk.Frame):
     """Collapsible frame that can hide/show content"""
     
@@ -146,6 +179,7 @@ class UnifiedTradingGUI(tk.Tk):
             instrument_config = self.runtime_config['instrument']
             session_config = self.runtime_config['session']
             logging_config = self.runtime_config['logging']
+            self.instrument_mappings = self.runtime_config.get('instrument_mappings', {})
         except KeyError as e:
             missing = str(e).strip("'")
             logger.error("DEFAULT_CONFIG missing required section/key: %s", missing)
@@ -162,6 +196,9 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_use_stochastic = tk.BooleanVar(value=strategy_config['use_stochastic'])
         self.bt_use_atr = tk.BooleanVar(value=strategy_config['use_atr'])
         self.bt_use_consecutive_green = tk.BooleanVar(value=strategy_config['use_consecutive_green'])
+        
+        # Optional indicators visibility toggle (unchecked by default)
+        self.bt_show_optional_indicators = tk.BooleanVar(value=False)
 
         self.bt_fast_ema = tk.StringVar(value=str(strategy_config['fast_ema']))
         self.bt_slow_ema = tk.StringVar(value=str(strategy_config['slow_ema']))
@@ -193,7 +230,10 @@ class UnifiedTradingGUI(tk.Tk):
         # Instrument placeholders (required)
         self.bt_symbol = tk.StringVar(value=str(instrument_config['symbol']))
         self.bt_exchange = tk.StringVar(value=str(instrument_config['exchange']))
-        self.bt_lot_size = tk.StringVar(value=str(instrument_config['lot_size']))
+        # Get lot_size from instrument_mappings SSOT
+        current_symbol = instrument_config['symbol']
+        lot_size_from_ssot = self.instrument_mappings.get(current_symbol, {}).get('lot_size', 1)
+        self.bt_lot_size = tk.StringVar(value=str(lot_size_from_ssot))
 
         # Capital placeholders (required)
         self.bt_initial_capital = tk.StringVar(value=str(capital_config['initial_capital']))
@@ -218,7 +258,87 @@ class UnifiedTradingGUI(tk.Tk):
         # Noise filter placeholders (strategy section)
         self.bt_noise_filter_enabled = tk.BooleanVar(value=strategy_config['noise_filter_enabled'])
         self.bt_noise_filter_percentage = tk.StringVar(value=str(strategy_config['noise_filter_percentage'] * 100))
+
+        # === FORWARD TEST VARIABLES FROM RUNTIME_CONFIG (SSOT) ===
+        
+        # Forward Test Strategy toggles (from defaults.py)
+        self.ft_use_ema_crossover = tk.BooleanVar(value=strategy_config['use_ema_crossover'])
+        self.ft_use_macd = tk.BooleanVar(value=strategy_config['use_macd'])
+        self.ft_use_vwap = tk.BooleanVar(value=strategy_config['use_vwap'])
+        self.ft_use_rsi_filter = tk.BooleanVar(value=strategy_config['use_rsi_filter'])
+        self.ft_use_htf_trend = tk.BooleanVar(value=strategy_config['use_htf_trend'])
+        self.ft_use_bollinger_bands = tk.BooleanVar(value=strategy_config['use_bollinger_bands'])
+        self.ft_use_stochastic = tk.BooleanVar(value=strategy_config['use_stochastic'])
+        self.ft_use_atr = tk.BooleanVar(value=strategy_config['use_atr'])
+
+        # Forward Test Strategy parameters (from defaults.py)
+        self.ft_fast_ema = tk.StringVar(value=str(strategy_config['fast_ema']))
+        self.ft_slow_ema = tk.StringVar(value=str(strategy_config['slow_ema']))
+        self.ft_macd_fast = tk.StringVar(value=str(strategy_config['macd_fast']))
+        self.ft_macd_slow = tk.StringVar(value=str(strategy_config['macd_slow']))
+        self.ft_macd_signal = tk.StringVar(value=str(strategy_config['macd_signal']))
+        self.ft_rsi_length = tk.StringVar(value=str(strategy_config['rsi_length']))
+        self.ft_rsi_oversold = tk.StringVar(value=str(strategy_config['rsi_oversold']))
+        self.ft_rsi_overbought = tk.StringVar(value=str(strategy_config['rsi_overbought']))
+        self.ft_htf_period = tk.StringVar(value=str(strategy_config['htf_period']))
+        self.ft_consecutive_green_bars = tk.StringVar(value=str(strategy_config['consecutive_green_bars']))
+
+        # Forward Test Risk management (from defaults.py)
+        self.ft_use_stop_loss = tk.BooleanVar(value=True)  # Always enabled for live trading
+        self.ft_base_sl_points = tk.StringVar(value=str(risk_config['base_sl_points']))
+        self.ft_use_take_profit = tk.BooleanVar(value=True)  # Always enabled for live trading
+        ft_tp_points = risk_config['tp_points']
+        self.ft_tp_points = [tk.StringVar(value=str(pt)) for pt in ft_tp_points]
+        ft_tp_percents = risk_config['tp_percents'] 
+        self.ft_tp_percents = [tk.StringVar(value=str(int(p * 100))) for p in ft_tp_percents]
+        self.ft_use_trail_stop = tk.BooleanVar(value=risk_config['use_trail_stop'])
+        self.ft_trail_activation = tk.StringVar(value=str(risk_config['trail_activation_points']))
+        self.ft_trail_distance = tk.StringVar(value=str(risk_config['trail_distance_points']))
+        self.ft_risk_per_trade = tk.StringVar(value=str(risk_config['risk_per_trade_percent']))
+
+        # Forward Test Session management (from defaults.py)
+        self.ft_is_intraday = tk.BooleanVar(value=session_config['is_intraday'])
+        self.ft_session_start_hour = tk.StringVar(value=str(session_config['start_hour']))
+        self.ft_session_start_min = tk.StringVar(value=str(session_config['start_min']))
+        self.ft_session_end_hour = tk.StringVar(value=str(session_config['end_hour']))
+        self.ft_session_end_min = tk.StringVar(value=str(session_config['end_min']))
+        self.ft_auto_stop_enabled = tk.BooleanVar(value=True)  # Default safety feature
+        self.ft_max_trades_per_day = tk.StringVar(value=str(risk_config['max_positions_per_day']))
+        self.ft_max_loss_per_day = tk.StringVar(value="500")  # UI-specific default
+
+        # Forward Test Capital management (from defaults.py)
+        self.ft_initial_capital = tk.StringVar(value=str(capital_config['initial_capital']))
+        self.ft_available_capital = tk.StringVar(value=str(capital_config['initial_capital']))
+        self.ft_position_size_method = tk.StringVar(value="fixed_amount")  # UI default
+        self.ft_fixed_amount = tk.StringVar(value="10000")  # UI default (10% of default capital)
+        self.ft_fixed_quantity = tk.StringVar(value="25")  # UI default 
+        # Get lot_size from instrument_mappings SSOT
+        self.ft_lot_size = tk.StringVar(value=str(lot_size_from_ssot))
+        self.ft_max_positions = tk.StringVar(value="1")  # Conservative default for live trading
+
+        # Forward Test Exchange/Live settings (from defaults.py)
+        live_config = self.runtime_config.get('live', {})
+        self.ft_exchange = tk.StringVar(value=str(instrument_config['exchange']))
+        self.ft_feed_type = tk.StringVar(value=live_config.get('feed_type', 'LTP'))
+
+        # Forward Test UI-only variables (status displays - can be hardcoded)
+        self.ft_symbol = tk.StringVar()  # Selected dynamically
+        self.ft_token = tk.StringVar()   # Selected dynamically
+        self.ft_cache_status = tk.StringVar(value="Cache not loaded")
+        self.ft_connection_status = tk.StringVar(value="🔴 Disconnected")
+        self.ft_trading_status = tk.StringVar(value="⏸️ Stopped")
+        self.ft_current_price = tk.StringVar(value="--")
+        self.ft_position_status = tk.StringVar(value="📭 No Position")
+        self.ft_pnl_status = tk.StringVar(value="₹0.00")
+        self.ft_capital_display = tk.StringVar(value=f"₹{capital_config['initial_capital']:,.0f}")
+        self.ft_trades_today = tk.StringVar(value=f"0/{risk_config['max_positions_per_day']}")
+        self.ft_tick_count = tk.StringVar(value="0")
         self.bt_noise_filter_min_ticks = tk.StringVar(value=str(strategy_config['noise_filter_min_ticks']))
+        
+        # Instrument selection for Forward Test (dropdown-based)
+        self.ft_instrument_type = tk.StringVar(value="NIFTY")  # Default to Nifty
+        self.ft_available_instruments = list(self.instrument_mappings.keys())
+        self.ft_selected_instrument_info = self.instrument_mappings.get("NIFTY", {})
 
         # mark placeholders ready
         self._widgets_initialized = True
@@ -255,6 +375,9 @@ class UnifiedTradingGUI(tk.Tk):
         self._build_forward_test_tab()
         self._build_monitor_tab()
         self._build_log_tab()
+
+        # 7. Initialize instrument selection (after GUI widgets are created)
+        self._initialize_instrument_selection()
 
         logger.info("GUI initialized successfully with runtime config")
 
@@ -429,10 +552,30 @@ class UnifiedTradingGUI(tk.Tk):
         # Capital settings
         config['capital']['initial_capital'] = float(self.bt_initial_capital.get())
 
-        # Instrument settings
+        # Instrument settings (lot_size comes from instrument_mappings SSOT)
         config['instrument']['symbol'] = self.bt_symbol.get()
         config['instrument']['exchange'] = self.bt_exchange.get()
-        config['instrument']['lot_size'] = int(self.bt_lot_size.get())
+        
+        # Get all instrument parameters from instrument_mappings SSOT - STRICT ACCESS (fail-fast if missing)
+        current_symbol = config['instrument']['symbol']
+        if current_symbol not in self.instrument_mappings:
+            raise KeyError(f"Symbol '{current_symbol}' not found in instrument_mappings SSOT")
+        
+        instrument_info = self.instrument_mappings[current_symbol]
+        
+        # Required instrument parameters - fail-fast if any are missing
+        required_params = ['lot_size', 'tick_size', 'exchange', 'type']
+        for param in required_params:
+            if param not in instrument_info:
+                raise KeyError(f"{param} not found for symbol '{current_symbol}' in instrument_mappings SSOT")
+        
+        config['instrument']['lot_size'] = instrument_info['lot_size']
+        config['instrument']['tick_size'] = instrument_info['tick_size']
+        config['instrument']['instrument_type'] = instrument_info['type']
+        # Note: exchange is already set from GUI, but verify it matches SSOT
+        if config['instrument']['exchange'] != instrument_info['exchange']:
+            logger.warning(f"Exchange mismatch: GUI={config['instrument']['exchange']}, SSOT={instrument_info['exchange']}")
+            config['instrument']['exchange'] = instrument_info['exchange']  # SSOT wins
 
         # Session settings
         config['session']['is_intraday'] = self.bt_is_intraday.get()
@@ -529,14 +672,16 @@ class UnifiedTradingGUI(tk.Tk):
         frame = self.ft_tab
         
         # Add scrollable frame for the main content
-        canvas = tk.Canvas(frame)
+        canvas = tk.Canvas(frame, highlightthickness=0)
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
         
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        def _update_scroll_region(event=None):
+            """Update scroll region with proper sizing to ensure all content is scrollable"""
+            canvas.update_idletasks()
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        
+        scrollable_frame.bind("<Configure>", _update_scroll_region)
         
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
@@ -559,6 +704,10 @@ class UnifiedTradingGUI(tk.Tk):
         # Build left and right column content
         self._build_ft_left_column(left_column)
         self._build_ft_right_column(right_column)
+        
+        # Ensure scroll region is properly updated after all content is added
+        canvas.update_idletasks()
+        canvas.configure(scrollregion=canvas.bbox("all"))
         
         # Bind mousewheel to canvas for scrolling
         def _on_mousewheel(event):
@@ -584,32 +733,56 @@ class UnifiedTradingGUI(tk.Tk):
         cache_frame.columnconfigure(1, weight=1)
         
         ttk.Button(cache_frame, text="Refresh Cache", command=self._ft_refresh_cache).grid(row=0, column=0, sticky="w")
-        self.ft_cache_status = tk.StringVar(value="Cache not loaded")
         ttk.Label(cache_frame, textvariable=self.ft_cache_status, style='Note.TLabel').grid(row=0, column=1, sticky="w", padx=10)
         row += 1
 
-        # Exchange and Feed Type in one row
-        exchange_frame = ttk.Frame(parent)
-        exchange_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=5, pady=2)
+        # Instrument Type Selection (new primary selector)
+        instrument_frame = ttk.LabelFrame(parent, text="Instrument Selection")
+        instrument_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        instrument_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(instrument_frame, text="Instrument:").grid(row=0, column=0, sticky="e", padx=5, pady=2)
+        # Organize instruments by type for better UI
+        organized_instruments = {
+            "Index Options": ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX", "BANKEX"],
+            "Stock Options": ["RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS", "SBIN", "LT", "WIPRO", "MARUTI", "BHARTIARTL"],
+            "Index Futures": ["NIFTYFUT", "BANKNIFTYFUT"],
+            "Stock Futures": ["RELIANCEFUT"],
+            "Cash Market": ["NIFTY_CASH", "BANKNIFTY_CASH", "RELIANCE_CASH", "HDFCBANK_CASH"]
+        }
         
-        ttk.Label(exchange_frame, text="Exchange:").grid(row=0, column=0, sticky="e", padx=5)
-        self.ft_exchange = tk.StringVar(value="NSE_FO")
-        exchanges = ["NSE_FO", "NSE_CM", "BSE_CM"]
-        ttk.Combobox(exchange_frame, textvariable=self.ft_exchange, values=exchanges, width=10, state='readonly').grid(row=0, column=1, sticky="w", padx=5)
+        # Flatten for dropdown but keep order
+        instrument_values = []
+        for category, instruments in organized_instruments.items():
+            instrument_values.extend(instruments)
         
-        ttk.Label(exchange_frame, text="Feed:").grid(row=0, column=2, sticky="e", padx=(15,5))
-        self.ft_feed_type = tk.StringVar(value="Quote")
+        instrument_combo = ttk.Combobox(instrument_frame, textvariable=self.ft_instrument_type, 
+                                       values=instrument_values, width=20, state='readonly')
+        instrument_combo.grid(row=0, column=1, sticky="w", padx=5, pady=2)
+        instrument_combo.bind("<<ComboboxSelected>>", self._ft_on_instrument_change)
+
+        # Display instrument info (lot size, exchange, type)
+        info_frame = ttk.Frame(instrument_frame)
+        info_frame.grid(row=1, column=0, columnspan=3, sticky="ew", padx=5, pady=2)
+        
+        ttk.Label(info_frame, text="Lot Size:").grid(row=0, column=0, sticky="e", padx=5)
+        ttk.Entry(info_frame, textvariable=self.ft_lot_size, width=8, state="readonly").grid(row=0, column=1, padx=2)
+        
+        ttk.Label(info_frame, text="Exchange:").grid(row=0, column=2, sticky="e", padx=(15,5))
+        exchanges = ["NSE_FO", "NSE_CM", "BSE_CM", "BSE_FO"]
+        ttk.Combobox(info_frame, textvariable=self.ft_exchange, values=exchanges, width=10, state='readonly').grid(row=0, column=3, padx=2)
+        
+        ttk.Label(info_frame, text="Feed:").grid(row=0, column=4, sticky="e", padx=(15,5))
         feed_types = ["LTP", "Quote", "SnapQuote"]
-        ttk.Combobox(exchange_frame, textvariable=self.ft_feed_type, values=feed_types, width=10, state='readonly').grid(row=0, column=3, sticky="w", padx=5)
+        ttk.Combobox(info_frame, textvariable=self.ft_feed_type, values=feed_types, width=10, state='readonly').grid(row=0, column=5, padx=2)
         row += 1
 
-        # Symbol selection (compact version)
-        symbol_frame = ttk.LabelFrame(parent, text="Symbol Selection")
+        # Symbol selection (compact version - for specific symbol within instrument type)
+        symbol_frame = ttk.LabelFrame(parent, text="Specific Symbol Selection")
         symbol_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
         symbol_frame.columnconfigure(1, weight=1)
 
         ttk.Label(symbol_frame, text="Symbol:").grid(row=0, column=0, sticky="e", padx=5, pady=2)
-        self.ft_symbol = tk.StringVar()
         self.ft_symbol_entry = ttk.Entry(symbol_frame, textvariable=self.ft_symbol, width=25)
         self.ft_symbol_entry.grid(row=0, column=1, sticky="ew", padx=5, pady=2)
         ttk.Button(symbol_frame, text="Load", command=self._ft_load_symbols).grid(row=0, column=2, padx=5, pady=2)
@@ -621,8 +794,11 @@ class UnifiedTradingGUI(tk.Tk):
 
         # Token field (compact, read-only)
         ttk.Label(symbol_frame, text="Token:").grid(row=2, column=0, sticky="e", padx=5, pady=2)
-        self.ft_token = tk.StringVar()
         ttk.Entry(symbol_frame, textvariable=self.ft_token, width=15, state="readonly").grid(row=2, column=1, sticky="w", padx=5, pady=2)
+        row += 1
+
+        # Add separator between Symbol Management and Trading Controls
+        self._add_grid_separator(parent, row)
         row += 1
 
         # === CONTROL BUTTONS SECTION (CRITICAL) ===
@@ -638,6 +814,9 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Button(button_frame, text="📊 Status Monitor", command=self._ft_open_status_monitor).grid(row=0, column=2, padx=5, sticky="ew")
         row += 1
 
+        # Add separator between Trading Controls and Live Status
+        self._add_grid_separator(parent, row)
+        row += 1
 
         # === LIVE STATUS SECTION (CRITICAL) ===
         ttk.Label(parent, text="📊 Live Trading Status", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=2, sticky="w", pady=(15,5))
@@ -650,39 +829,31 @@ class UnifiedTradingGUI(tk.Tk):
 
         # Connection & Trading Status
         ttk.Label(status_frame, text="Connection:").grid(row=0, column=0, sticky="w", padx=5, pady=2)
-        self.ft_connection_status = tk.StringVar(value="🔴 Disconnected")
         ttk.Label(status_frame, textvariable=self.ft_connection_status).grid(row=0, column=1, sticky="w", padx=5, pady=2)
 
         ttk.Label(status_frame, text="Trading:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
-        self.ft_trading_status = tk.StringVar(value="⏸️ Stopped")
         ttk.Label(status_frame, textvariable=self.ft_trading_status).grid(row=1, column=1, sticky="w", padx=5, pady=2)
 
         # Current Price & Position
         ttk.Label(status_frame, text="Price:").grid(row=2, column=0, sticky="w", padx=5, pady=2)
-        self.ft_current_price = tk.StringVar(value="--")
         ttk.Label(status_frame, textvariable=self.ft_current_price).grid(row=2, column=1, sticky="w", padx=5, pady=2)
 
         ttk.Label(status_frame, text="Position:").grid(row=3, column=0, sticky="w", padx=5, pady=2)
-        self.ft_position_status = tk.StringVar(value="📭 No Position")
         ttk.Label(status_frame, textvariable=self.ft_position_status).grid(row=3, column=1, sticky="w", padx=5, pady=2)
 
         # P&L & Capital 
         ttk.Label(status_frame, text="P&L:").grid(row=4, column=0, sticky="w", padx=5, pady=2)
-        self.ft_pnl_status = tk.StringVar(value="₹0.00")
         self.ft_pnl_label = ttk.Label(status_frame, textvariable=self.ft_pnl_status)
         self.ft_pnl_label.grid(row=4, column=1, sticky="w", padx=5, pady=2)
 
         ttk.Label(status_frame, text="Capital:").grid(row=5, column=0, sticky="w", padx=5, pady=2)
-        self.ft_capital_display = tk.StringVar(value="₹1,00,000")
         ttk.Label(status_frame, textvariable=self.ft_capital_display).grid(row=5, column=1, sticky="w", padx=5, pady=2)
 
         # Trades & Ticks
         ttk.Label(status_frame, text="Trades Today:").grid(row=6, column=0, sticky="w", padx=5, pady=2)
-        self.ft_trades_today = tk.StringVar(value="0/3")
         ttk.Label(status_frame, textvariable=self.ft_trades_today).grid(row=6, column=1, sticky="w", padx=5, pady=2)
 
         ttk.Label(status_frame, text="Ticks:").grid(row=7, column=0, sticky="w", padx=5, pady=2)
-        self.ft_tick_count = tk.StringVar(value="0")
         ttk.Label(status_frame, textvariable=self.ft_tick_count).grid(row=7, column=1, sticky="w", padx=5, pady=2)
 
     def _build_ft_right_column(self, parent):
@@ -697,14 +868,7 @@ class UnifiedTradingGUI(tk.Tk):
         indicators_frame = ttk.LabelFrame(parent, text="Indicators")
         indicators_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
 
-        self.ft_use_ema_crossover = tk.BooleanVar(value=True)
-        self.ft_use_macd = tk.BooleanVar(value=True)
-        self.ft_use_vwap = tk.BooleanVar(value=True)
-        self.ft_use_rsi_filter = tk.BooleanVar(value=False)
-        self.ft_use_htf_trend = tk.BooleanVar(value=True)
-        self.ft_use_bollinger_bands = tk.BooleanVar(value=False)
-        self.ft_use_stochastic = tk.BooleanVar(value=False)
-        self.ft_use_atr = tk.BooleanVar(value=True)
+
 
         ttk.Checkbutton(indicators_frame, text="EMA Crossover", variable=self.ft_use_ema_crossover).grid(row=0, column=0, sticky="w", padx=2, pady=1)
         ttk.Checkbutton(indicators_frame, text="MACD", variable=self.ft_use_macd).grid(row=0, column=1, sticky="w", padx=2, pady=1)
@@ -722,68 +886,53 @@ class UnifiedTradingGUI(tk.Tk):
 
         # EMA Parameters
         ttk.Label(params_frame, text="Fast EMA:").grid(row=0, column=0, sticky="e", padx=2)
-        self.ft_fast_ema = tk.StringVar(value="9")
         ttk.Entry(params_frame, textvariable=self.ft_fast_ema, width=8).grid(row=0, column=1, padx=2)
 
         ttk.Label(params_frame, text="Slow EMA:").grid(row=0, column=2, sticky="e", padx=2)
-        self.ft_slow_ema = tk.StringVar(value="21")
         ttk.Entry(params_frame, textvariable=self.ft_slow_ema, width=8).grid(row=0, column=3, padx=2)
 
         # MACD Parameters
         ttk.Label(params_frame, text="MACD Fast:").grid(row=1, column=0, sticky="e", padx=2)
-        self.ft_macd_fast = tk.StringVar(value="12")
         ttk.Entry(params_frame, textvariable=self.ft_macd_fast, width=8).grid(row=1, column=1, padx=2)
 
         ttk.Label(params_frame, text="MACD Slow:").grid(row=1, column=2, sticky="e", padx=2)
-        self.ft_macd_slow = tk.StringVar(value="26")
         ttk.Entry(params_frame, textvariable=self.ft_macd_slow, width=8).grid(row=1, column=3, padx=2)
 
         ttk.Label(params_frame, text="MACD Signal:").grid(row=1, column=4, sticky="e", padx=2)
-        self.ft_macd_signal = tk.StringVar(value="9")
         ttk.Entry(params_frame, textvariable=self.ft_macd_signal, width=8).grid(row=1, column=5, padx=2)
 
-        # RSI Parameters - Initialize forward test specific variables
+        # RSI Parameters
         ttk.Label(params_frame, text="RSI Length:").grid(row=2, column=0, sticky="e", padx=2)
-        self.ft_rsi_length = tk.StringVar(value="14")
         ttk.Entry(params_frame, textvariable=self.ft_rsi_length, width=8).grid(row=2, column=1, padx=2)
 
         ttk.Label(params_frame, text="RSI Oversold:").grid(row=2, column=2, sticky="e", padx=2)
-        self.ft_rsi_oversold = tk.StringVar(value="30")
         ttk.Entry(params_frame, textvariable=self.ft_rsi_oversold, width=8).grid(row=2, column=3, padx=2)
 
         ttk.Label(params_frame, text="RSI Overbought:").grid(row=2, column=4, sticky="e", padx=2)
-        self.ft_rsi_overbought = tk.StringVar(value="70")
         ttk.Entry(params_frame, textvariable=self.ft_rsi_overbought, width=8).grid(row=2, column=5, padx=2)
 
-        # HTF Parameters - Initialize forward test specific variables
+        # HTF Parameters
         ttk.Label(params_frame, text="HTF Period:").grid(row=3, column=0, sticky="e", padx=2)
-        self.ft_htf_period = tk.StringVar(value="60")
         ttk.Entry(params_frame, textvariable=self.ft_htf_period, width=8).grid(row=3, column=1, padx=2)
         
-        # Consecutive Green Bars
-        ttk.Label(params_frame, text="Green Bars Req:").grid(row=3, column=2, sticky="e", padx=2)
-        self.ft_consecutive_green_bars = tk.StringVar(value="3")
-        ttk.Entry(params_frame, textvariable=self.ft_consecutive_green_bars, width=8).grid(row=3, column=3, padx=2)
+        # Consecutive Green Bars (moved to next row for better spacing)
+        ttk.Label(params_frame, text="Green Bars Req:").grid(row=4, column=0, sticky="e", padx=2)
+        ttk.Entry(params_frame, textvariable=self.ft_consecutive_green_bars, width=8).grid(row=4, column=1, padx=2)
+        row += 1
+
+        # Add separator between Strategy Configuration and Risk Management
+        self._add_grid_separator(parent, row)
         row += 1
 
         # === RISK MANAGEMENT SECTION ===
-        ttk.Label(parent, text="⚠️ Risk Management", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=2, sticky="w", pady=(20,5))
+        ttk.Label(parent, text="⚠️ Risk Management", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=2, sticky="w", pady=(25,5))
         row += 1
 
         risk_frame = ttk.LabelFrame(parent, text="Risk Controls")
         risk_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
         risk_frame.columnconfigure((1,3), weight=1)
 
-        # Initialize forward test risk variables
-        self.ft_use_stop_loss = tk.BooleanVar(value=True)
-        self.ft_base_sl_points = tk.StringVar(value="20")
-        self.ft_use_take_profit = tk.BooleanVar(value=True)
-        self.ft_tp_points = [tk.StringVar(value=str(x)) for x in ["30", "50", "75", "100"]]
-        self.ft_tp_percents = [tk.StringVar(value=str(x)) for x in ["25", "25", "25", "25"]]
-        self.ft_use_trail_stop = tk.BooleanVar(value=False)
-        self.ft_trail_activation = tk.StringVar(value="40")
-        self.ft_trail_distance = tk.StringVar(value="15")
-        self.ft_risk_per_trade = tk.StringVar(value="2.0")
+
 
         # Stop Loss Controls
         ttk.Checkbutton(risk_frame, text="Stop Loss", variable=self.ft_use_stop_loss).grid(row=0, column=0, sticky="w", padx=5, pady=2)
@@ -816,23 +965,19 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Entry(risk_frame, textvariable=self.ft_trail_distance, width=8).grid(row=3, column=4, padx=2)
         row += 1
 
+        # Add separator between Risk Management and Session Management
+        self._add_grid_separator(parent, row)
+        row += 1
+
         # === SESSION MANAGEMENT SECTION ===
-        ttk.Label(parent, text="⏰ Session Management", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=2, sticky="w", pady=(20,5))
+        ttk.Label(parent, text="⏰ Session Management", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=2, sticky="w", pady=(25,5))
         row += 1
 
         session_frame = ttk.LabelFrame(parent, text="Trading Session Controls")
         session_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
         session_frame.columnconfigure((1,3), weight=1)
 
-        # Initialize forward test session variables
-        self.ft_is_intraday = tk.BooleanVar(value=True)
-        self.ft_session_start_hour = tk.StringVar(value="9")
-        self.ft_session_start_min = tk.StringVar(value="15")
-        self.ft_session_end_hour = tk.StringVar(value="15")
-        self.ft_session_end_min = tk.StringVar(value="30")
-        self.ft_auto_stop_enabled = tk.BooleanVar(value=True)
-        self.ft_max_trades_per_day = tk.StringVar(value="3")
-        self.ft_max_loss_per_day = tk.StringVar(value="500")
+
 
         # Intraday Toggle
         ttk.Checkbutton(session_frame, text="Intraday Only", variable=self.ft_is_intraday).grid(row=0, column=0, sticky="w", padx=5, pady=2)
@@ -860,22 +1005,19 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Entry(session_frame, textvariable=self.ft_max_loss_per_day, width=8).grid(row=1, column=4, padx=2)
         row += 1
 
+        # Add separator between Session Management and Capital Management
+        self._add_grid_separator(parent, row)
+        row += 1
+
         # === CAPITAL MANAGEMENT SECTION ===
-        ttk.Label(parent, text="💰 Capital Management", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=2, sticky="w", pady=(20,5))
+        ttk.Label(parent, text="💰 Capital Management", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=2, sticky="w", pady=(25,5))
         row += 1
 
         capital_frame = ttk.LabelFrame(parent, text="Position Sizing & Capital Controls")
         capital_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
         capital_frame.columnconfigure((1,3), weight=1)
 
-        # Initialize forward test capital variables
-        self.ft_initial_capital = tk.StringVar(value="100000")
-        self.ft_available_capital = tk.StringVar(value="100000")
-        self.ft_position_size_method = tk.StringVar(value="fixed_amount")
-        self.ft_fixed_amount = tk.StringVar(value="10000")
-        self.ft_fixed_quantity = tk.StringVar(value="25")
-        self.ft_lot_size = tk.StringVar(value="25")
-        self.ft_max_positions = tk.StringVar(value="1")
+
 
         # Capital Settings
         ttk.Label(capital_frame, text="Initial Capital:").grid(row=0, column=0, sticky="e", padx=5, pady=2)
@@ -901,9 +1043,14 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Label(capital_frame, text="Fixed Qty:").grid(row=1, column=4, sticky="e", padx=5)
         ttk.Entry(capital_frame, textvariable=self.ft_fixed_quantity, width=6).grid(row=1, column=5, padx=2)
 
-        # Lot Size
+        # Lot Size (read-only - driven by instrument selection SSOT)
         ttk.Label(capital_frame, text="Lot Size:").grid(row=2, column=0, sticky="e", padx=5, pady=2)
-        ttk.Entry(capital_frame, textvariable=self.ft_lot_size, width=6).grid(row=2, column=1, padx=2)
+        ttk.Entry(capital_frame, textvariable=self.ft_lot_size, width=6, state="readonly").grid(row=2, column=1, padx=2)
+        row += 1
+
+        # Add bottom spacer to ensure content is fully scrollable
+        bottom_spacer = ttk.Frame(parent, height=30)
+        bottom_spacer.grid(row=row, column=0, columnspan=2, sticky="ew", pady=20)
         row += 1
 
 
@@ -1004,14 +1151,14 @@ class UnifiedTradingGUI(tk.Tk):
         self.monitor_tab = ttk.Frame(self.notebook)
         self.log_tab = ttk.Frame(self.notebook)
 
-        # Add tabs to notebook
-        self.notebook.add(self.bt_tab, text="Backtest")
-        self.notebook.add(self.ft_tab, text="Forward Test") 
-        self.notebook.add(self.monitor_tab, text="Monitor")
-        self.notebook.add(self.log_tab, text="Logs")
+        # Add tabs to notebook with horizontal spacing
+        self.notebook.add(self.bt_tab, text="   Backtest   ")
+        self.notebook.add(self.ft_tab, text="   Forward Test   ") 
+        self.notebook.add(self.monitor_tab, text="   Monitor   ")
+        self.notebook.add(self.log_tab, text="   Logs   ")
 
-        # Pack notebook
-        self.notebook.pack(expand=1, fill="both")
+        # Pack notebook with vertical spacing
+        self.notebook.pack(expand=1, fill="both", pady=(0, 15))
 
     def _build_backtest_tab(self):
         """Improved backtest tab with collapsible sections and better organization"""
@@ -1055,15 +1202,19 @@ class UnifiedTradingGUI(tk.Tk):
         right_column = ttk.Frame(scrollable_frame)
         right_column.grid(row=0, column=1, sticky='nsew', padx=(5,0))
         
-        # Build sections in two columns
+        # Build sections in two columns with separators
         # Left column: Data, Strategy, Results
         self._build_data_section(left_column)
+        self._add_section_separator(left_column)
         self._build_strategy_section(left_column)
+        self._add_section_separator(left_column)
         self._build_results_section(left_column)
         
         # Right column: Risk, Instrument, Session
         self._build_risk_section(right_column)
+        self._add_section_separator(right_column)
         self._build_instrument_section(right_column)
+        self._add_section_separator(right_column)
         self._build_session_section(right_column)
         
         # Action buttons at top
@@ -1099,19 +1250,17 @@ class UnifiedTradingGUI(tk.Tk):
         self._create_ui_styles()
         
         # Build indicator groups with their parameters
-        self._build_trend_indicators_group(content)
-        self._build_momentum_indicators_group(content) 
-        self._build_volume_indicators_group(content)
-        self._build_pattern_indicators_group(content)
+        self._build_core_indicators_group(content)
+        self._build_optional_indicators_group(content)
         
         section.pack(fill='x', pady=(0,10))
 
-    def _build_trend_indicators_group(self, parent):
-        """Trend indicators with their parameters grouped together"""
+    def _build_core_indicators_group(self, parent):
+        """Core indicators: EMA, MACD, VWAP, and Consecutive Green Pattern"""
         row_start = 0
         
         # Group header
-        ttk.Label(parent, text="📈 TREND INDICATORS", 
+        ttk.Label(parent, text="� INDICATORS", 
                  style='GroupHeader.TLabel').grid(row=row_start, column=0, columnspan=6, 
                                                  sticky='w', pady=(10,5))
         
@@ -1164,22 +1313,86 @@ class UnifiedTradingGUI(tk.Tk):
         
         # Store section reference for collapsing
         self.macd_section = macd_section
+        
+        # VWAP (no parameters needed)
+        row += 1
+        vwap_section = CollapsibleFrame(parent, "VWAP", collapsed=not self.bt_use_vwap.get())
+        vwap_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
+        vwap_frame = vwap_section.get_content_frame()
+        
+        # Connect CollapsibleFrame toggle to indicator enable/disable
+        vwap_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('vwap', vwap_section))
+        
+        # VWAP message - use enabled style if initially checked
+        initial_style = 'Enabled.TLabel' if self.bt_use_vwap.get() else 'Parameter.TLabel'
+        ttk.Label(vwap_frame, text="No parameters required for VWAP", 
+                 style=initial_style, foreground='grey').grid(row=0, column=0, sticky='w', pady=5)
+        
+        # Store section reference for collapsing
+        self.vwap_section = vwap_section
+        
+        # Consecutive Green Tick Pattern
+        row += 1
+        green_section = CollapsibleFrame(parent, "Consecutive Green Tick Pattern", collapsed=not self.bt_use_consecutive_green.get())
+        green_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
+        green_frame = green_section.get_content_frame()
+        green_frame.columnconfigure((1,3), weight=1)
+        
+        # Connect CollapsibleFrame toggle to indicator enable/disable
+        green_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('consecutive_green', green_section))
+        
+        # Parameters for consecutive green - use enabled style if initially checked
+        initial_style = 'Enabled.TLabel' if self.bt_use_consecutive_green.get() else 'Parameter.TLabel'
+        ttk.Label(green_frame, text="Required Green Bars:", style=initial_style).grid(row=0, column=0, sticky='e', padx=(0,5))
+        self.green_bars_entry = ttk.Entry(green_frame, textvariable=self.bt_consecutive_green_bars, width=6, style='Standard.TEntry')
+        self.green_bars_entry.grid(row=0, column=1, sticky='w', padx=(0,15))
+        
+        # Noise Filter Parameters
+        ttk.Label(green_frame, text="Noise Filter (%):", style=initial_style).grid(row=0, column=2, sticky='e', padx=(0,5))
+        self.noise_filter_entry = ttk.Entry(green_frame, textvariable=self.bt_noise_filter_percentage, width=8, style='Standard.TEntry')
+        self.noise_filter_entry.grid(row=0, column=3, sticky='w')
+        
+        # Second row for additional noise filter parameters
+        ttk.Label(green_frame, text="Min Ticks:", style=initial_style).grid(row=1, column=0, sticky='e', padx=(0,5))
+        self.noise_ticks_entry = ttk.Entry(green_frame, textvariable=self.bt_noise_filter_min_ticks, width=6, style='Standard.TEntry')
+        self.noise_ticks_entry.grid(row=1, column=1, sticky='w', padx=(0,15))
+        
+        ttk.Checkbutton(green_frame, text="Enable Noise Filter", 
+                       variable=self.bt_noise_filter_enabled).grid(row=1, column=2, columnspan=2, sticky='w', padx=(0,5))
+        
+        # Store section reference for collapsing
+        self.consecutive_green_section = green_section
 
-    def _build_momentum_indicators_group(self, parent):
-        """Momentum indicators with their parameters"""
+    def _build_optional_indicators_group(self, parent):
+        """Optional indicators with toggle functionality: HTF, RSI, Bollinger Bands, Stochastic, ATR"""
         # Find next available row
         used_rows = [int(child.grid_info()['row']) for child in parent.grid_slaves() if child.grid_info()]
         row_start = max(used_rows) + 1 if used_rows else 0
         
-        # Group header
-        ttk.Label(parent, text="⚡ MOMENTUM INDICATORS", 
-                 style='GroupHeader.TLabel').grid(row=row_start, column=0, columnspan=6, 
-                                                 sticky='w', pady=(10,5))
+        # Optional indicators group header with checkbox
+        header_frame = ttk.Frame(parent)
+        header_frame.grid(row=row_start, column=0, columnspan=6, sticky='ew', pady=(10,5))
+        header_frame.columnconfigure(1, weight=1)
+        
+        # Checkbox to toggle optional indicators visibility
+        self.optional_indicators_checkbox = ttk.Checkbutton(
+            header_frame, 
+            text="🔧 OPTIONAL INDICATORS", 
+            variable=self.bt_show_optional_indicators,
+            style='GroupHeader.TCheckbutton',
+            command=self._toggle_optional_indicators_visibility
+        )
+        self.optional_indicators_checkbox.grid(row=0, column=0, sticky='w')
+        
+        # Container for optional indicators (initially visible if checkbox is checked)
+        self.optional_indicators_frame = ttk.Frame(parent)
+        self.optional_indicators_frame.grid(row=row_start + 1, column=0, columnspan=6, sticky='ew', padx=5)
+        self.optional_indicators_frame.columnconfigure(0, weight=1)
         
         # RSI Filter with parameters
-        row = row_start + 1
-        rsi_section = CollapsibleFrame(parent, "RSI Filter", collapsed=not self.bt_use_rsi_filter.get())
-        rsi_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
+        row = 0
+        rsi_section = CollapsibleFrame(self.optional_indicators_frame, "RSI Filter", collapsed=not self.bt_use_rsi_filter.get())
+        rsi_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=0, pady=5)
         rsi_frame = rsi_section.get_content_frame()
         rsi_frame.columnconfigure((1,3,5), weight=1)
         
@@ -1202,75 +1415,86 @@ class UnifiedTradingGUI(tk.Tk):
         
         # Store section reference for collapsing
         self.rsi_filter_section = rsi_section
-
-    def _build_volume_indicators_group(self, parent):
-        """Volume-based indicators"""
-        used_rows = [int(child.grid_info()['row']) for child in parent.grid_slaves() if child.grid_info()]
-        row_start = max(used_rows) + 1 if used_rows else 0
         
-        # Group header  
-        ttk.Label(parent, text="📊 VOLUME INDICATORS", 
-                 style='GroupHeader.TLabel').grid(row=row_start, column=0, columnspan=6, 
-                                                 sticky='w', pady=(10,5))
-        
-        # VWAP (no parameters needed)
-        row = row_start + 1
-        vwap_section = CollapsibleFrame(parent, "Volume Weighted Average Price", collapsed=not self.bt_use_vwap.get())
-        vwap_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
-        vwap_frame = vwap_section.get_content_frame()
+        # HTF Trend Filter with parameters
+        row += 1
+        htf_section = CollapsibleFrame(self.optional_indicators_frame, "Higher Timeframe Trend", collapsed=not self.bt_use_htf_trend.get())
+        htf_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=0, pady=5)
+        htf_frame = htf_section.get_content_frame()
+        htf_frame.columnconfigure((1,3), weight=1)
         
         # Connect CollapsibleFrame toggle to indicator enable/disable
-        vwap_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('vwap', vwap_section))
+        htf_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('htf_trend', htf_section))
         
-        # VWAP message - use enabled style if initially checked
-        initial_style = 'Enabled.TLabel' if self.bt_use_vwap.get() else 'Parameter.TLabel'
-        ttk.Label(vwap_frame, text="No parameters required for VWAP", 
+        # HTF Parameters - use enabled style if initially checked
+        initial_style = 'Enabled.TLabel' if self.bt_use_htf_trend.get() else 'Parameter.TLabel'
+        ttk.Label(htf_frame, text="HTF Period:", style=initial_style).grid(row=0, column=0, sticky='e', padx=(0,5))
+        self.htf_period_entry = ttk.Entry(htf_frame, textvariable=self.bt_htf_period, width=8, style='Standard.TEntry')
+        self.htf_period_entry.grid(row=0, column=1, sticky='w')
+        
+        # Store section reference for collapsing
+        self.htf_trend_section = htf_section
+        
+        # Bollinger Bands (placeholder - parameters would be added here)
+        row += 1
+        bb_section = CollapsibleFrame(self.optional_indicators_frame, "Bollinger Bands", collapsed=not self.bt_use_bollinger_bands.get())
+        bb_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=0, pady=5)
+        bb_frame = bb_section.get_content_frame()
+        
+        # Connect CollapsibleFrame toggle to indicator enable/disable
+        bb_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('bollinger_bands', bb_section))
+        
+        # BB message - use enabled style if initially checked
+        initial_style = 'Enabled.TLabel' if self.bt_use_bollinger_bands.get() else 'Parameter.TLabel'
+        ttk.Label(bb_frame, text="Bollinger Bands parameters (to be implemented)", 
                  style=initial_style, foreground='grey').grid(row=0, column=0, sticky='w', pady=5)
         
         # Store section reference for collapsing
-        self.vwap_section = vwap_section
-
-    def _build_pattern_indicators_group(self, parent):
-        """Pattern recognition indicators"""
-        used_rows = [int(child.grid_info()['row']) for child in parent.grid_slaves() if child.grid_info()]
-        row_start = max(used_rows) + 1 if used_rows else 0
+        self.bollinger_bands_section = bb_section
         
-        # Group header
-        ttk.Label(parent, text="🔄 PATTERN INDICATORS", 
-                 style='GroupHeader.TLabel').grid(row=row_start, column=0, columnspan=6, 
-                                                 sticky='w', pady=(10,5))
-        
-        # Consecutive Green Tick Indicator (NEW - as requested)
-        row = row_start + 1
-        green_section = CollapsibleFrame(parent, "Consecutive Green Tick Pattern", collapsed=not self.bt_use_consecutive_green.get())
-        green_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
-        green_frame = green_section.get_content_frame()
-        green_frame.columnconfigure((1,3), weight=1)
+        # Stochastic (placeholder)
+        row += 1
+        stoch_section = CollapsibleFrame(self.optional_indicators_frame, "Stochastic", collapsed=not self.bt_use_stochastic.get())
+        stoch_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=0, pady=5)
+        stoch_frame = stoch_section.get_content_frame()
         
         # Connect CollapsibleFrame toggle to indicator enable/disable
-        green_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('consecutive_green', green_section))
+        stoch_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('stochastic', stoch_section))
         
-        # Parameters for consecutive green (existing + noise filter) - use enabled style if initially checked
-        initial_style = 'Enabled.TLabel' if self.bt_use_consecutive_green.get() else 'Parameter.TLabel'
-        ttk.Label(green_frame, text="Required Green Bars:", style=initial_style).grid(row=0, column=0, sticky='e', padx=(0,5))
-        self.green_bars_entry = ttk.Entry(green_frame, textvariable=self.bt_consecutive_green_bars, width=6, style='Standard.TEntry')
-        self.green_bars_entry.grid(row=0, column=1, sticky='w', padx=(0,15))
-        
-        # Noise Filter Parameters (as requested - specifically for consecutive green tick)
-        ttk.Label(green_frame, text="Noise Filter (%):", style=initial_style).grid(row=0, column=2, sticky='e', padx=(0,5))
-        self.noise_filter_entry = ttk.Entry(green_frame, textvariable=self.bt_noise_filter_percentage, width=8, style='Standard.TEntry')
-        self.noise_filter_entry.grid(row=0, column=3, sticky='w')
-        
-        # Second row for additional noise filter parameters
-        ttk.Label(green_frame, text="Min Ticks:", style=initial_style).grid(row=1, column=0, sticky='e', padx=(0,5))
-        self.noise_ticks_entry = ttk.Entry(green_frame, textvariable=self.bt_noise_filter_min_ticks, width=6, style='Standard.TEntry')
-        self.noise_ticks_entry.grid(row=1, column=1, sticky='w', padx=(0,15))
-        
-        ttk.Checkbutton(green_frame, text="Enable Noise Filter", 
-                       variable=self.bt_noise_filter_enabled).grid(row=1, column=2, columnspan=2, sticky='w', padx=(0,5))
+        # Stochastic message - use enabled style if initially checked
+        initial_style = 'Enabled.TLabel' if self.bt_use_stochastic.get() else 'Parameter.TLabel'
+        ttk.Label(stoch_frame, text="Stochastic parameters (to be implemented)", 
+                 style=initial_style, foreground='grey').grid(row=0, column=0, sticky='w', pady=5)
         
         # Store section reference for collapsing
-        self.consecutive_green_section = green_section
+        self.stochastic_section = stoch_section
+        
+        # ATR (placeholder)
+        row += 1
+        atr_section = CollapsibleFrame(self.optional_indicators_frame, "Average True Range", collapsed=not self.bt_use_atr.get())
+        atr_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=0, pady=5)
+        atr_frame = atr_section.get_content_frame()
+        
+        # Connect CollapsibleFrame toggle to indicator enable/disable
+        atr_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('atr', atr_section))
+        
+        # ATR message - use enabled style if initially checked
+        initial_style = 'Enabled.TLabel' if self.bt_use_atr.get() else 'Parameter.TLabel'
+        ttk.Label(atr_frame, text="ATR parameters (to be implemented)", 
+                 style=initial_style, foreground='grey').grid(row=0, column=0, sticky='w', pady=5)
+        
+        # Store section reference for collapsing
+        self.atr_section = atr_section
+        
+        # Set initial visibility based on checkbox state
+        self._toggle_optional_indicators_visibility()
+
+    def _toggle_optional_indicators_visibility(self):
+        """Toggle the visibility of optional indicators based on checkbox state"""
+        if self.bt_show_optional_indicators.get():
+            self.optional_indicators_frame.grid()
+        else:
+            self.optional_indicators_frame.grid_remove()
 
     def _build_risk_section(self, parent):
         """Risk management with collapsible components"""
@@ -1378,17 +1602,18 @@ class UnifiedTradingGUI(tk.Tk):
         
         # Instrument and capital settings
         settings = [
-            ("Symbol:", self.bt_symbol, 15),
-            ("Exchange:", self.bt_exchange, 10),
-            ("Lot Size:", self.bt_lot_size, 8),
-            ("Initial Capital:", self.bt_initial_capital, 15)
+            ("Symbol:", self.bt_symbol, 15, False),
+            ("Exchange:", self.bt_exchange, 10, False),  
+            ("Lot Size:", self.bt_lot_size, 8, True),  # Read-only (from SSOT)
+            ("Initial Capital:", self.bt_initial_capital, 15, False)
         ]
         
-        for i, (label, var, width) in enumerate(settings):
+        for i, (label, var, width, readonly) in enumerate(settings):
             row, col_pair = divmod(i, 2)
             base_col = col_pair * 2
             ttk.Label(content, text=label).grid(row=row, column=base_col, sticky='e', padx=5, pady=2)
-            ttk.Entry(content, textvariable=var, width=width).grid(row=row, column=base_col+1, sticky='w', padx=(0,15), pady=2)
+            state = "readonly" if readonly else "normal"
+            ttk.Entry(content, textvariable=var, width=width, state=state).grid(row=row, column=base_col+1, sticky='w', padx=(0,15), pady=2)
         
         section.pack(fill='x', pady=(0,10))
 
@@ -1443,13 +1668,23 @@ class UnifiedTradingGUI(tk.Tk):
         
         # === SECTION HEADERS ===
         style.configure('SectionHeader.TLabel', 
-                       font=('Segoe UI', 15, 'bold'), 
+                       font=('Segoe UI', 15, 'bold', 'underline'), 
                        foreground='navy')
         
         # === GROUP HEADERS ===  
         style.configure('GroupHeader.TLabel', 
-                       font=('Segoe UI', 13, 'bold'), 
+                       font=('Segoe UI', 13, 'bold', 'underline'), 
                        foreground='darkblue')
+        
+        # === GROUP HEADER CHECKBUTTONS ===
+        style.configure('GroupHeader.TCheckbutton', 
+                       font=('Segoe UI', 13, 'bold', 'underline'), 
+                       foreground='darkblue')
+        
+        # === LABELFRAME HEADERS ===
+        style.configure('TLabelframe.Label', 
+                       font=('Segoe UI', 13, 'bold', 'underline'), 
+                       foreground='darkslategray')
         
         # === INDICATOR LABELS ===
         style.configure('Indicator.TLabel', 
@@ -1488,26 +1723,37 @@ class UnifiedTradingGUI(tk.Tk):
         
         # === COLLAPSIBLE FRAME HEADERS ===
         style.configure('CollapsibleHeader.TCheckbutton', 
-                       font=('Segoe UI', 14, 'bold'),
+                       font=('Segoe UI', 14, 'bold', 'underline'),
                        foreground='darkslategray')
         
-        # === ENABLED/ACTIVE STATES (DARK GREEN) ===
+        # === ENABLED/ACTIVE STATES (LIGHTER GREEN) ===
         style.configure('Enabled.TCheckbutton', 
                        font=('Segoe UI', 14, 'bold'),
-                       foreground='#006400')  # Dark green for enabled functionality
+                       foreground='#4CAF50')  # Even lighter green for enabled functionality
         
         style.configure('Enabled.TLabel', 
                        font=('Segoe UI', 14, 'bold'),
-                       foreground='#006400')  # Dark green for enabled parameter labels
+                       foreground='#4CAF50')  # Even lighter green for enabled parameter labels
         
         style.configure('EnabledGroup.TLabel', 
-                       font=('Segoe UI', 13, 'bold'),
-                       foreground='#006400')  # Dark green for enabled group headers
+                       font=('Segoe UI', 13, 'bold', 'underline'),
+                       foreground='#4CAF50')  # Even lighter green for enabled group headers
         
         # === SMALL TEXT/NOTES ===
         style.configure('Note.TLabel', 
                        font=('Segoe UI', 12), 
                        foreground='gray')
+        
+        # === SEPARATORS/GRID LINES ===
+        style.configure('Separator.TSeparator', 
+                       background='#CCCCCC',
+                       borderwidth=1,
+                       relief='solid')
+        
+        style.configure('SectionSeparator.TFrame', 
+                       background='#CCCCCC',
+                       relief='solid',
+                       borderwidth=1)
         
         # === INFO TEXT ===
         style.configure('Info.TLabel', 
@@ -1522,6 +1768,24 @@ class UnifiedTradingGUI(tk.Tk):
         style.configure('Disabled.TEntry', 
                        font=('Segoe UI', 14),
                        fieldbackground='lightgray')
+
+    def _add_section_separator(self, parent, pady=10):
+        """Add a visual separator line between sections"""
+        separator = ttk.Separator(parent, orient='horizontal', style='Separator.TSeparator')
+        separator.pack(fill='x', pady=pady, padx=20)
+        return separator
+    
+    def _add_grid_separator(self, parent, row, column=0, columnspan=2, pady=(10,10)):
+        """Add a visual separator line in a grid-based layout"""
+        separator = ttk.Separator(parent, orient='horizontal', style='Separator.TSeparator')
+        separator.grid(row=row, column=column, columnspan=columnspan, sticky='ew', pady=pady, padx=20)
+        return separator
+    
+    def _add_grid_frame(self, parent, pady=(10,10)):
+        """Add a frame with grid-like borders for section separation"""
+        grid_frame = ttk.Frame(parent, style='SectionSeparator.TFrame', height=2)
+        grid_frame.pack(fill='x', pady=pady, padx=10)
+        return grid_frame
 
     def _sync_collapsible_with_indicator(self, group_name, section):
         """Sync CollapsibleFrame state with indicator enable/disable variable and colors"""
@@ -1554,11 +1818,15 @@ class UnifiedTradingGUI(tk.Tk):
         try:
             # Find and update group headers related to this functionality
             group_headers = {
-                'ema_crossover': '📈 TREND INDICATORS',
-                'macd': '📈 TREND INDICATORS', 
-                'rsi_filter': '⚡ MOMENTUM INDICATORS',
-                'vwap': '📊 VOLUME INDICATORS',
-                'consecutive_green': '🔄 PATTERN INDICATORS'
+                'ema_crossover': '� INDICATORS',
+                'macd': '� INDICATORS', 
+                'vwap': '📊 INDICATORS',
+                'consecutive_green': '📊 INDICATORS',
+                'rsi_filter': '🔧 OPTIONAL INDICATORS',
+                'htf_trend': '🔧 OPTIONAL INDICATORS',
+                'bollinger_bands': '� OPTIONAL INDICATORS',
+                'stochastic': '� OPTIONAL INDICATORS',
+                'atr': '🔧 OPTIONAL INDICATORS'
             }
             
             if group_name in group_headers:
@@ -1714,13 +1982,82 @@ class UnifiedTradingGUI(tk.Tk):
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
         
+        # Create control frame for buttons
+        control_frame = ttk.Frame(frame)
+        control_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=5, pady=(0, 5))
+        
+        # Add clear button
+        clear_btn = ttk.Button(control_frame, text="Clear Logs", command=self._clear_logs)
+        clear_btn.pack(side="left", padx=(0, 10))
+        
+        # Add log level info
+        ttk.Label(control_frame, text="Showing INFO level and above").pack(side="right")
+        
         # Create scrolled text widget for logs
-        self.log_text = tk.Text(frame, wrap="word", state="disabled")
+        self.log_text = tk.Text(frame, wrap="word", state="disabled", 
+                               bg="white", fg="black", font=("Consolas", 12))
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.log_text.yview)
         self.log_text.configure(yscrollcommand=scrollbar.set)
         
         self.log_text.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
         scrollbar.grid(row=0, column=1, sticky="ns", pady=5)
+        
+        # Set up GUI log handler to display logs in this text widget
+        self._setup_gui_logging()
+        
+        # Add initial message to show that logging is active
+        self._append_initial_log_message()
+
+    def _setup_gui_logging(self):
+        """Set up GUI log handler to display logs in the text widget"""
+        try:
+            # Create and configure GUI log handler
+            self.gui_log_handler = GuiLogHandler(self.log_text)
+            
+            # Set formatter to match other handlers
+            formatter = logging.Formatter(
+                "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                datefmt="%H:%M:%S"
+            )
+            self.gui_log_handler.setFormatter(formatter)
+            
+            # Set level to INFO to avoid too much debug noise in GUI
+            self.gui_log_handler.setLevel(logging.INFO)
+            
+            # Add handler to root logger
+            root_logger = logging.getLogger()
+            root_logger.addHandler(self.gui_log_handler)
+            
+        except Exception as e:
+            logger.error(f"Failed to setup GUI logging: {e}")
+    
+    def _append_initial_log_message(self):
+        """Add initial message to log tab to show it's working"""
+        try:
+            self.log_text.configure(state="normal")
+            init_msg = f"GUI Log initialized at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            self.log_text.insert(tk.END, f"{init_msg}\n")
+            self.log_text.insert(tk.END, "=" * 50 + "\n")
+            self.log_text.configure(state="disabled")
+            
+            # Test log message to verify handler is working
+            logger.info("GUI log display is now active")
+            
+        except Exception as e:
+            logger.error(f"Failed to add initial log message: {e}")
+
+    def _clear_logs(self):
+        """Clear the log display in the GUI"""
+        try:
+            self.log_text.configure(state="normal")
+            self.log_text.delete(1.0, tk.END)
+            self.log_text.configure(state="disabled")
+            
+            # Add a cleared message
+            self._append_initial_log_message()
+            
+        except Exception as e:
+            logger.error(f"Failed to clear logs: {e}")
 
     def _ft_refresh_cache(self):
         """Refresh symbol cache for forward testing"""
@@ -1782,6 +2119,49 @@ class UnifiedTradingGUI(tk.Tk):
             logger.warning(f"Symbol details update error: {e}")
             self.ft_token.set("")
 
+    def _ft_on_instrument_change(self, event=None):
+        """Callback when instrument type is changed in dropdown"""
+        try:
+            selected_instrument = self.ft_instrument_type.get()
+            if selected_instrument in self.instrument_mappings:
+                instrument_info = self.instrument_mappings[selected_instrument]
+                
+                # Update lot size automatically - STRICT ACCESS (fail-fast if missing)
+                if 'lot_size' not in instrument_info:
+                    raise KeyError(f"lot_size not found for instrument '{selected_instrument}' in instrument_mappings SSOT")
+                self.ft_lot_size.set(str(instrument_info['lot_size']))
+                
+                # Update exchange - STRICT ACCESS (fail-fast if missing)
+                if 'exchange' not in instrument_info:
+                    raise KeyError(f"exchange not found for instrument '{selected_instrument}' in instrument_mappings SSOT")
+                new_exchange = instrument_info['exchange']
+                if new_exchange != self.ft_exchange.get():
+                    self.ft_exchange.set(new_exchange)
+                
+                # Store selected instrument info for configuration building
+                self.ft_selected_instrument_info = instrument_info
+                
+                # Clear symbol and token since we changed instrument type
+                self.ft_symbol.set("")
+                self.ft_token.set("")
+                
+                # Update cache status
+                self.ft_cache_status.set(f"Select instrument: {selected_instrument}")
+                
+                logger.info(f"Instrument changed to {selected_instrument}: lot_size={instrument_info.get('lot_size')}, exchange={new_exchange}")
+                
+        except Exception as e:
+            logger.warning(f"Instrument change error: {e}")
+
+    def _initialize_instrument_selection(self):
+        """Initialize instrument selection with default values after GUI is built"""
+        try:
+            # Trigger the instrument change callback to set initial values
+            self._ft_on_instrument_change()
+            logger.info("Instrument selection initialized with default NIFTY settings")
+        except Exception as e:
+            logger.warning(f"Failed to initialize instrument selection: {e}")
+
     def _ft_build_config_from_gui(self):
         """Build forward test specific configuration from GUI state"""
         # Start with base configuration from backtest GUI
@@ -1796,6 +2176,11 @@ class UnifiedTradingGUI(tk.Tk):
         config_dict['instrument']['symbol'] = self.ft_symbol.get().strip()
         config_dict['instrument']['token'] = self.ft_token.get().strip()
         config_dict['instrument']['exchange'] = self.ft_exchange.get()
+        # Add instrument type and related info from selected mapping - STRICT ACCESS
+        config_dict['instrument']['instrument_type'] = self.ft_instrument_type.get()
+        if 'tick_size' not in self.ft_selected_instrument_info:
+            raise KeyError(f"tick_size not found for selected instrument in instrument_mappings SSOT")
+        config_dict['instrument']['tick_size'] = self.ft_selected_instrument_info['tick_size']
         
         # Update strategy parameters from forward test GUI
         config_dict['strategy']['use_ema_crossover'] = self.ft_use_ema_crossover.get()
@@ -1852,8 +2237,8 @@ class UnifiedTradingGUI(tk.Tk):
         config_dict['capital']['fixed_quantity'] = int(self.ft_fixed_quantity.get())
         config_dict['capital']['max_positions'] = int(self.ft_max_positions.get())
 
-        # Update instrument settings from forward test GUI
-        config_dict['instrument']['lot_size'] = int(self.ft_lot_size.get())
+        # Update instrument settings from forward test GUI (lot_size comes from SSOT, not GUI)
+        # Note: lot_size is read-only and sourced from instrument_mappings
 
         # Add live trading specific configuration
         config_dict['live'] = {
@@ -2040,14 +2425,14 @@ class UnifiedTradingGUI(tk.Tk):
                     self.ft_pnl_status.set(pnl_text)
                     # Color code P&L: green for profit, red for loss
                     if isinstance(pnl, (int, float)):
-                        color = '#006400' if pnl > 0 else 'red' if pnl < 0 else 'black'
+                        color = '#4CAF50' if pnl > 0 else 'red' if pnl < 0 else 'black'
                         self.ft_pnl_label.configure(foreground=color)
                 
                 # Update monitor tab P&L
                 if hasattr(self, 'monitor_pnl_status') and hasattr(self, 'monitor_pnl_label'):
                     self.monitor_pnl_status.set(pnl_text)
                     if isinstance(pnl, (int, float)):
-                        color = '#006400' if pnl > 0 else 'red' if pnl < 0 else 'black'
+                        color = '#4CAF50' if pnl > 0 else 'red' if pnl < 0 else 'black'
                         self.monitor_pnl_label.configure(foreground=color)
             
             if tick_count is not None and hasattr(self, 'ft_tick_count'):
@@ -2250,6 +2635,18 @@ class UnifiedTradingGUI(tk.Tk):
         except Exception as e:
             logger.exception(f"Demo updates failed: {e}")
             self._update_ft_result_box(f"❌ Demo error: {e}\n", "live")
+
+    def destroy(self):
+        """Override destroy to clean up GUI log handler"""
+        try:
+            # Remove GUI log handler to prevent memory leaks
+            if hasattr(self, 'gui_log_handler'):
+                root_logger = logging.getLogger()
+                root_logger.removeHandler(self.gui_log_handler)
+        except Exception as e:
+            logger.error(f"Error cleaning up GUI log handler: {e}")
+        finally:
+            super().destroy()
 
 
 if __name__ == "__main__":

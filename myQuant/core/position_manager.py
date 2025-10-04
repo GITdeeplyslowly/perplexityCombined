@@ -44,8 +44,8 @@ def compute_number_of_lots(cfg_accessor: ConfigAccessor, available_capital: floa
         if available_capital <= 0 or price <= 0:
             return 0
 
-        # instrument.lot_size is the single SSOT for contract size
-        units_per_lot = cfg_accessor.get_instrument_param('lot_size')
+        # instrument_mappings.lot_size is the single SSOT for contract size
+        units_per_lot = cfg_accessor.get_current_instrument_param('lot_size')
         units_per_lot = int(units_per_lot)
 
         units_value_per_lot = units_per_lot * price
@@ -212,7 +212,7 @@ class PositionManager:
         lots = max(1, round(desired_quantity / lot_size))
         return lots * lot_size
 
-    def calculate_position_size(self, entry_price: float, stop_loss_price: float, lot_size: int = 1) -> int:
+    def calculate_position_size(self, entry_price: float, stop_loss_price: float) -> int:
         """
         Capital-driven sizing (deterministic):
         - Use self.current_capital as available capital.
@@ -222,7 +222,7 @@ class PositionManager:
         try:
             if entry_price <= 0:
                 return 0
-            canonical_lot = int(self.config_accessor.get_instrument_param('lot_size'))
+            canonical_lot = int(self.config_accessor.get_current_instrument_param('lot_size'))
             lots = compute_number_of_lots(self.config_accessor, self.current_capital, entry_price)
             total_quantity = int(lots) * canonical_lot
             return total_quantity
@@ -230,22 +230,22 @@ class PositionManager:
             logger.exception("calculate_position_size failed")
             return 0
 
-    def calculate_position_size_in_lots(self, entry_price: float, stop_loss_price: float, lot_size: int = 1) -> tuple:
+    def calculate_position_size_in_lots(self, entry_price: float, stop_loss_price: float) -> tuple:
         """
         Return (lots, total_quantity, lot_size) using canonical instrument.lot_size
         and deterministic capital-driven sizing (100% available capital).
         """
         try:
             if entry_price <= 0:
-                canonical_lot = int(self.config_accessor.get_instrument_param('lot_size'))
+                canonical_lot = int(self.config_accessor.get_current_instrument_param('lot_size'))
                 return 0, 0, canonical_lot
-            canonical_lot = int(self.config_accessor.get_instrument_param('lot_size'))
+            canonical_lot = int(self.config_accessor.get_current_instrument_param('lot_size'))
             lots = compute_number_of_lots(self.config_accessor, self.current_capital, entry_price)
             total_quantity = int(lots) * canonical_lot
             return int(lots), int(total_quantity), int(canonical_lot)
         except Exception:
             logger.exception("calculate_position_size_in_lots failed")
-            canonical_lot = int(self.config_accessor.get_instrument_param('lot_size'))
+            canonical_lot = int(self.config_accessor.get_current_instrument_param('lot_size'))
             return 0, 0, canonical_lot
 
     def calculate_total_costs(self, price: float, quantity: int, is_buy: bool = True) -> Dict[str, float]:
@@ -266,7 +266,6 @@ class PositionManager:
         }
 
     def open_position(self, symbol: str, entry_price: float, timestamp: datetime,
-                      lot_size: int = 1, tick_size: float = 0.05,
                       order_type: OrderType = OrderType.MARKET) -> Optional[str]:
         if order_type == OrderType.MARKET:
             actual_entry_price = entry_price + self.slippage_points
@@ -274,7 +273,7 @@ class PositionManager:
             actual_entry_price = entry_price
         stop_loss_price = actual_entry_price - self.base_sl_points
         lots, quantity, lot_size_used = self.calculate_position_size_in_lots(
-            actual_entry_price, stop_loss_price, lot_size)
+            actual_entry_price, stop_loss_price)
 
         if lots <= 0 or quantity <= 0:
             logger.warning("Cannot open position: invalid lot size calculated")
@@ -287,6 +286,11 @@ class PositionManager:
             return None
         position_id = str(uuid.uuid4())[:8]
         tp_levels = [actual_entry_price + tp for tp in self.tp_points]
+        
+        # Get lot_size and tick_size from SSOT
+        lot_size = self.config_accessor.get_current_instrument_param('lot_size')
+        tick_size = self.config_accessor.get_current_instrument_param('tick_size')
+        
         position = Position(
             position_id=position_id,
             symbol=symbol,
@@ -561,8 +565,7 @@ class PositionManager:
             raise
 
     def calculate_position_size_gui_driven(self, entry_price: float, stop_loss_price: float, 
-                                           user_capital: float, user_risk_pct: float, 
-                                           user_lot_size: int) -> dict:
+                                           user_capital: float, user_risk_pct: float) -> dict:
         """
         GUI-driven position sizing with comprehensive feedback
 
@@ -573,7 +576,7 @@ class PositionManager:
         if entry_price <= 0:
             return {"error": "Invalid price inputs"}
         try:
-            canonical_lot = int(self.config_accessor.get_instrument_param('lot_size'))
+            canonical_lot = int(self.config_accessor.get_current_instrument_param('lot_size'))
             usable_capital = float(user_capital)
             max_affordable_shares = int(usable_capital // entry_price)
             final_lots = max_affordable_shares // canonical_lot

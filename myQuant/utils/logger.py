@@ -1,5 +1,41 @@
 ﻿"""
-utils/logger.py - Single high-performance logger (SSOT-driven)
+utils/logger.py - Single high-performanc        # File handler - STRICT CONFIG ACCESS with Windows-safe rotation
+        if bool(log_cfg['file_output']):
+            logfile = str(log_cfg['logfile'])
+            dirname = os.path.dirname(logfile)
+            if dirname:
+                os.makedirs(dirname, exist_ok=True)
+            
+            # Import Windows-safe handler
+            try:
+                from .windows_log_handler import create_safe_file_handler
+                fh = create_safe_file_handler(
+                    logfile,
+                    int(log_cfg['max_file_size']),
+                    int(log_cfg['backup_count']),
+                    formatter
+                )
+                if fh:
+                    root.addHandler(fh)
+            except ImportError:
+                # Fallback to standard handler if import fails
+                try:
+                    fh = logging.handlers.RotatingFileHandler(
+                        logfile,
+                        maxBytes=int(log_cfg['max_file_size']),
+                        backupCount=int(log_cfg['backup_count']),
+                        encoding='utf-8',
+                        delay=True
+                    )
+                    fh.setFormatter(formatter)
+                    fh.setLevel(logging.DEBUG)
+                    root.addHandler(fh)
+                except PermissionError:
+                    # Final fallback: simple file handler without rotation
+                    fh = logging.FileHandler(logfile, encoding='utf-8', delay=True)
+                    fh.setFormatter(formatter)
+                    fh.setLevel(logging.DEBUG)
+                    root.addHandler(fh)driven)
 
 - Enforces frozen MappingProxyType input (no internal fallbacks).
 - Idempotent, thread-safe setup_from_config(...)

@@ -147,6 +147,11 @@ class ModularIntradayStrategy:
         self.no_trade_start_minutes = int(no_trade_start if no_trade_start is not None else self.start_buffer_minutes)
         self.no_trade_end_minutes = int(no_trade_end if no_trade_end is not None else self.end_buffer_minutes)
 
+        # Add logging throttling to prevent spam during backtests
+        self.last_blocked_reason = None
+        self.blocked_reason_count = 0
+        self.blocked_reason_log_interval = 1000  # Log every 1000 occurrences
+
         # Logging section - consolidated logging API. Use HighPerfLogger (self.perf_logger).
         # Legacy "smart logger" flag removed from runtime reads.
         self.verbosity = self.config_accessor.get_logging_param('verbosity')
@@ -418,8 +423,18 @@ class ModularIntradayStrategy:
         if not self._check_consecutive_green_ticks():
             gating_reasons.append(f"Need {self.consecutive_green_bars_required} green ticks, have {self.green_bars_count}")
         if gating_reasons:
-            # Emit concise entry-blocked event via perf logger
-            self.perf_logger.session_start(f"[ENTRY BLOCKED] at {current_time}: {' | '.join(gating_reasons)}")
+            # Throttle repeated logging of the same blocking reason to prevent spam
+            current_reason = ' | '.join(gating_reasons)
+            if current_reason == self.last_blocked_reason:
+                self.blocked_reason_count += 1
+                # Only log at intervals to prevent excessive logging
+                if self.blocked_reason_count % self.blocked_reason_log_interval == 0:
+                    self.perf_logger.session_start(f"[ENTRY BLOCKED] at {current_time}: {current_reason} (repeated {self.blocked_reason_count} times)")
+            else:
+                # New blocking reason - reset counter and log immediately
+                self.last_blocked_reason = current_reason
+                self.blocked_reason_count = 1
+                self.perf_logger.session_start(f"[ENTRY BLOCKED] at {current_time}: {current_reason}")
             return False
         return True
     
@@ -782,12 +797,11 @@ class ModularIntradayStrategy:
             raise
 
         # Call position manager to open position
+        # Note: position_manager gets lot_size/tick_size from SSOT config, not parameters
         position_id = position_manager.open_position(
             symbol=symbol,
             entry_price=entry_price,
-            timestamp=current_time,
-            lot_size=lot_size,
-            tick_size=tick_size
+            timestamp=current_time
         )
 
         if position_id:
