@@ -1668,38 +1668,38 @@ class UnifiedTradingGUI(tk.Tk):
         
         # === SECTION HEADERS ===
         style.configure('SectionHeader.TLabel', 
-                       font=('Segoe UI', 15, 'bold', 'underline'), 
-                       foreground='navy')
+                       font=('Segoe UI', 18, 'bold', 'underline'), 
+                       foreground='pink')
         
         # === GROUP HEADERS ===  
         style.configure('GroupHeader.TLabel', 
-                       font=('Segoe UI', 13, 'bold', 'underline'), 
+                       font=('Segoe UI', 16, 'bold', 'underline'), 
                        foreground='darkblue')
         
         # === GROUP HEADER CHECKBUTTONS ===
         style.configure('GroupHeader.TCheckbutton', 
-                       font=('Segoe UI', 13, 'bold', 'underline'), 
+                       font=('Segoe UI', 15, 'bold', 'underline'), 
                        foreground='darkblue')
         
         # === LABELFRAME HEADERS ===
         style.configure('TLabelframe.Label', 
-                       font=('Segoe UI', 13, 'bold', 'underline'), 
-                       foreground='darkslategray')
+                       font=('Segoe UI', 14, 'bold', 'underline'), 
+                       foreground='darkblue')
         
         # === INDICATOR LABELS ===
         style.configure('Indicator.TLabel', 
-                       font=('Segoe UI', 13, 'bold'), 
-                       foreground='darkgreen')
+                       font=('Segoe UI', 14, 'bold'), 
+                       foreground='violet')
         
         # === STANDARD LABELS ===
         style.configure('Standard.TLabel', 
                        font=('Segoe UI', 14), 
-                       foreground='black')
+                       foreground='brown')
         
         # === PARAMETER LABELS ===
         style.configure('Parameter.TLabel', 
                        font=('Segoe UI', 14), 
-                       foreground='black')
+                       foreground='pink')
         
         # === INPUT ENTRIES ===
         style.configure('Standard.TEntry', 
@@ -1707,7 +1707,7 @@ class UnifiedTradingGUI(tk.Tk):
         
         # === BUTTONS ===
         style.configure('Standard.TButton', 
-                       font=('Segoe UI', 14))
+                       font=('Segoe UI', 15, ))
         
         # === RUN BACKTEST BUTTON ===
         style.configure('RunBacktest.TButton', 
@@ -1715,7 +1715,7 @@ class UnifiedTradingGUI(tk.Tk):
         
         # === CHECKBUTTONS ===
         style.configure('Standard.TCheckbutton', 
-                       font=('Segoe UI', 14))
+                       font=('Segoe UI', 15))
         
         # === NOTEBOOK TABS ===
         style.configure('TNotebook.Tab', 
@@ -1724,25 +1724,25 @@ class UnifiedTradingGUI(tk.Tk):
         # === COLLAPSIBLE FRAME HEADERS ===
         style.configure('CollapsibleHeader.TCheckbutton', 
                        font=('Segoe UI', 14, 'bold', 'underline'),
-                       foreground='darkslategray')
+                       foreground='red')
         
         # === ENABLED/ACTIVE STATES (LIGHTER GREEN) ===
         style.configure('Enabled.TCheckbutton', 
-                       font=('Segoe UI', 14, 'bold'),
+                       font=('Segoe UI', 18, 'bold'),
                        foreground='#4CAF50')  # Even lighter green for enabled functionality
         
         style.configure('Enabled.TLabel', 
                        font=('Segoe UI', 14, 'bold'),
-                       foreground='#4CAF50')  # Even lighter green for enabled parameter labels
+                       foreground='green')  # Even lighter green for enabled parameter labels
         
         style.configure('EnabledGroup.TLabel', 
-                       font=('Segoe UI', 13, 'bold', 'underline'),
-                       foreground='#4CAF50')  # Even lighter green for enabled group headers
+                       font=('Segoe UI', 15, 'bold', 'underline'),
+                       foreground='darkblue')  # Even lighter green for enabled group headers
         
         # === SMALL TEXT/NOTES ===
         style.configure('Note.TLabel', 
-                       font=('Segoe UI', 12), 
-                       foreground='gray')
+                       font=('Segoe UI', 14), 
+                       foreground='darkblue')
         
         # === SEPARATORS/GRID LINES ===
         style.configure('Separator.TSeparator', 
@@ -1757,7 +1757,7 @@ class UnifiedTradingGUI(tk.Tk):
         
         # === INFO TEXT ===
         style.configure('Info.TLabel', 
-                       font=('Segoe UI', 12), 
+                       font=('Segoe UI', 14), 
                        foreground='blue')
         
         # === DISABLED ELEMENTS ===
@@ -1995,7 +1995,7 @@ class UnifiedTradingGUI(tk.Tk):
         
         # Create scrolled text widget for logs
         self.log_text = tk.Text(frame, wrap="word", state="disabled", 
-                               bg="white", fg="black", font=("Consolas", 12))
+                               bg="white", fg="black", font=("Consolas", 13))
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.log_text.yview)
         self.log_text.configure(yscrollcommand=scrollbar.set)
         

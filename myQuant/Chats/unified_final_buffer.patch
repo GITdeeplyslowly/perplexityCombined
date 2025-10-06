@@ -1,0 +1,161 @@
+# Unified Patch: FINAL_FIXED + Buffer All Sides
+
+```diff
+*** Begin Unified Patch
+*** Update File: results.py
+@@ def create_enhanced_excel_report(self, output_dir: str = "results") -> str:
+-    os.makedirs(output_dir, exist_ok=True)
++    os.makedirs(output_dir, exist_ok=True)
+@@
+-    wb = Workbook()
+-    ws = wb.active
+-    ws.title = "Backtest Results"
++    wb = Workbook()
++    ws = wb.active
++    ws.title = "Backtest Results"
++
++    # Add buffer margins on all sides
++    # Top buffer: leave row 1 empty
++    current_row = 2
++    # Left buffer: empty column A
++    ws.column_dimensions['A'].width = 4
++    # Right buffer: empty column K
++    ws.column_dimensions['K'].width = 4
+@@
+-    # FONT SIZE FIX: Increase all fonts by 1.5x
+-    title_font = Font(size=27, bold=True, color="FFFFFF")      # 18 * 1.5
+-    header_font = Font(size=18, bold=True, color="FFFFFF")     # 12 * 1.5  
+-    subheader_font = Font(size=16, bold=True)                  # 11 * 1.5
+-    normal_font = Font(size=15)                                # 10 * 1.5
++    # FONT SIZE: Increase all fonts by 1.5x
++    title_font     = Font(size=27, bold=True, color="FFFFFF")  # 18 * 1.5
++    header_font    = Font(size=18, bold=True, color="FFFFFF")  # 12 * 1.5
++    subheader_font = Font(size=16, bold=True)                   # 11 * 1.5
++    normal_font    = Font(size=15)                              # 10 * 1.5
+@@
+-    current_row = 1
+-    
+-    # TITLE SECTION - Starting from column B, limiting to K to avoid horizontal scroll
+-    ws.merge_cells(f'B{current_row}:K{current_row}')  # B to K = 10 columns max
+-    title_cell = ws[f'B{current_row}']
++    # TITLE SECTION - from column B to J (buffers at A/K)
++    # current_row initialized above = 2
++    ws.merge_cells(f'B{current_row}:J{current_row}')
++    title_cell = ws[f'B{current_row}']
+@@
+-    ws.row_dimensions[current_row].height = 50  # Increased for larger font
+-    current_row += 2
++    ws.row_dimensions[current_row].height = 50
++    current_row += 2
+@@
+-    # P&L Highlight - starts from column C 
+-    ws.merge_cells(f'C{current_row}:I{current_row}')
++    # P&L Highlight - columns D to H (buffers at C/I)
++    ws.merge_cells(f'D{current_row}:H{current_row}')
+@@
+-    ws.row_dimensions[current_row].height = 60
+-    current_row += 2
++    ws.row_dimensions[current_row].height = 60
++    current_row += 2
+@@
+-    # NO HORIZONTAL SCROLL FIX: Performance summary header B to J only
+-    ws.merge_cells(f'B{current_row}:J{current_row}')
++    # PERFORMANCE SUMMARY - B to J only
++    ws.merge_cells(f'B{current_row}:J{current_row}')
+@@
+-    ws.row_dimensions[current_row].height = 40
+-    current_row += 1
++    ws.row_dimensions[current_row].height = 40
++    current_row += 1
+@@
+-    # First row of metrics (5 pairs = 10 columns B-K)
+-    first_row_metrics = [
++    # Row 1: 4 pairs (8 columns B-I)
++    row1_metrics = [
+@@
+-    for col_idx, value in enumerate(first_row_metrics, 2):
++    for col_idx, value in enumerate(row1_metrics, 2):
+@@
+-    ws.row_dimensions[current_row].height = 40
+-    current_row += 1
++    ws.row_dimensions[current_row].height = 40
++    current_row += 1
+@@
+-    # Second row of metrics
+-    second_row_metrics = [
++    # Row 2: 4 pairs
++    row2_metrics = [
+@@
+-    for col_idx, value in enumerate(second_row_metrics, 2):
++    for col_idx, value in enumerate(row2_metrics, 2):
+@@
+-    ws.row_dimensions[current_row].height = 40
+-    current_row += 1
++    ws.row_dimensions[current_row].height = 40
++    current_row += 1
+@@
+-    # Third row for remaining metrics
+-    third_row_metrics = [
++    # Row 3: remaining metrics
++    row3_metrics = [
+@@
+-    for col_idx, value in enumerate(third_row_metrics, 2):
++    for col_idx, value in enumerate(row3_metrics, 2):
+@@
+-    ws.row_dimensions[current_row].height = 40
+-    current_row += 2
++    ws.row_dimensions[current_row].height = 40
++    current_row += 2
+@@
+-    # Configuration section - B to J only
++    # CONFIGURATION SECTION - B to J only
+@@
+-    for _, row in additional_info_df.iterrows():
++    for _, row in additional_info_df.iterrows():
+@@
+-        if ',' in value_text and any(k in value_text.lower() for k in ['ema', 'fast', 'slow', 'enabled', 'activation']):
+-            parts = [p.strip() for p in value_text.split(',')]
+-            # ✅ CRITICAL: Use chr(10) for actual newline, not "\n" string
+-            formatted_value = chr(10).join(f"• {p}" for p in parts)
++        if ',' in value_text and any(k in value_text.lower() for k in ['ema','fast','slow','enabled','activation']):
++            parts = [p.strip() for p in value_text.split(',')]
++            formatted_value = chr(10).join(f"• {p}" for p in parts)
+@@
+-        line_count = formatted_value.count(chr(10)) + 1
+-        required_height = max(45, line_count * 30)
+-        ws.row_dimensions[current_row].height = required_height
++        line_count = formatted_value.count(chr(10)) + 1
++        ws.row_dimensions[current_row].height = max(45, line_count * 30)
+@@
+-    current_row += 1
++    current_row += 1
+@@
+-    # ✅ FIX 3: Trades table B to I only (8 columns, no horizontal scroll)
+-    ws.merge_cells(f'B{current_row}:I{current_row}')
++    # TRADES TABLE - B to I only (8 columns)
++    ws.merge_cells(f'B{current_row}:I{current_row}')
+@@
+-    for idx, (_, trade) in enumerate(trades_data.iterrows(), 1):
++    for idx, (_, trade) in enumerate(trades_data.iterrows(), 1):
+@@
+-        ws.row_dimensions[current_row].height = 50
+-        current_row += 1
++        ws.row_dimensions[current_row].height = 50
++        current_row += 1
+@@
+-    # ✅ FIX 3: Column widths ONLY for A-I (9 columns max)
+-    column_widths = {
+-        1: 4,   # A - Empty margin
+-        2: 5,   # B - Trade #
+-        3: 14,  # C - Entry time (multi-line)
+-        4: 14,  # D - Exit time (multi-line)
+-        5: 10,  # E - Entry price
+-        6: 10,  # F - Exit price
+-        7: 8,   # G - Quantity
+-        8: 14,  # H - Net P&L
+-        9: 12   # I - Exit reason
+-    }
++    # Set column widths for A-I (buffers and data)
++    column_widths = {1:4,2:5,3:14,4:14,5:10,6:10,7:8,8:14,9:12}
+*** End Unified Patch
+```
