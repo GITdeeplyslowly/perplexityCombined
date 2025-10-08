@@ -68,6 +68,24 @@ class LiveTrader:
         self.is_running = False
         self.active_position_id = None
 
+    def stop(self):
+        """Stop the forward test session gracefully"""
+        logger = logging.getLogger(__name__)
+        logger.info("🛑 Stop requested - ending forward test session")
+        self.is_running = False
+        
+        # Close any open positions
+        if self.active_position_id:
+            self.close_position("Stop Requested")
+        
+        # Disconnect broker
+        try:
+            self.broker.disconnect()
+        except Exception as e:
+            logger.warning(f"Error disconnecting broker: {e}")
+        
+        logger.info("✅ Forward test session stopped successfully")
+
     def start(self, run_once=False, result_box=None):
         self.is_running = True
         logger = logging.getLogger(__name__)
@@ -85,8 +103,15 @@ class LiveTrader:
                 # STEP 1: Get individual tick (no bar aggregation)
                 tick = self.broker.get_next_tick()
                 if not tick:
+                    # Check if file simulation is complete
+                    if hasattr(self.broker, 'file_simulator') and self.broker.file_simulator:
+                        if hasattr(self.broker.file_simulator, 'completed') and self.broker.file_simulator.completed:
+                            logger.info("File simulation completed - ending trading session")
+                            break
                     time.sleep(0.1)
                     continue
+                
+
                 
                 now = tick['timestamp'] if 'timestamp' in tick else now_ist()
                 
@@ -148,6 +173,12 @@ class LiveTrader:
                     if self.active_position_id not in self.position_manager.positions:
                         logger.info("Position closed by risk management (TP/SL/trailing).")
                         self._update_result_box(result_box, f"Risk CLOSE: @ {current_price:.2f}")
+                        # CRITICAL FIX: Notify strategy of position closure to reset state
+                        try:
+                            self.strategy.on_position_closed(self.active_position_id, "Risk Management")
+                        except Exception as e:
+                            # Log notification failed, but continue trading
+                            logger.warning(f"Strategy notification failed: {e}")
                         self.active_position_id = None
                 
                 # STEP 6: Check for single-run mode
@@ -170,6 +201,8 @@ class LiveTrader:
             self.position_manager.close_position_full(self.active_position_id, last_price, now, reason)
             logger = logging.getLogger(__name__)
             logger.info(f"[SIM] Position closed at {last_price} for reason: {reason}")
+            # CRITICAL FIX: Notify strategy of position closure to reset state
+            self.strategy.on_position_closed(self.active_position_id, reason)
             self.active_position_id = None
 
     def _create_tick_row(self, tick: dict, price: float, timestamp) -> pd.Series:

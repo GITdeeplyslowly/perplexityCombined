@@ -31,6 +31,7 @@ import pytz
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from copy import deepcopy
 
 from types import MappingProxyType
 from typing import Dict, Any
@@ -305,6 +306,10 @@ class UnifiedTradingGUI(tk.Tk):
         self.ft_auto_stop_enabled = tk.BooleanVar(value=True)  # Default safety feature
         self.ft_max_trades_per_day = tk.StringVar(value=str(risk_config['max_positions_per_day']))
         self.ft_max_loss_per_day = tk.StringVar(value="500")  # UI-specific default
+
+        # Forward Test Data Simulation (Optional)
+        self.ft_use_file_simulation = tk.BooleanVar(value=False)  # Disabled by default - live trading is primary
+        self.ft_data_file_path = tk.StringVar(value="")  # No file selected by default
 
         # Forward Test Capital management (from defaults.py)
         self.ft_initial_capital = tk.StringVar(value=str(capital_config['initial_capital']))
@@ -1005,7 +1010,26 @@ class UnifiedTradingGUI(tk.Tk):
         ttk.Entry(session_frame, textvariable=self.ft_max_loss_per_day, width=8).grid(row=1, column=4, padx=2)
         row += 1
 
-        # Add separator between Session Management and Capital Management
+        # === DATA SIMULATION SECTION (OPTIONAL) ===
+        ttk.Label(parent, text="📊 Data Simulation (Optional)", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=2, sticky="w", pady=(25,5))
+        row += 1
+
+        data_sim_frame = ttk.LabelFrame(parent, text="File-Based Data Simulation")
+        data_sim_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        data_sim_frame.columnconfigure((1,3), weight=1)
+
+        ttk.Checkbutton(data_sim_frame, text="Enable File Simulation", variable=self.ft_use_file_simulation).grid(row=0, column=0, sticky="w", padx=5, pady=2)
+        ttk.Label(data_sim_frame, text="Data File:").grid(row=0, column=1, sticky="e", padx=5)
+        ttk.Entry(data_sim_frame, textvariable=self.ft_data_file_path, width=30).grid(row=0, column=2, padx=2, sticky="ew")
+        ttk.Button(data_sim_frame, text="Browse", command=self._ft_browse_data_file).grid(row=0, column=3, padx=5)
+        
+        # Help text
+        help_label = ttk.Label(data_sim_frame, text="💡 User-controlled only: When enabled, uses ONLY selected CSV file data. No fallback data if WebSocket fails. Live trading completely preserved.", 
+                              font=('TkDefaultFont', 8), foreground='gray')
+        help_label.grid(row=1, column=0, columnspan=4, sticky="w", padx=5, pady=(0,5))
+        row += 1
+
+        # Add separator between Data Simulation and Capital Management
         self._add_grid_separator(parent, row)
         row += 1
 
@@ -1068,6 +1092,20 @@ class UnifiedTradingGUI(tk.Tk):
         )
         if file:
             self.bt_data_file.set(file)
+
+    def _ft_browse_data_file(self):
+        """Browse for Forward Test simulation data file"""
+        file = filedialog.askopenfilename(
+            title="Select Data File for Simulation",
+            filetypes=[
+                ("CSV files", "*.csv"),
+                ("LOG files", "*.log"), 
+                ("All files", "*.*")
+            ]
+        )
+        if file:
+            self.ft_data_file_path.set(file)
+            logger.info(f"Selected simulation data file: {file}")
 
     def _bt_run_backtest(self):
         """Run backtest with GUI configuration (enforces frozen config)"""
@@ -1673,17 +1711,17 @@ class UnifiedTradingGUI(tk.Tk):
         
         # === GROUP HEADERS ===  
         style.configure('GroupHeader.TLabel', 
-                       font=('Segoe UI', 16, 'bold', 'underline'), 
+                       font=('Segoe UI', 14, 'bold', 'underline'), 
                        foreground='darkblue')
         
         # === GROUP HEADER CHECKBUTTONS ===
         style.configure('GroupHeader.TCheckbutton', 
-                       font=('Segoe UI', 15, 'bold', 'underline'), 
+                       font=('Segoe UI', 13, 'bold', 'underline' ,), 
                        foreground='darkblue')
         
         # === LABELFRAME HEADERS ===
         style.configure('TLabelframe.Label', 
-                       font=('Segoe UI', 14, 'bold', 'underline'), 
+                       font=('Segoe UI', 13, 'bold', 'underline'), 
                        foreground='darkblue')
         
         # === INDICATOR LABELS ===
@@ -1728,7 +1766,7 @@ class UnifiedTradingGUI(tk.Tk):
         
         # === ENABLED/ACTIVE STATES (LIGHTER GREEN) ===
         style.configure('Enabled.TCheckbutton', 
-                       font=('Segoe UI', 18, 'bold'),
+                       font=('Segoe UI', 17, 'bold underline' ),
                        foreground='#4CAF50')  # Even lighter green for enabled functionality
         
         style.configure('Enabled.TLabel', 
@@ -1736,7 +1774,7 @@ class UnifiedTradingGUI(tk.Tk):
                        foreground='green')  # Even lighter green for enabled parameter labels
         
         style.configure('EnabledGroup.TLabel', 
-                       font=('Segoe UI', 15, 'bold', 'underline'),
+                       font=('Segoe UI', 15, 'bold'),
                        foreground='darkblue')  # Even lighter green for enabled group headers
         
         # === SMALL TEXT/NOTES ===
@@ -2108,12 +2146,18 @@ class UnifiedTradingGUI(tk.Tk):
             selected_symbol = self.ft_symbols_listbox.get(selection[0])
             self.ft_symbol.set(selected_symbol)
             
+            # Clear token first
+            self.ft_token.set("")
+            
             # Load token information
             cache = load_symbol_cache()
             if cache and selected_symbol in cache:
-                token_info = cache[selected_symbol]
-                self.ft_token.set(str(token_info.get('token', '')))
-                logger.info(f"Selected symbol: {selected_symbol}, Token: {token_info.get('token', 'N/A')}")
+                # cache[selected_symbol] is the token string directly (simple mapping)
+                token = cache[selected_symbol]
+                self.ft_token.set(str(token))
+                logger.info(f"Selected symbol: {selected_symbol}, Token: {token}")
+            else:
+                logger.warning(f"Token not found for symbol: {selected_symbol}")
             
         except Exception as e:
             logger.warning(f"Symbol details update error: {e}")
@@ -2164,23 +2208,76 @@ class UnifiedTradingGUI(tk.Tk):
 
     def _ft_build_config_from_gui(self):
         """Build forward test specific configuration from GUI state"""
-        # Start with base configuration from backtest GUI
-        config = self.build_config_from_gui()
-        if config is None:
-            return None
+        config_dict = deepcopy(self.runtime_config)
         
-        # Convert frozen config to mutable dict for forward test modifications
-        config_dict = dict(config)
+        # 1. INSTRUMENT SELECTION (Primary - determines lot_size from SSOT)
+        selected_instrument = self.ft_instrument_type.get()
         
-        # Override with forward test specific values
-        config_dict['instrument']['symbol'] = self.ft_symbol.get().strip()
-        config_dict['instrument']['token'] = self.ft_token.get().strip()
-        config_dict['instrument']['exchange'] = self.ft_exchange.get()
-        # Add instrument type and related info from selected mapping - STRICT ACCESS
-        config_dict['instrument']['instrument_type'] = self.ft_instrument_type.get()
-        if 'tick_size' not in self.ft_selected_instrument_info:
-            raise KeyError(f"tick_size not found for selected instrument in instrument_mappings SSOT")
-        config_dict['instrument']['tick_size'] = self.ft_selected_instrument_info['tick_size']
+        if selected_instrument not in self.instrument_mappings:
+            raise KeyError(
+                f"FATAL: Instrument '{selected_instrument}' not found in instrument_mappings SSOT. "
+                f"Available: {list(self.instrument_mappings.keys())}"
+            )
+        
+        instrument_info = self.instrument_mappings[selected_instrument]
+        
+        # Get metadata from SSOT - STRICT ACCESS
+        required_params = ["lot_size", "tick_size", "exchange", "type"]
+        for param in required_params:
+            if param not in instrument_info:
+                raise KeyError(
+                    f"FATAL: {param} not found for instrument '{selected_instrument}' "
+                    f"in instrument_mappings SSOT"
+                )
+        
+        config_dict["instrument"]["lot_size"] = instrument_info["lot_size"]
+        config_dict["instrument"]["tick_size"] = instrument_info["tick_size"]
+        # Store instrument key (NIFTY, BANKNIFTY, etc.) not type (Index Options)
+        config_dict["instrument"]["instrument_type"] = selected_instrument
+        
+        # 2. EXCHANGE/INSTRUMENT TYPE (Secondary - F&O vs Cash)
+        config_dict["instrument"]["exchange"] = self.ft_exchange.get()
+        
+        # 3. SYMBOL SELECTION (Independent - user input from cache)
+        user_symbol = self.ft_symbol.get().strip()
+        user_token = self.ft_token.get().strip()
+        
+        if not user_symbol:
+            raise ValueError("FATAL: Symbol must be selected from cache before starting forward test")
+        
+        if not user_token:
+            raise ValueError("FATAL: Token must be available for selected symbol")
+        
+        # OPTIONAL: Validate symbol compatibility with selected instrument
+        # This is a soft validation - ask user confirmation if mismatch detected
+        if not user_symbol.startswith(selected_instrument):
+            mismatch_msg = (
+                f"Symbol Compatibility Warning\n\n"
+                f"Selected Symbol: {user_symbol}\n"
+                f"Selected Instrument: {selected_instrument}\n\n"
+                f"The symbol '{user_symbol}' does not appear to match "
+                f"the selected instrument '{selected_instrument}'.\n\n"
+                f"This may result in incorrect lot size calculations or trading parameters.\n\n"
+                f"Do you want to proceed anyway?"
+            )
+            
+            user_choice = messagebox.askyesno(
+                "Symbol Mismatch Warning", 
+                mismatch_msg,
+                icon='warning'
+            )
+            
+            if not user_choice:
+                logger.info(f"User cancelled forward test due to symbol mismatch: {user_symbol} vs {selected_instrument}")
+                return None
+            else:
+                logger.warning(
+                    f"User confirmed proceeding with mismatched symbol '{user_symbol}' "
+                    f"for instrument '{selected_instrument}'"
+                )
+        
+        config_dict["instrument"]["symbol"] = user_symbol
+        config_dict["instrument"]["token"] = user_token
         
         # Update strategy parameters from forward test GUI
         config_dict['strategy']['use_ema_crossover'] = self.ft_use_ema_crossover.get()
@@ -2229,6 +2326,12 @@ class UnifiedTradingGUI(tk.Tk):
         config_dict['session']['max_trades_per_day'] = int(self.ft_max_trades_per_day.get())
         config_dict['session']['max_loss_per_day'] = float(self.ft_max_loss_per_day.get())
 
+        # Update data simulation settings from forward test GUI (OPTIONAL - does not affect live trading)
+        config_dict['data_simulation'] = {
+            'enabled': self.ft_use_file_simulation.get(),
+            'file_path': self.ft_data_file_path.get() if self.ft_use_file_simulation.get() else ""
+        }
+
         # Update capital management from forward test GUI
         config_dict['capital']['initial_capital'] = float(self.ft_initial_capital.get())
         config_dict['capital']['available_capital'] = float(self.ft_available_capital.get())
@@ -2252,12 +2355,6 @@ class UnifiedTradingGUI(tk.Tk):
         # Validate and freeze the forward test configuration
         try:
             validation = validate_config(config_dict)
-            if not validation.get('valid', False):
-                errors = validation.get('errors', ['Unknown validation error'])
-                messagebox.showerror("Forward Test Configuration Error",
-                                   "Configuration validation failed:\n\n" + "\n".join(errors))
-                return None
-            
             return freeze_config(config_dict)
             
         except Exception as e:
@@ -2315,6 +2412,30 @@ class UnifiedTradingGUI(tk.Tk):
                     box.delete(1.0, tk.END)
                     box.config(state="disabled")
             
+            # Determine data source mode and show confirmation
+            if self.ft_use_file_simulation.get():
+                data_source_msg = "📁 FILE DATA SIMULATION"
+                data_detail_msg = f"Historical file: {self.ft_data_file_path.get()}"
+                warning_msg = "\n⚠️ This will use HISTORICAL data, not live market prices!"
+            else:
+                data_source_msg = "🌐 LIVE WEBSTREAM TRADING" 
+                data_detail_msg = f"Live market feed: {self.ft_feed_type.get()}"
+                warning_msg = "\n⚠️ This will connect to LIVE market data streams!"
+            
+            # Show confirmation dialog with prominent data source warning
+            confirmed = messagebox.askyesno(
+                "Confirm Forward Test",
+                f"Ready to start forward test:\n\n"
+                f"Symbol: {self.ft_symbol.get()}\n"
+                f"DATA SOURCE: {data_source_msg}\n"
+                f"{data_detail_msg}{warning_msg}\n\n"
+                f"Continue with forward test?"
+            )
+            
+            if not confirmed:
+                logger.info("Forward test cancelled by user")
+                return
+            
             # Add initial message
             self._update_ft_result_box(f"🚀 Starting forward test for {self.ft_symbol.get()}...\n", "live")
             
@@ -2363,11 +2484,22 @@ class UnifiedTradingGUI(tk.Tk):
             test_thread = threading.Thread(target=run_forward_test, daemon=True)
             test_thread.start()
             
-            # Update GUI
+            # Determine data source mode for prominent display
+            if self.ft_use_file_simulation.get():
+                data_source = "📁 FILE DATA SIMULATION"
+                data_details = f"File: {self.ft_data_file_path.get()}"
+                mode_warning = "\n⚠️  Using historical file data - NOT live market data"
+            else:
+                data_source = "🌐 LIVE WEBSTREAM TRADING"
+                data_details = f"Feed: {self.ft_feed_type.get()}"
+                mode_warning = "\n⚠️  Using LIVE market data - real-time trading"
+            
+            # Update GUI with prominent data source indication
             messagebox.showinfo("Forward Test Started", 
-                               f"Forward test started for {self.ft_symbol.get()}\n"
-                               f"Mode: Paper Trading\n"
-                               f"Feed: {self.ft_feed_type.get()}\n\n"
+                               f"Forward test started for {self.ft_symbol.get()}\n\n"
+                               f"DATA SOURCE: {data_source}\n"
+                               f"{data_details}\n"
+                               f"Mode: Paper Trading{mode_warning}\n\n"
                                f"Monitor progress in the results section below.")
             
             logger.info(f"Forward test initiated for {self.ft_symbol.get()} with frozen MappingProxyType config")

@@ -179,7 +179,7 @@ class HighPerfLogger:
             # defensive: never raise from hot-loop logging
             pass
 
-    def entry_blocked(self, reason: str, summary_every: int = 100):
+    def entry_blocked(self, reason: str, summary_every: int = 1000):
         self._entry_block_count += 1
         if (self._entry_block_count % summary_every) == 1:
             self.logger.info(f"ENTRY BLOCKED (#{self._entry_block_count}): {reason}")

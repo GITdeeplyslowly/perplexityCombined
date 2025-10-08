@@ -1,0 +1,128 @@
+
+============================================================
+TRADING SESSION STARTED - 2025-07-18 07:49:27
+============================================================
+INSTRUMENT: NIFTY24JUL2525000CE (Token: 49487)
+EXCHANGE: NSE_FO (Code: 2)
+FEED TYPE: Quote (Code: 2)
+LOG TICKS: False
+
+STRATEGY PARAMETERS APPLIED:
+------------------------------
+USE EMA CROSSOVER: True
+USE RSI FILTER: False
+USE VWAP: True
+ATR LEN: 10
+ATR MULT: 3.0
+FAST EMA: 9
+SLOW EMA: 21
+RSI LENGTH: 14
+RSI OVERBOUGHT: 70
+RSI OVERSOLD: 30
+BASE SL POINTS: 7
+TP1 POINTS: 25
+TP2 POINTS: 45
+TP3 POINTS: 100
+USE TRAIL STOP: True
+TRAIL ACTIVATION POINTS: 1
+TRAIL DISTANCE POINTS: 3
+INITIAL CAPITAL: 100000
+RISK PER TRADE PERCENT: 1.0
+EXIT BEFORE CLOSE: 20
+============================================================
+
+============================================================
+TRADING SESSION STARTED - 2025-07-18 08:59:02
+============================================================
+INSTRUMENT: NIFTY24JUL2525000CE (Token: 49487)
+EXCHANGE: NSE_FO (Code: 2)
+FEED TYPE: Quote (Code: 2)
+LOG TICKS: False
+
+STRATEGY PARAMETERS APPLIED:
+------------------------------
+USE EMA CROSSOVER: True
+USE RSI FILTER: False
+USE VWAP: True
+ATR LEN: 10
+ATR MULT: 3.0
+FAST EMA: 9
+SLOW EMA: 21
+RSI LENGTH: 14
+RSI OVERBOUGHT: 70
+RSI OVERSOLD: 30
+BASE SL POINTS: 7
+TP1 POINTS: 25
+TP2 POINTS: 45
+TP3 POINTS: 100
+USE TRAIL STOP: True
+TRAIL ACTIVATION POINTS: 1
+TRAIL DISTANCE POINTS: 3
+INITIAL CAPITAL: 100000
+RISK PER TRADE PERCENT: 1.0
+EXIT BEFORE CLOSE: 20
+============================================================
+
+============================================================
+TRADING SESSION STARTED - 2025-07-18 11:07:57
+============================================================
+INSTRUMENT: NIFTY24JUL2525100PE (Token: 49495)
+EXCHANGE: NSE_FO (Code: 2)
+FEED TYPE: Quote (Code: 2)
+LOG TICKS: False
+
+STRATEGY PARAMETERS APPLIED:
+------------------------------
+USE EMA CROSSOVER: True
+USE RSI FILTER: False
+USE VWAP: True
+ATR LEN: 10
+ATR MULT: 3.0
+FAST EMA: 9
+SLOW EMA: 21
+RSI LENGTH: 14
+RSI OVERBOUGHT: 70
+RSI OVERSOLD: 30
+BASE SL POINTS: 5
+TP1 POINTS: 25
+TP2 POINTS: 45
+TP3 POINTS: 100
+USE TRAIL STOP: True
+TRAIL ACTIVATION POINTS: 1
+TRAIL DISTANCE POINTS: 3
+INITIAL CAPITAL: 100000
+RISK PER TRADE PERCENT: 1.0
+EXIT BEFORE CLOSE: 20
+============================================================
+
+============================================================
+TRADING SESSION STARTED - 2025-07-18 17:05:07
+============================================================
+INSTRUMENT: nifty24jul2524900ce (Token: 49483)
+EXCHANGE: NSE_FO (Code: 2)
+FEED TYPE: Quote (Code: 2)
+LOG TICKS: False
+
+STRATEGY PARAMETERS APPLIED:
+------------------------------
+USE EMA CROSSOVER: True
+USE RSI FILTER: False
+USE VWAP: True
+ATR LEN: 10
+ATR MULT: 3.0
+FAST EMA: 9
+SLOW EMA: 21
+RSI LENGTH: 14
+RSI OVERBOUGHT: 70
+RSI OVERSOLD: 30
+BASE SL POINTS: 15
+TP1 POINTS: 25
+TP2 POINTS: 45
+TP3 POINTS: 100
+USE TRAIL STOP: True
+TRAIL ACTIVATION POINTS: 25
+TRAIL DISTANCE POINTS: 10
+INITIAL CAPITAL: 100000
+RISK PER TRADE PERCENT: 1.0
+EXIT BEFORE CLOSE: 20
+============================================================

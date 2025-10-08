@@ -1,0 +1,199 @@
+I'll analyze the connectivity structure between your trading bot and Angel One's SmartAPI to identify any issues.
+
+## Critical Issues Found
+
+### 1. **Incorrect LTP Data Fetching Method** ❌
+
+In `broker_adapter.py`, line 233:
+
+```python
+ltp = self.connection.ltpData(self.exchange, self.symbol, self.instrument["instrument_token"])
+```
+
+**Problem**: Angel One's SmartAPI uses `getLTP()` method, not `ltpData()`. The correct signature is:
+
+```python
+ltp_data = smartApi.getLTP({
+    "exchange": "NFO",
+    "tradingsymbol": "NIFTY23JUN22000CE",
+    "symboltoken": "46435"
+})
+```
+
+### 2. **Missing WebSocket Correlation Keys** ⚠️
+
+In `websocket_stream.py`, the subscription format may be incomplete. Angel One requires:
+
+```python
+{
+    "action": 1,  # 1=subscribe, 0=unsubscribe
+    "params": {
+        "mode": 1,  # 1=LTP, 2=Quote, 3=SnapQuote
+        "tokenList": [{
+            "exchangeType": 1,  # 1=NSE, 2=NFO, etc.
+            "tokens": ["token1", "token2"]
+        }]
+    }
+}
+```
+
+### 3. **Exchange Code Mapping Issues** ⚠️
+
+Your `instrument_mappings` in `defaults.py` uses string exchange codes like "NFO", "BFO", "NSE", but SmartAPI expects **numeric exchange codes**:
+
+- NSE = 1
+- NFO = 2  
+- BSE = 3
+- BFO = 4
+- MCX = 5
+
+### 4. **Session Termination Method** ⚠️
+
+In `broker_adapter.py`, line 377:
+
+```python
+self.connection.terminateSession(client_code)
+```
+
+**Problem**: SmartAPI uses `logoutUser()` method, not `terminateSession()`.
+
+## Corrected Code Fixes## Summary of Critical Fixes Needed
+
+### ✅ **Immediate Action Items:**
+
+1. **Replace `ltpData()` with `getLTP()`** in polling mode
+2. **Add numeric exchange codes** to all instrument mappings
+3. **Fix WebSocket subscription format** with correct action/params structure
+4. **Replace `terminateSession()` with `logoutUser()`**
+5. **Add exchange code mapper** helper function
+
+### 📋 **Additional Recommendations:**
+
+1. **Test with Paper Trading First**: Always verify connectivity in paper mode before going live
+2. **Add Response Validation**: Check `response.get("status")` for all API calls
+3. **Implement Better Error Handling**: SmartAPI returns specific error codes - parse them
+4. **Add Retry Logic**: Network issues are common - implement exponential backoff
+5. **Monitor Rate Limits**: SmartAPI has request limits (check their documentation)
+
+### 🔍 **Testing Checklist:**
+
+```python
+# Test script to verify connectivity
+from SmartApi import SmartConnect
+
+api = SmartConnect(api_key="your_key")
+session = api.generateSession(client_code, pin, totp)
+
+# Test 1: Verify getLTP works
+ltp = api.getLTP({
+    "exchange": "NFO",
+    "tradingsymbol": "NIFTY24JAN24000CE",
+    "symboltoken": "12345"
+})
+print("LTP Test:", ltp)
+
+# Test 2: Verify WebSocket connection
+from SmartApi.smartWebSocketV2 import SmartWebSocketV2
+ws = SmartWebSocketV2(
+    auth_token=api.getfeedToken(),
+    api_key="your_key",
+    client_code=client_code,
+    feed_token=api.getfeedToken()
+)
+# Subscribe and test...
+```
+
+# Add to defaults.py - Exchange code mapping for SmartAPI
+
+# SmartAPI Exchange Codes (CRITICAL FOR CONNECTIVITY)
+EXCHANGE_CODES = {
+    "NSE": 1,      # National Stock Exchange (Cash)
+    "NFO": 2,      # NSE Futures & Options
+    "BSE": 3,      # Bombay Stock Exchange (Cash)
+    "BFO": 4,      # BSE Futures & Options
+    "MCX": 5,      # Multi Commodity Exchange
+    "NSE_CM": 1,   # Alias for NSE Cash Market
+    "NSE_FO": 2,   # Alias for NSE F&O
+    "BSE_CM": 3,   # Alias for BSE Cash Market
+    "BSE_FO": 4    # Alias for BSE F&O
+}
+
+# IMPORTANT: Update instrument_mappings to include numeric exchange codes
+# This ensures compatibility with SmartAPI WebSocket and REST APIs
+
+"instrument_mappings": {
+    # Index Options - with NUMERIC exchange codes
+    "NIFTY": {
+        "lot_size": 75, 
+        "exchange": "NFO",           # String for human readability
+        "exchange_code": 2,          # Numeric for SmartAPI
+        "tick_size": 0.05, 
+        "type": "Index Options"
+    },
+    "BANKNIFTY": {
+        "lot_size": 15, 
+        "exchange": "NFO",
+        "exchange_code": 2,
+        "tick_size": 0.05, 
+        "type": "Index Options"
+    },
+    "FINNIFTY": {
+        "lot_size": 25, 
+        "exchange": "NFO",
+        "exchange_code": 2,
+        "tick_size": 0.05, 
+        "type": "Index Options"
+    },
+    "MIDCPNIFTY": {
+        "lot_size": 50, 
+        "exchange": "NFO",
+        "exchange_code": 2,
+        "tick_size": 0.05, 
+        "type": "Index Options"
+    },
+    "SENSEX": {
+        "lot_size": 10, 
+        "exchange": "BFO",
+        "exchange_code": 4,  # BSE F&O
+        "tick_size": 0.05, 
+        "type": "Index Options"
+    },
+    "BANKEX": {
+        "lot_size": 15, 
+        "exchange": "BFO",
+        "exchange_code": 4,
+        "tick_size": 0.05, 
+        "type": "Index Options"
+    },
+    
+    # Cash Market - with correct codes
+    "NIFTY_CASH": {
+        "lot_size": 1, 
+        "exchange": "NSE",
+        "exchange_code": 1,  # NSE Cash
+        "tick_size": 0.05, 
+        "type": "Cash Market"
+    },
+    "BANKNIFTY_CASH": {
+        "lot_size": 1, 
+        "exchange": "NSE",
+        "exchange_code": 1,
+        "tick_size": 0.05, 
+        "type": "Cash Market"
+    },
+    
+    # Add exchange_code: 2 for all NFO instruments
+    # Add exchange_code: 1 for all NSE_CM instruments
+    # This pattern should be applied to ALL instruments in your mappings
+}
+
+# Helper function to get numeric exchange code
+def get_exchange_code(exchange_string: str) -> int:
+    """Convert string exchange to numeric code for SmartAPI."""
+    code = EXCHANGE_CODES.get(exchange_string.upper())
+    if code is None:
+        raise ValueError(
+            f"Unknown exchange: {exchange_string}. "
+            f"Valid exchanges: {list(EXCHANGE_CODES.keys())}"
+        )
+    return code

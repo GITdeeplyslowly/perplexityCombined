@@ -13,6 +13,18 @@ logger = logging.getLogger(__name__)
 
 from config.defaults import DEFAULT_CONFIG
 
+# Import Angel One compatibility validation
+try:
+    from exchange_mapper import validate_exchange_compatibility
+except ImportError:
+    # Fallback if exchange_mapper not available
+    def validate_exchange_compatibility(exchange_code, symbol=None):
+        """Fallback validation - just check basic exchange codes"""
+        valid_exchanges = ['NFO', 'NSE', 'BFO']
+        if exchange_code not in valid_exchanges:
+            raise ValueError(f"Invalid exchange code: {exchange_code}")
+        return True
+
 MISSING = object()
 
 def create_config_from_defaults() -> Dict[str, Any]:
@@ -113,7 +125,10 @@ class ConfigAccessor:
 
     def get_current_instrument_param(self, param_name: str, default=MISSING):
         """
-        Get instrument parameter for currently selected symbol from instrument_mappings (SSOT).
+        Get instrument parameter for currently selected instrument from instrument_mappings (SSOT).
+        
+        For forward tests, uses instrument_type if available.
+        For backtests, uses symbol directly (as it matches instrument names).
         
         Args:
             param_name: Parameter to get ('lot_size', 'tick_size', 'exchange', 'type')
@@ -123,20 +138,26 @@ class ConfigAccessor:
             Parameter value from instrument_mappings
             
         Raises:
-            KeyError: If current symbol not found in mappings or param doesn't exist
+            KeyError: If instrument not found in mappings or param doesn't exist
         """
-        current_symbol = self.get_instrument_param('symbol')
+        # Try to get instrument_type first (for forward tests)
+        instrument_key = self.get_instrument_param('instrument_type', None)
+        
+        # Fall back to symbol (for backtests where symbol = instrument name)
+        if instrument_key is None:
+            instrument_key = self.get_instrument_param('symbol')
+        
         instrument_mappings = self.get('instrument_mappings', {})
         
-        if current_symbol not in instrument_mappings:
+        if instrument_key not in instrument_mappings:
             if default is MISSING:
-                raise KeyError(f"Symbol '{current_symbol}' not found in instrument_mappings")
+                raise KeyError(f"Instrument '{instrument_key}' not found in instrument_mappings")
             return default
             
-        instrument_info = instrument_mappings[current_symbol]
+        instrument_info = instrument_mappings[instrument_key]
         if param_name not in instrument_info:
             if default is MISSING:
-                raise KeyError(f"Parameter '{param_name}' not found for symbol '{current_symbol}'")
+                raise KeyError(f"Parameter '{param_name}' not found for instrument '{instrument_key}'")
             return default
             
         return instrument_info[param_name]
@@ -200,11 +221,11 @@ def validate_instrument_consistency(cfg: Dict[str, Any]) -> Dict[str, Any]:
             errors.append("instrument_mappings must be a dictionary")
             return {"valid": False, "errors": errors}
             
-        # Check if current instrument symbol exists in mappings
-        if 'instrument' in cfg and 'symbol' in cfg['instrument']:
-            current_symbol = cfg['instrument']['symbol']
-            if current_symbol not in instrument_mappings:
-                errors.append(f"Current instrument symbol '{current_symbol}' not found in instrument_mappings")
+        # Check if current instrument_type exists in mappings (not symbol - symbols are specific contracts)
+        if 'instrument' in cfg and 'instrument_type' in cfg['instrument']:
+            current_instrument_type = cfg['instrument']['instrument_type']
+            if current_instrument_type not in instrument_mappings:
+                errors.append(f"Current instrument_type '{current_instrument_type}' not found in instrument_mappings")
         
         # Validate each instrument mapping has required parameters
         required_params = ['lot_size', 'exchange', 'tick_size', 'type']
@@ -233,6 +254,9 @@ def validate_instrument_consistency(cfg: Dict[str, Any]) -> Dict[str, Any]:
                         errors.append(f"Invalid tick_size for '{symbol}': must be positive number")
                 except (ValueError, TypeError):
                     errors.append(f"Invalid tick_size for '{symbol}': must be numeric")
+            
+            # Exchange validation handled by WebSocket connection attempt
+            # No need for upfront validation - connection failure will indicate issues
         
         # Check for minimum required instruments
         if len(instrument_mappings) == 0:

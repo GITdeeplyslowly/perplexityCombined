@@ -9,6 +9,7 @@ core/liveStrategy.py - High-Performance Live Trading Strategy
 
 import pandas as pd
 import numpy as np
+import logging
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime, time, timedelta
 import pytz
@@ -153,6 +154,8 @@ class ModularIntradayStrategy:
             self.consecutive_green_bars_required = self.config_accessor.get_strategy_param('consecutive_green_bars')
             self.green_bars_count = 0
             self.last_bar_data = None
+            # Initialize tick-to-tick price tracking 
+            self.prev_tick_price = None
         except KeyError as e:
             raise
         
@@ -267,7 +270,31 @@ class ModularIntradayStrategy:
             # Use perf_logger tick_debug for low-level debug in hot paths
             self.perf_logger.tick_debug(format_tick_message, get_tick_counter(), 0.0, None)
         except Exception as e:
-            pass  # Suppress errors in reset
+            pass  # Suppress errors in session reset
+
+    def on_position_closed(self, position_id: str, reason: str = "Unknown"):
+        """
+        Notify strategy that a position has been closed.
+        CRITICAL: Resets position state to allow new entries.
+        """
+        if self.position_id == position_id:
+            self.in_position = False
+            self.position_id = None
+            self.position_entry_time = None
+            self.position_entry_price = None
+            # Position closure notification - SAFE logging (never crash trading)
+            try:
+                logger = logging.getLogger(__name__)
+                logger.debug(f"Strategy notified of position closure: {position_id} ({reason})")
+            except Exception:
+                pass  # Never let logging errors stop trading
+        else:
+            # Unknown position closure - SAFE logging
+            try:
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Position closure notification for unknown position: {position_id}")
+            except Exception:
+                pass  # Continue trading even if logging fails
 
     def process_historical_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -360,18 +387,11 @@ class ModularIntradayStrategy:
             return None
 
         # Use instrument SSOT for contract sizing (no risk.lot_size overrides)
-        try:
-            lot_size = int(self.config_accessor.get_current_instrument_param('lot_size'))
-            tick_size = float(self.config_accessor.get_current_instrument_param('tick_size'))
-        except KeyError as e:
-            return None
-
+        # PositionManager handles lot_size and tick_size internally via SSOT
         position_id = position_manager.open_position(
             symbol=symbol,
             entry_price=entry_price,
-            timestamp=now,
-            lot_size=lot_size,
-            tick_size=tick_size
+            timestamp=now
         )
 
         if position_id:
@@ -382,7 +402,14 @@ class ModularIntradayStrategy:
             self.daily_stats['trades_today'] += 1
             self.last_signal_time = now
 
-            self.perf_logger.trade_executed("BUY", entry_price, lot_size, "Strategy signal")
+            # Get lot_size from SSOT for logging purposes
+            try:
+                lot_size = int(self.config_accessor.get_current_instrument_param('lot_size'))
+                self.perf_logger.trade_executed("BUY", entry_price, lot_size, "Strategy signal")
+            except Exception:
+                # Fallback logging without lot_size if config access fails
+                self.perf_logger.session_start(f"BUY executed at {entry_price:.2f} - Strategy signal")
+            
             return position_id
         # If position not opened, do not emit stdlib warning (standardization)
         return None
@@ -672,6 +699,7 @@ class ModularIntradayStrategy:
             
             # Update previous price for next comparison
             self.prev_tick_price = current_price
+            
         except Exception as e:
             pass  # Suppress errors in tick count update
 

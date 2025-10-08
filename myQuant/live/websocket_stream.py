@@ -9,6 +9,7 @@ Features:
 - Event-driven tick delivery to tick buffer and OHLC aggregator
 - Robust reconnect and error handling
 - Integration with GUI controls and manual refresh
+- Angel One compatible exchange type mapping
 
 Usage:
 - Import and call `start_stream()` from the live runner or GUI.
@@ -23,6 +24,9 @@ try:
     from SmartApi.smartWebSocketV2 import SmartWebSocketV2
 except ImportError:
     SmartWebSocketV2 = None  # Install with pip install smartapi-python
+
+# Import Angel One exchange type mapper
+from exchange_mapper import map_to_angel_exchange_type
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +54,26 @@ class WebSocketTickStreamer:
 
     def _on_open(self, ws):
         logger.info("WebSocket connection OPEN")
-        sub_json = [{
-            "exchangeType": s['exchange'],
-            "tokens": [s['token']],
-            "feedType": self.feed_type
-        } for s in self.symbol_tokens]
-        ws.subscribe(sub_json)
-        logger.info(f"Subscribed to {len(sub_json)} stream(s): {[s['symbol'] for s in self.symbol_tokens]} [{self.feed_type}]")
+        sub_json = []
+        for s in self.symbol_tokens:
+            try:
+                # Convert exchange code to Angel One exchange_type integer
+                angel_exchange_type = map_to_angel_exchange_type(s['exchange'])
+                sub_json.append({
+                    "exchangeType": angel_exchange_type,  # Use Angel One integer format
+                    "tokens": [s['token']],
+                    "feedType": self.feed_type
+                })
+                logger.info(f"Mapped {s['exchange']} -> exchange_type={angel_exchange_type} for {s['symbol']}")
+            except ValueError as e:
+                logger.error(f"Exchange mapping failed for {s['symbol']}: {e}")
+                continue
+        
+        if sub_json:
+            ws.subscribe(sub_json)
+            logger.info(f"Subscribed to {len(sub_json)} stream(s): {[s['symbol'] for s in self.symbol_tokens]} [{self.feed_type}]")
+        else:
+            logger.error("No valid exchange mappings found - WebSocket subscription failed")
 
     def _on_data(self, ws, message):
         try:
