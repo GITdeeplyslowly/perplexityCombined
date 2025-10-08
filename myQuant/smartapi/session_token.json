@@ -1,0 +1,31 @@
+{
+  "jwt_token": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJ1c2VybmFtZSI6Ikg1Mzc0OTkyOSIsInJvbGVzIjowLCJ1c2VydHlwZSI6IlVTRVIiLCJ0b2tlbiI6ImV5SmhiR2NpT2lKU1V6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUoxYzJWeVgzUjVjR1VpT2lKamJHbGxiblFpTENKMGIydGxibDkwZVhCbElqb2lkSEpoWkdWZllXTmpaWE56WDNSdmEyVnVJaXdpWjIxZmFXUWlPakV5TENKemIzVnlZMlVpT2lJeklpd2laR1YyYVdObFgybGtJam9pWkdGbU1ESTNZbU10T1dNME1DMHpNamN6TFRneFl6a3RNamRtT0dVek0ySTROVGcySWl3aWEybGtJam9pZEhKaFpHVmZhMlY1WDNZeUlpd2liMjF1WlcxaGJtRm5aWEpwWkNJNk1USXNJbkJ5YjJSMVkzUnpJanA3SW1SbGJXRjBJanA3SW5OMFlYUjFjeUk2SW1GamRHbDJaU0o5TENKdFppSTZleUp6ZEdGMGRYTWlPaUpoWTNScGRtVWlmWDBzSW1semN5STZJblJ5WVdSbFgyeHZaMmx1WDNObGNuWnBZMlVpTENKemRXSWlPaUpJTlRNM05EazVNamtpTENKbGVIQWlPakUzTmpBd01EVTJPRElzSW01aVppSTZNVGMxT1RreE9URXdNaXdpYVdGMElqb3hOelU1T1RFNU1UQXlMQ0pxZEdraU9pSmlNelJtWVRSak1TMHhNemcxTFRSbVlUUXRZVFZrWXkxbU5qWTJZMlkxWVdVMk5EUWlMQ0pVYjJ0bGJpSTZJaUo5Lmpic21yaWtUeTNKTWJDel9kN2pmRzlybi1iTHJEcWVuRk5wM2kxT2tiY2Z6b3pJLV9OSFhZWlRhMjFmUjBpbDlEWUFhMFBONUI3QzR1TTUtQ01INjYxT1VhRmRPWkRGUlg3XzlGOWhPYUIzS1Jram1TaXJndWJ0b1lFbk9TbjlhZk9XcDczVDlsQ0tYdS1wOVRQTVc3V2hYNTZWano5dHI0UFBIWVVfTXdVRSIsIkFQSS1LRVkiOiJWcGxOeUpBWCIsIlgtT0xELUFQSS1LRVkiOnRydWUsImlhdCI6MTc1OTkxOTI4MiwiZXhwIjoxNzU5OTQ4MjAwfQ.nAyj2bKcSf7gT0JwUjuz_7f0mhFbUPbUe1MM3gqqmIEt8mBR99CmdVn0B-zjDyqiutgVPmzNA8OKD8ZtZQbQdg",
+  "feed_token": "eyJhbGciOiJIUzUxMiJ9.eyJ1c2VybmFtZSI6Ikg1Mzc0OTkyOSIsImlhdCI6MTc1OTkxOTI4MiwiZXhwIjoxNzYwMDA1NjgyfQ.pxpKfo1N7lguDa75hvd6_b95RQxnw2E7snZG5CcRfuTQroe6LtwBaS0R4_kycprZ9wlsCqyDNnuHPi0dZWx6Qw",
+  "client_code": "H53749929",
+  "refresh_time": "2025-10-08T15:58:00.110507",
+  "profile": {
+    "clientcode": "H53749929",
+    "name": "HARDEEP SINGH",
+    "email": "",
+    "mobileno": "",
+    "exchanges": [
+      "nse_fo",
+      "nse_cm",
+      "cde_fo",
+      "ncx_fo",
+      "bse_fo",
+      "bse_cm",
+      "mcx_fo"
+    ],
+    "products": [
+      "MARGIN",
+      "MIS",
+      "NRML",
+      "CNC",
+      "CO",
+      "BO"
+    ],
+    "lastlogintime": "",
+    "broker": ""
+  }
+}

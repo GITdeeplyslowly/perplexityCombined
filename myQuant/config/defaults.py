@@ -204,7 +204,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "api_key": os.getenv("API_KEY", ""),  # Load from angelalgo .env.trading
         "client_code": os.getenv("CLIENT_ID", ""),  # Load from angelalgo .env.trading  
         "pin": os.getenv("PASSWORD", ""),  # Load from angelalgo .env.trading
-        "totp_token": os.getenv("SMARTAPI_TOTP_SECRET", ""),  # Load from angelalgo .env.trading
+        "totp_secret": os.getenv("SMARTAPI_TOTP_SECRET", ""),  # TOTP secret for dynamic token generation
         "allow_interactive_auth": False  # Enable interactive PIN/TOTP prompts when session expires
     }
 }

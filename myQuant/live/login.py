@@ -21,18 +21,26 @@ except ImportError:
     SmartConnect = None
     logging.warning("SmartAPI client not installed. install with `pip install smartapi-python`.")
 
+try:
+    import pyotp
+except ImportError:
+    pyotp = None
+    logging.warning("pyotp not installed. Install with `pip install pyotp` for dynamic TOTP generation.")
+
 SESSION_FILE = "smartapi/session_token.json"
 
 class SmartAPISessionManager:
-    def __init__(self, api_key: str, client_code: str, pin: str, totp_token: str):
+    def __init__(self, api_key: str, client_code: str, pin: str, totp_secret: str):
         self.api_key = api_key
         self.client_code = client_code
         self.pin = pin
-        self.totp_token = totp_token
+        self.totp_secret = totp_secret  # Store TOTP secret for dynamic generation
         self.session = None
         self.session_info = {}
         if SmartConnect is None:
             raise ImportError("SmartAPI client is not installed.")
+        if pyotp is None:
+            raise ImportError("pyotp is not installed. Install with `pip install pyotp` for TOTP generation.")
 
     def login(self) -> dict:
         """
@@ -42,7 +50,11 @@ class SmartAPISessionManager:
         """
         smartapi = SmartConnect(api_key=self.api_key)
         try:
-            res = smartapi.generateSession(self.client_code, self.pin, self.totp_token)
+            # Generate fresh TOTP token using the secret
+            fresh_totp = pyotp.TOTP(self.totp_secret).now()
+            logging.info(f"Generated fresh TOTP for authentication")
+            
+            res = smartapi.generateSession(self.client_code, self.pin, fresh_totp)
             jwt_token = res["data"]["jwtToken"]
             feed_token = smartapi.getfeedToken()
             profile = smartapi.getProfile(self.client_code)["data"]
@@ -80,19 +92,28 @@ class SmartAPISessionManager:
         return self.session_info
 
     def is_session_valid(self) -> bool:
-        """
-        Check if the loaded token is still valid (valid for 1 trading day).
-        """
-        # For strict robustness, always relogin daily or on session error
-        info = self.session_info
-        if not info:
+        """Simple Wind-style token validation with API test."""
+        if not self.session_info or not self.session_info.get("jwt_token"):
             return False
+            
         try:
-            last_refresh = datetime.fromisoformat(info["refresh_time"])
-            age = (datetime.now() - last_refresh).total_seconds() / 3600
-            return age < 20  # Assume <20h = valid
+            import requests
+            test_url = "https://apiconnect.angelone.in/rest/secure/angelbroking/user/v1/getProfile"
+            headers = {"Authorization": f"Bearer {self.session_info['jwt_token']}"}
+            response = requests.get(test_url, headers=headers)
+            return response.status_code == 200
         except Exception:
             return False
+    
+    def load_session(self) -> Optional[dict]:
+        """
+        Load and validate session using Wind's robust approach.
+        Returns session info if valid, None if invalid/expired.
+        """
+        session_info = self.load_session_from_file()
+        if session_info and self.is_session_valid():
+            return session_info
+        return None
 
     def get_smartconnect(self):
         """
