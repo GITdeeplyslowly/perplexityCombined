@@ -123,27 +123,28 @@ class BrokerAdapter:
     def connect(self):
         """Authenticate and establish live SmartAPI session with WebSocket streaming."""
         
-        # Check if SmartAPI is available first
-        if not self.SmartConnect:
-            error_msg = (
-                "🚨 CRITICAL ERROR: SmartAPI package is not installed!\n"
-                "💡 SOLUTION: Install SmartAPI package: pip install smartapi-python\n"
-                "❌ TRADING SYSTEM CANNOT OPERATE WITHOUT BROKER CONNECTION"
-            )
-            logger.error(error_msg)
-            self.stream_status = "error"
-            raise RuntimeError("SmartAPI package missing - cannot establish broker connection")
-        
-        # In paper trading mode, prefer file simulation if explicitly enabled
-        if self.paper_trading and self.file_simulator:
+        # 🚀 SURGICAL FIX: Honor user's explicit file simulation choice FIRST
+        if self.file_simulator:
             if self.file_simulator.load_data():
                 logger.info("Paper trading mode: using user-selected file simulation.")
                 self.stream_status = "file_simulation"
-                return
+                return  # ✅ EXIT - completely independent of SmartAPI
             else:
                 logger.error("File simulation failed to load data.")
                 self.stream_status = "error"
                 raise RuntimeError("File simulation data could not be loaded")
+        
+        # 🔒 SACRED PATH: Only reached when user wants live trading
+        if not self.SmartConnect:
+            error_msg = (
+                "🚨 CRITICAL ERROR: SmartAPI package is not installed!\n"
+                "💡 SOLUTION: Install SmartAPI package: pip install smartapi-python\n"
+                "❌ LIVE WEBSTREAM TRADING CANNOT OPERATE WITHOUT BROKER CONNECTION\n"
+                "💡 TIP: Use file simulation for testing without SmartAPI"
+            )
+            logger.error(error_msg)
+            self.stream_status = "error"
+            raise RuntimeError("SmartAPI package missing - cannot establish broker connection")
         
         # Use SmartAPI for live data (works in both paper trading and live trading modes)
         logger.info("Connecting to SmartAPI for live data streaming...")
