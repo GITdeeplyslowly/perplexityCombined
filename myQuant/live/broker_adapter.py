@@ -54,18 +54,15 @@ class BrokerAdapter:
         self.config_accessor = ConfigAccessor(config)
         
         self.live_params = config["live"]
-        self.instrument = config["instrument"]
-        self.symbol = self.instrument["symbol"]
         
-        # STRICT ACCESS - NO FALLBACKS IN TRADING SYSTEMS
-        self.exchange = self.instrument["exchange"]  # Will raise KeyError if missing
-        
-        # Use SSOT for instrument parameters - STRICT ACCESS ONLY
-        self.lot_size = int(self.config_accessor.get_current_instrument_param('lot_size'))
-        self.tick_size = float(self.config_accessor.get_current_instrument_param('tick_size'))
-            
-        # STRICT ACCESS - NO FALLBACKS IN TRADING SYSTEMS  
-        self.product_type = self.instrument["product_type"]  # Will raise KeyError if missing
+        # Symbol/instrument management moved to live trading path only
+        # Data simulation has no business with symbol/token management
+        self.instrument = None
+        self.symbol = None  
+        self.exchange = None
+        self.lot_size = None
+        self.tick_size = None
+        self.product_type = None
         
         # instrument_token: Dynamic per option contract, set by user/token cache
         # Will be validated when actually needed for trading operations
@@ -99,10 +96,8 @@ class BrokerAdapter:
             file_path = config.get('data_simulation', {}).get('file_path', '')
             if file_path:
                 from live.data_simulator import DataSimulator
-                # Extract speed mode from config (default to FAST for better UX)
-                speed_mode = config.get('data_simulation', {}).get('speed_mode', 'FAST')
-                self.file_simulator = DataSimulator(file_path, speed_mode)
-                logger.info(f"File simulation enabled with: {file_path} (Speed: {speed_mode})")
+                self.file_simulator = DataSimulator(file_path)
+                logger.info(f"File simulation enabled with: {file_path}")
 
         # Dynamic imports for SmartAPI
         try:
@@ -148,9 +143,28 @@ class BrokerAdapter:
         
         # Use SmartAPI for live data (works in both paper trading and live trading modes)
         logger.info("Connecting to SmartAPI for live data streaming...")
+        
+        # Load live trading credentials (only when live trading is needed)
+        from config.defaults import load_live_trading_credentials
+        credentials = load_live_trading_credentials()
+        
+        # Update live params with loaded credentials
+        live = dict(self.live_params)  # Convert to mutable dict for updates
+        live.update(credentials)
+        
+        # Initialize symbol/instrument management (LIVE TRADING ONLY)
+        self.instrument = self.params["instrument"]
+        self.symbol = self.instrument["symbol"]
+        self.exchange = self.instrument["exchange"]  # Will raise KeyError if missing
+        
+        # Use SSOT for instrument parameters - STRICT ACCESS ONLY
+        self.lot_size = int(self.config_accessor.get_current_instrument_param('lot_size'))
+        self.tick_size = float(self.config_accessor.get_current_instrument_param('tick_size'))
+        self.product_type = self.instrument["product_type"]  # Will raise KeyError if missing
+        
+        logger.info(f"🎯 Live Trading Symbol: {self.symbol} | Exchange: {self.exchange} | Token: {self.instrument.get('token', 'Not Set')}")
             
         # FAIL-FAST: Validate minimum credentials for authentication
-        live = self.live_params
         
         # Check minimum required credentials (session manager mode)
         min_required = ["api_key", "client_code"]

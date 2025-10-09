@@ -30,22 +30,12 @@ logger = logging.getLogger(__name__)
 class DataSimulator:
     """Optional file-based data simulator. Does not affect live trading."""
     
-    # Speed mode presets (user-configurable)
-    SPEED_MODES = {
-        'REALTIME': 0.05,     # 20 tps - realistic market speed
-        'FAST': 0.01,         # 100 tps - quick testing  
-        'TURBO': 0.002,       # 500 tps - rapid validation
-        'MAX': 0.0001,        # ~10000 tps - instant results
-        'INSTANT': 0          # No delay - maximum speed
-    }
-    
-    def __init__(self, file_path: str = None, speed_mode: str = 'FAST'):
+    def __init__(self, file_path: str = None):
         self.file_path = file_path
         self.data = None
         self.index = 0
-        # Default to FAST mode for better testing experience
-        self.tick_delay = self.SPEED_MODES.get(speed_mode, self.SPEED_MODES['FAST'])
-        self.speed_mode = speed_mode
+        # Fixed delay for consistent simulation speed
+        self.tick_delay = 0.01  # 100 tps - good balance of speed and visibility
         self.loaded = False
         self.completed = False  # Flag to prevent repeated completion messages
         
@@ -99,11 +89,7 @@ class DataSimulator:
                 time_str = f"{estimated_time/3600:.1f} hours"
                 
             logger.info(f"📁 Loaded {total_ticks:,} data points for simulation")
-            logger.info(f"🚀 Speed mode: {self.speed_mode} ({self.tick_delay}s per tick)")
             logger.info(f"⏱️  Estimated completion time: ~{time_str}")
-            
-            if estimated_time > 300:  # > 5 minutes
-                logger.info("💡 TIP: Use 'TURBO' or 'MAX' speed mode for faster testing")
                 
             return True
             
@@ -123,10 +109,10 @@ class DataSimulator:
                 logger.info("📋 Simulation completed successfully - all data processed")
             return None  # Signal completion, don't restart
             
-        # Progress reporting (every 5% for user feedback)
-        if self.index % max(1, len(self.data) // 20) == 0:
+        # Progress reporting (every 10% for user feedback, less frequent to avoid GUI overload)
+        if self.index % max(1, len(self.data) // 10) == 0:
             progress = (self.index / len(self.data)) * 100
-            logger.info(f"📊 Simulation progress: {progress:.1f}% ({self.index}/{len(self.data)}) - Speed: {self.speed_mode}")
+            logger.info(f"📊 Simulation progress: {progress:.0f}% ({self.index}/{len(self.data)})")
             
         # Get current data point
         row = self.data.iloc[self.index]
@@ -145,15 +131,7 @@ class DataSimulator:
         
         return tick
     
-    def set_speed_mode(self, mode: str):
-        """Change simulation speed during runtime (testing only)."""
-        if mode in self.SPEED_MODES:
-            self.tick_delay = self.SPEED_MODES[mode]
-            self.speed_mode = mode
-            logger.info(f"🚀 Simulation speed changed to: {mode} ({self.tick_delay}s delay)")
-        else:
-            available = ', '.join(self.SPEED_MODES.keys())
-            logger.warning(f"Invalid speed mode '{mode}'. Available: {available}")
+
     
     def get_estimated_completion_time(self) -> str:
         """Estimate remaining time for user planning."""

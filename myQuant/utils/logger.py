@@ -120,7 +120,7 @@ def setup_from_config(frozen_cfg: MappingProxyType) -> logging.Logger:
             except Exception:
                 pass
 
-        root.info("Logging configured from frozen config")
+        root.info("Logging system initialized with default configuration")
         _setup_done = True
         return root
 

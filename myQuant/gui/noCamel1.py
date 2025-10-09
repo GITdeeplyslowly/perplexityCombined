@@ -2207,8 +2207,12 @@ class UnifiedTradingGUI(tk.Tk):
             logger.warning(f"Failed to initialize instrument selection: {e}")
 
     def _ft_build_config_from_gui(self):
-        """Build forward test specific configuration from GUI state"""
-        config_dict = deepcopy(self.runtime_config)
+        """Build forward test specific configuration from GUI state - FRESH BUILD EVERY TIME"""
+        logger.info("🔄 Building fresh configuration from current GUI state...")
+        
+        # 🚀 FRESH BUILD: Start with clean defaults, no caching
+        from config.defaults import DEFAULT_CONFIG
+        config_dict = deepcopy(DEFAULT_CONFIG)  # Fresh baseline from defaults
         
         # 1. INSTRUMENT SELECTION (Primary - determines lot_size from SSOT)
         selected_instrument = self.ft_instrument_type.get()
@@ -2238,19 +2242,27 @@ class UnifiedTradingGUI(tk.Tk):
         # 2. EXCHANGE/INSTRUMENT TYPE (Secondary - F&O vs Cash)
         config_dict["instrument"]["exchange"] = self.ft_exchange.get()
         
-        # 3. SYMBOL SELECTION (Independent - user input from cache)
+        # 3. SYMBOL SELECTION (Only required for live trading, not data simulation)
         user_symbol = self.ft_symbol.get().strip()
         user_token = self.ft_token.get().strip()
         
-        if not user_symbol:
-            raise ValueError("FATAL: Symbol must be selected from cache before starting forward test")
+        # Only validate symbols/tokens for live trading
+        if not self.ft_use_file_simulation.get():  # Live trading requires symbols/tokens
+            if not user_symbol:
+                raise ValueError("FATAL: Symbol must be selected from cache before starting live trading")
+            
+            if not user_token:
+                raise ValueError("FATAL: Token must be available for selected symbol in live trading")
+        else:
+            # For data simulation, use placeholder values (not actually used)
+            if not user_symbol:
+                user_symbol = "DATA_SIMULATION_PLACEHOLDER"
+            if not user_token:
+                user_token = "0"
         
-        if not user_token:
-            raise ValueError("FATAL: Token must be available for selected symbol")
-        
-        # OPTIONAL: Validate symbol compatibility with selected instrument
+        # OPTIONAL: Validate symbol compatibility with selected instrument (LIVE TRADING ONLY)
         # This is a soft validation - ask user confirmation if mismatch detected
-        if not user_symbol.startswith(selected_instrument):
+        if not self.ft_use_file_simulation.get() and not user_symbol.startswith(selected_instrument):
             mismatch_msg = (
                 f"Symbol Compatibility Warning\n\n"
                 f"Selected Symbol: {user_symbol}\n"
@@ -2268,7 +2280,7 @@ class UnifiedTradingGUI(tk.Tk):
             )
             
             if not user_choice:
-                logger.info(f"User cancelled forward test due to symbol mismatch: {user_symbol} vs {selected_instrument}")
+                logger.info(f"User cancelled live trading due to symbol mismatch: {user_symbol} vs {selected_instrument}")
                 return None
             else:
                 logger.warning(
@@ -2323,14 +2335,28 @@ class UnifiedTradingGUI(tk.Tk):
         config_dict['session']['end_hour'] = int(self.ft_session_end_hour.get())
         config_dict['session']['end_min'] = int(self.ft_session_end_min.get())
         config_dict['session']['auto_stop_enabled'] = self.ft_auto_stop_enabled.get()
-        config_dict['session']['max_trades_per_day'] = int(self.ft_max_trades_per_day.get())
         config_dict['session']['max_loss_per_day'] = float(self.ft_max_loss_per_day.get())
+        
+        # Fix: Set max trades in the correct location that strategy expects
+        config_dict['risk']['max_positions_per_day'] = int(self.ft_max_trades_per_day.get())
+        
+        # 🚀 LOG FRESH CONFIG: Verify GUI values are captured
+        logger.info(f"📋 Fresh GUI Configuration Captured:")
+        logger.info(f"   Max Trades/Day: {config_dict['risk']['max_positions_per_day']} (from GUI: {self.ft_max_trades_per_day.get()})")
+        logger.info(f"   Symbol: {self.ft_symbol.get()}")
+        logger.info(f"   Capital: {self.ft_initial_capital.get()}")
 
         # Update data simulation settings from forward test GUI (OPTIONAL - does not affect live trading)
         config_dict['data_simulation'] = {
             'enabled': self.ft_use_file_simulation.get(),
             'file_path': self.ft_data_file_path.get() if self.ft_use_file_simulation.get() else ""
         }
+        
+        # Log data source for user confirmation
+        if config_dict['data_simulation']['enabled']:
+            logger.info(f"   Data Source: File Simulation ({config_dict['data_simulation']['file_path']})")
+        else:
+            logger.info(f"   Data Source: Live WebStream")
 
         # Update capital management from forward test GUI
         config_dict['capital']['initial_capital'] = float(self.ft_initial_capital.get())
@@ -2354,8 +2380,17 @@ class UnifiedTradingGUI(tk.Tk):
         
         # Validate and freeze the forward test configuration
         try:
+            # 🚀 FINAL CONFIRMATION: Log complete config summary
+            logger.info("✅ Fresh Configuration Ready for Forward Test:")
+            logger.info(f"   📊 Strategy: Max Trades = {config_dict['risk']['max_positions_per_day']}")
+            logger.info(f"   💰 Capital: {config_dict['capital']['initial_capital']}")
+            logger.info(f"   📈 Symbol: {config_dict['instrument']['symbol']}")
+            logger.info(f"   🏢 Exchange: {config_dict['instrument']['exchange']}")
+            
             validation = validate_config(config_dict)
-            return freeze_config(config_dict)
+            frozen_config = freeze_config(config_dict)
+            logger.info("🔒 Configuration frozen and validated successfully")
+            return frozen_config
             
         except Exception as e:
             logger.exception(f"Forward test config validation failed: {e}")
@@ -2365,20 +2400,32 @@ class UnifiedTradingGUI(tk.Tk):
     def _ft_run_forward_test(self):
         """Run forward test with current configuration using frozen config"""
         try:
-            # Validate required fields first
-            if not self.ft_symbol.get().strip():
-                messagebox.showerror("Missing Symbol", "Please select a symbol for forward testing")
-                return
-                
-            if not self.ft_token.get().strip():
-                messagebox.showerror("Missing Token", "Please select a valid symbol with token information")
-                return
+            # Validate symbol/token ONLY for live trading (not needed for data simulation)
+            if not self.ft_use_file_simulation.get():  # Live trading requires symbols/tokens
+                if not self.ft_symbol.get().strip():
+                    messagebox.showerror("Missing Symbol", "Please select a symbol for live trading")
+                    return
+                    
+                if not self.ft_token.get().strip():
+                    messagebox.showerror("Missing Token", "Please select a valid symbol with token information for live trading")
+                    return
             
-            # Build forward test specific frozen config
+            # 🚀 BUILD FRESH CONFIG: Always build from current GUI state
+            logger.info("🔄 Building fresh forward test configuration...")
             ft_frozen_config = self._ft_build_config_from_gui()
             if ft_frozen_config is None:
-                logger.warning("Forward test aborted: configuration validation failed")
+                logger.warning("❌ Forward test aborted: configuration validation failed")
                 return
+            
+            # 🚀 CONFIRM FRESH CONFIG: Log key parameters user will see
+            logger.info("🎯 Forward Test Starting with Fresh Configuration:")
+            logger.info(f"   Max Trades/Day: {ft_frozen_config['risk']['max_positions_per_day']}")
+            logger.info(f"   Symbol: {ft_frozen_config['instrument']['symbol']}")
+            logger.info(f"   Capital: ${ft_frozen_config['capital']['initial_capital']:,.2f}")
+            if ft_frozen_config['data_simulation']['enabled']:
+                logger.info(f"   Data: File Simulation ({ft_frozen_config['data_simulation']['file_path']})")
+            else:
+                logger.info(f"   Data: Live WebStream")
             
             # Verify we have a proper frozen config
             if not isinstance(ft_frozen_config, MappingProxyType):
@@ -2422,15 +2469,8 @@ class UnifiedTradingGUI(tk.Tk):
                 data_detail_msg = f"Live market feed: {self.ft_feed_type.get()}"
                 warning_msg = "\n⚠️ This will connect to LIVE market data streams!"
             
-            # Show confirmation dialog with prominent data source warning
-            confirmed = messagebox.askyesno(
-                "Confirm Forward Test",
-                f"Ready to start forward test:\n\n"
-                f"Symbol: {self.ft_symbol.get()}\n"
-                f"DATA SOURCE: {data_source_msg}\n"
-                f"{data_detail_msg}{warning_msg}\n\n"
-                f"Continue with forward test?"
-            )
+            # Show comprehensive configuration review dialog
+            confirmed = self._show_config_review_dialog(ft_frozen_config, data_source_msg, data_detail_msg, warning_msg)
             
             if not confirmed:
                 logger.info("Forward test cancelled by user")
@@ -2438,6 +2478,11 @@ class UnifiedTradingGUI(tk.Tk):
             
             # Add initial message
             self._update_ft_result_box(f"🚀 Starting forward test for {self.ft_symbol.get()}...\n", "live")
+            
+            # Reconfigure logging with actual user configuration (not just defaults)
+            logger.info("🔄 Reconfiguring logging with user settings from GUI...")
+            setup_from_config(ft_frozen_config)
+            logger.info("✅ Logging reconfigured with fresh user configuration")
             
             # Create LiveTrader with frozen config
             try:
@@ -2477,12 +2522,10 @@ class UnifiedTradingGUI(tk.Tk):
                         trading="❌ Failed"
                     ))
             
-            # Store trader reference for potential stop functionality
+            # Store trader and thread references for proper cleanup
             self.active_trader = trader
-            
-            # Start the forward test thread
-            test_thread = threading.Thread(target=run_forward_test, daemon=True)
-            test_thread.start()
+            self.active_thread = threading.Thread(target=run_forward_test, daemon=True)
+            self.active_thread.start()
             
             # Determine data source mode for prominent display
             if self.ft_use_file_simulation.get():
@@ -2582,16 +2625,36 @@ class UnifiedTradingGUI(tk.Tk):
             logger.warning(f"Failed to update forward test status: {e}")
     
     def _ft_stop_forward_test(self):
-        """Stop running forward test"""
+        """Stop running forward test with proper thread cleanup"""
         try:
             if hasattr(self, 'active_trader') and self.active_trader:
-                self.active_trader.stop()
+                logger.info("🛑 Stopping forward test...")
                 
                 # Update status displays
                 self._update_ft_status(
                     connection="🟡 Disconnecting...",
                     trading="⏹️ Stopping..."
                 )
+                
+                # Stop the trader (sets is_running = False)
+                self.active_trader.stop()
+                
+                # Wait for thread to finish (with timeout to prevent hanging)
+                if hasattr(self, 'active_thread') and self.active_thread.is_alive():
+                    logger.info("Waiting for trading thread to finish...")
+                    self.active_thread.join(timeout=10.0)  # 10 second timeout (increased)
+                    
+                    if self.active_thread.is_alive():
+                        logger.warning("Trading thread did not finish within timeout - forcing cleanup")
+                        # Force thread cleanup - this should not happen in normal operation
+                        logger.warning("Thread may be stuck - GUI will continue but thread resources may not be fully cleaned")
+                    else:
+                        logger.info("Trading thread finished cleanly")
+                
+                # Clear references
+                self.active_trader = None
+                if hasattr(self, 'active_thread'):
+                    self.active_thread = None
                 
                 # Add stop message to results
                 self._update_ft_result_box("⏹️ Forward test stopped by user.\n", "live")
@@ -2602,7 +2665,7 @@ class UnifiedTradingGUI(tk.Tk):
                     trading="⏸️ Stopped"
                 )
                 
-                logger.info("Forward test stopped by user")
+                logger.info("✅ Forward test stopped successfully")
                 messagebox.showinfo("Forward Test Stopped", "Forward test has been stopped successfully.")
             else:
                 messagebox.showinfo("No Active Test", "No forward test is currently running")
@@ -2615,6 +2678,156 @@ class UnifiedTradingGUI(tk.Tk):
                 connection="🔴 Error",
                 trading="❌ Stop Failed"
             )
+
+    def _show_config_review_dialog(self, config, data_source_msg, data_detail_msg, warning_msg):
+        """Show comprehensive configuration review dialog before starting forward test"""
+        
+        # Create dialog window
+        dialog = tk.Toplevel(self)
+        dialog.title("Configuration Review")
+        dialog.geometry("800x600")
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        # Center the dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (400)
+        y = (dialog.winfo_screenheight() // 2) - (300)
+        dialog.geometry(f"800x600+{x}+{y}")
+        
+        # Main frame
+        main_frame = ttk.Frame(dialog)
+        main_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Build configuration text
+        config_text = self._build_config_summary(config, data_source_msg, data_detail_msg, warning_msg)
+        
+        # Text widget to display configuration
+        text_widget = tk.Text(main_frame, wrap=tk.WORD, font=('Consolas', 10))
+        text_widget.pack(fill='both', expand=True, pady=(0, 15))
+        text_widget.insert(1.0, config_text)
+        text_widget.config(state='disabled')
+        
+        # Buttons frame
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill='x')
+        
+        # Result variable
+        self.dialog_result = False
+        
+        def on_confirm():
+            self.dialog_result = True
+            dialog.destroy()
+            
+        def on_cancel():
+            self.dialog_result = False
+            dialog.destroy()
+        
+        # Buttons
+        ttk.Button(button_frame, text="Cancel", 
+                  command=on_cancel).pack(side='right', padx=(10, 0))
+        ttk.Button(button_frame, text="Start Forward Test", 
+                  command=on_confirm).pack(side='right')
+        
+        # Wait for dialog to close
+        dialog.wait_window()
+        
+        return self.dialog_result
+
+    def _build_config_summary(self, config, data_source_msg, data_detail_msg, warning_msg):
+        """Build a comprehensive configuration summary as formatted text"""
+        
+        lines = []
+        lines.append("=" * 80)
+        lines.append("                    FORWARD TEST CONFIGURATION REVIEW")
+        lines.append("=" * 80)
+        lines.append("")
+        lines.append(f"DATA SOURCE: {data_source_msg}")
+        lines.append(f"{data_detail_msg}")
+        lines.append(f"{warning_msg}")
+        lines.append("")
+        
+        # Instrument & Session
+        lines.append("INSTRUMENT & SESSION")
+        lines.append("-" * 40)
+        lines.append(f"Symbol:              {config['instrument']['symbol']}")
+        lines.append(f"Exchange:            {config['instrument']['exchange']}")
+        lines.append(f"Product Type:        {config['instrument']['product_type']}")
+        lines.append(f"Lot Size:            {config['instrument']['lot_size']}")
+        lines.append(f"Tick Size:           ₹{config['instrument']['tick_size']}")
+        lines.append(f"Session Start:       {config['session']['start_hour']:02d}:{config['session']['start_min']:02d}")
+        lines.append(f"Session End:         {config['session']['end_hour']:02d}:{config['session']['end_min']:02d}")
+        lines.append(f"Auto Stop:           {'Enabled' if config['session']['auto_stop_enabled'] else 'Disabled'}")
+        lines.append(f"Max Loss/Day:        ₹{config['session']['max_loss_per_day']}")
+        lines.append("")
+        
+        # Risk & Capital
+        lines.append("RISK & CAPITAL MANAGEMENT")
+        lines.append("-" * 40)
+        lines.append(f"Initial Capital:     ₹{config['capital']['initial_capital']:,}")
+        lines.append(f"Max Trades/Day:      {config['risk']['max_positions_per_day']}")
+        lines.append(f"Base Stop Loss:      {config['risk']['base_sl_points']} points")
+        lines.append(f"Take Profit Levels:  {len(config['risk']['tp_points'])} levels")
+        lines.append(f"TP Points:           {config['risk']['tp_points']}")
+        lines.append(f"TP Percentages:      {config['risk']['tp_percents']}")
+        lines.append(f"Trail Stop:          {'Enabled' if config['risk']['use_trail_stop'] else 'Disabled'}")
+        if config['risk']['use_trail_stop']:
+            lines.append(f"Trail Activation:    {config['risk']['trail_activation_points']} points")
+            lines.append(f"Trail Distance:      {config['risk']['trail_distance_points']} points")
+        lines.append(f"Risk per Trade:      {config['risk']['risk_per_trade_percent']}%")
+        lines.append(f"Commission:          {config['risk']['commission_percent']}%")
+        lines.append("")
+        
+        # Strategy & Indicators
+        lines.append("STRATEGY & INDICATORS")
+        lines.append("-" * 40)
+        strategy_cfg = config['strategy']
+        lines.append(f"Trading Mode:        {strategy_cfg['trading_mode']}")
+        lines.append(f"Entry Logic:         {strategy_cfg['entry_logic']}")
+        lines.append(f"Exit Logic:          {strategy_cfg['exit_logic']}")
+        lines.append("")
+        lines.append("Enabled Indicators:")
+        
+        # Check each indicator
+        if strategy_cfg['ema_enabled']:
+            lines.append(f"  EMA:               Fast={strategy_cfg['fast_ema']}, Slow={strategy_cfg['slow_ema']}")
+        
+        if strategy_cfg['macd_enabled']:
+            lines.append(f"  MACD:              Fast={strategy_cfg['macd_fast']}, Slow={strategy_cfg['macd_slow']}, Signal={strategy_cfg['macd_signal']}")
+        
+        if strategy_cfg['rsi_enabled']:
+            lines.append(f"  RSI:               Period={strategy_cfg['rsi_period']}, OB={strategy_cfg['rsi_overbought']}, OS={strategy_cfg['rsi_oversold']}")
+        
+        if strategy_cfg['bollinger_enabled']:
+            lines.append(f"  Bollinger Bands:   Period={strategy_cfg['bollinger_period']}, StdDev={strategy_cfg['bollinger_std']}")
+        
+        if strategy_cfg['vwap_enabled']:
+            lines.append(f"  VWAP:              Enabled")
+        
+        if strategy_cfg['adx_enabled']:
+            lines.append(f"  ADX:               Period={strategy_cfg['adx_period']}, Threshold={strategy_cfg['adx_threshold']}")
+        
+        lines.append("")
+        
+        # Data Source Details
+        lines.append("DATA SOURCE DETAILS")
+        lines.append("-" * 40)
+        if config['data_simulation']['enabled']:
+            lines.append(f"Mode:                File Simulation")
+            lines.append(f"File Path:           {config['data_simulation']['file_path']}")
+            lines.append(f"Status:              Historical data replay")
+        else:
+            lines.append(f"Mode:                Live WebStream")
+            lines.append(f"Feed Type:           Real-time market data")
+            lines.append(f"Status:              Live trading mode")
+        
+        lines.append("")
+        lines.append("=" * 80)
+        lines.append("Review the configuration above. Click 'Start Forward Test' to proceed.")
+        lines.append("=" * 80)
+        
+        return "\n".join(lines)
 
     def _ft_open_status_monitor(self):
         """Open status monitor window for detailed real-time monitoring"""

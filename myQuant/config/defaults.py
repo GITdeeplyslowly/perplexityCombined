@@ -8,26 +8,40 @@ Any changes to defaults should be made here only.
 import os
 from typing import Dict, Any
 
-# Load environment variables from .env file if it exists
-try:
-    from dotenv import load_dotenv
+# Environment variable loading moved to live trading authentication path only
+# This ensures data simulation users don't see unnecessary dotenv warnings
+
+def load_live_trading_credentials():
+    """Load credentials for live trading authentication - called only when needed"""
+    credentials = {}
     
-    # Primary: Load from angelalgo .env.trading file (if available)
-    angelalgo_env_path = r"C:\Users\user\projects\angelalgo\.env.trading"
-    if os.path.exists(angelalgo_env_path):
-        load_dotenv(angelalgo_env_path)
-        print(f"✅ Environment variables loaded from angelalgo: {angelalgo_env_path}")
-    else:
-        # Fallback: Load from local .env file
-        local_env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
-        if os.path.exists(local_env_path):
-            load_dotenv(local_env_path)
-            print(f"✅ Environment variables loaded from local: {local_env_path}")
+    try:
+        from dotenv import load_dotenv
+        
+        # Primary: Load from angelalgo .env.trading file (if available)
+        angelalgo_env_path = r"C:\Users\user\projects\angelalgo\.env.trading"
+        if os.path.exists(angelalgo_env_path):
+            load_dotenv(angelalgo_env_path)
+            print(f"✅ Environment variables loaded from angelalgo: {angelalgo_env_path}")
         else:
-            print(f"ℹ️ No .env file found at either location")
-            
-except ImportError:
-    print("ℹ️ python-dotenv not available, using system environment variables only")
+            # Fallback: Load from local .env file
+            local_env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+            if os.path.exists(local_env_path):
+                load_dotenv(local_env_path)
+                print(f"✅ Environment variables loaded from local: {local_env_path}")
+            else:
+                print(f"ℹ️ No .env file found at either location")
+                
+    except ImportError:
+        print("ℹ️ python-dotenv not available, using system environment variables only")
+    
+    # Load the actual credential values
+    credentials["api_key"] = os.getenv("API_KEY", "")
+    credentials["client_code"] = os.getenv("CLIENT_ID", "")
+    credentials["pin"] = os.getenv("PASSWORD", "")
+    credentials["totp_secret"] = os.getenv("SMARTAPI_TOTP_SECRET", "")
+    
+    return credentials
 
 # Single Source of Truth for defaults used by GUI and runners.
 DEFAULT_CONFIG: Dict[str, Any] = {
@@ -201,10 +215,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "feed_type": "LTP",
         "log_ticks": False,
         "visual_indicator": True,
-        "api_key": os.getenv("API_KEY", ""),  # Load from angelalgo .env.trading
-        "client_code": os.getenv("CLIENT_ID", ""),  # Load from angelalgo .env.trading  
-        "pin": os.getenv("PASSWORD", ""),  # Load from angelalgo .env.trading
-        "totp_secret": os.getenv("SMARTAPI_TOTP_SECRET", ""),  # TOTP secret for dynamic token generation
+        "api_key": "",  # Loaded during live trading authentication only
+        "client_code": "",  # Loaded during live trading authentication only
+        "pin": "",  # Loaded during live trading authentication only
+        "totp_secret": "",  # Loaded during live trading authentication only
         "allow_interactive_auth": False  # Enable interactive PIN/TOTP prompts when session expires
     }
 }

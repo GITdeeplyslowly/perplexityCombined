@@ -98,6 +98,7 @@ class LiveTrader:
         nan_recovery_threshold = self.config['strategy']['nan_recovery_threshold']
         consecutive_valid_ticks = 0
         
+        tick_count = 0
         try:
             while self.is_running:
                 # STEP 1: Get individual tick (no bar aggregation)
@@ -111,6 +112,19 @@ class LiveTrader:
                     time.sleep(0.1)
                     continue
                 
+                # Check stop condition more frequently during processing
+                if not self.is_running:
+                    logger.info("Stop requested during tick processing")
+                    break
+                
+                # GUI responsiveness: Brief yield every 100 ticks to keep GUI responsive
+                tick_count += 1
+                if tick_count % 100 == 0:
+                    time.sleep(0.001)  # Minimal yield to allow GUI updates
+                    # Check stop condition during GUI yield
+                    if not self.is_running:
+                        logger.info("Stop requested during GUI yield - exiting immediately")
+                        break
 
                 
                 now = tick['timestamp'] if 'timestamp' in tick else now_ist()
@@ -161,6 +175,11 @@ class LiveTrader:
                     elif signal.action == 'CLOSE' and self.active_position_id:
                         self.close_position(f"Strategy Signal: {signal.reason}")
                         self._update_result_box(result_box, f"Tick CLOSE: @ {signal.price:.2f} ({signal.reason})")
+                
+                # Check stop condition before position processing
+                if not self.is_running:
+                    logger.info("Stop requested before position processing - exiting")
+                    break
                 
                 # STEP 5: Position manager processes TP/SL/trail exits (if position exists)
                 if self.active_position_id:
