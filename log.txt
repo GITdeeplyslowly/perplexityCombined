@@ -1,0 +1,148 @@
+GUI Log initialized at 2025-10-10 22:03:43
+==================================================
+22:03:43 [INFO] __main__: GUI log display is now active
+22:03:54 [INFO] __main__: 🔄 Building fresh forward test configuration...
+22:03:54 [INFO] __main__: 🔄 Building fresh configuration from current GUI state...
+22:03:54 [INFO] __main__: 📋 Fresh GUI Configuration Captured:
+22:03:54 [INFO] __main__:    Max Trades/Day: 100 (from GUI: 100)
+22:03:54 [INFO] __main__:    Symbol: 
+22:03:54 [INFO] __main__:    Capital: 100000.0
+22:03:54 [INFO] __main__:    Data Source: File Simulation (C:/Users/user/projects/angelalgo windsurf/smartapi/data/live_ticks_20251001_170006.csv)
+22:03:54 [INFO] __main__: ✅ Fresh Configuration Ready for Forward Test:
+22:03:54 [INFO] __main__:    📊 Strategy: Max Trades = 100
+22:03:54 [INFO] __main__:    💰 Capital: 100000.0
+22:03:54 [INFO] __main__:    📈 Symbol: DATA_SIMULATION_PLACEHOLDER
+22:03:54 [INFO] __main__:    🏢 Exchange: NFO
+22:03:54 [INFO] __main__: 🔒 Configuration frozen and validated successfully
+22:03:54 [INFO] __main__: 🎯 Forward Test Starting with Fresh Configuration:
+22:03:54 [INFO] __main__:    Max Trades/Day: 100
+22:03:54 [INFO] __main__:    Symbol: DATA_SIMULATION_PLACEHOLDER
+22:03:54 [INFO] __main__:    Capital: $100,000.00
+22:03:54 [INFO] __main__:    Data: File Simulation (C:/Users/user/projects/angelalgo windsurf/smartapi/data/live_ticks_20251001_170006.csv)
+22:04:01 [INFO] __main__: 🔄 Reconfiguring logging with user settings from GUI...
+22:04:01 [INFO] __main__: ✅ Logging reconfigured with fresh user configuration
+22:04:01 [INFO] core.liveStrategy: SESSION START: Session configured: 09:15 to 22:30 buffers=+5/-20m
+22:04:01 [INFO] core.liveStrategy: SESSION START: Strategy initialized: Modular Intraday Long-Only Strategy v3.0
+22:04:01 [INFO] core.position_manager: PositionManager initialized with capital: 100,000.0
+22:04:01 [INFO] live.broker_adapter: File simulation enabled with: C:/Users/user/projects/angelalgo windsurf/smartapi/data/live_ticks_20251001_170006.csv
+22:04:01 [WARNING] live.broker_adapter: SmartAPI not installed; live data streaming not available.
+22:04:01 [INFO] __main__: Starting forward test for  with frozen configuration
+22:04:01 [INFO] live.data_simulator: Loading simulation data from: C:/Users/user/projects/angelalgo windsurf/smartapi/data/live_ticks_20251001_170006.csv
+22:04:01 [INFO] live.data_simulator: 📁 Loaded 32,591 data points for simulation
+22:04:01 [INFO] live.data_simulator: ⏱️  Estimated completion time: ~5.4 minutes
+22:04:01 [INFO] live.broker_adapter: Paper trading mode: using user-selected file simulation.
+22:04:01 [INFO] live.trader: 🟢 Forward testing session started - TRUE TICK-BY-TICK PROCESSING
+22:04:01 [INFO] live.data_simulator: 📊 Simulation progress: 0% (0/32591)
+22:04:01 [INFO] core.liveStrategy: ENTRY BLOCKED (#1): Need 5 green ticks, have 0
+22:04:02 [ERROR] live_strategy: 🔥 DEV ERROR [HIGH] in signal_generation
+22:04:02 [ERROR] live_strategy: 🔥 Exception: KeyError: 'close'
+22:04:02 [ERROR] live_strategy: 🔥 Full traceback:
+Traceback (most recent call last):
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\indexes\base.py", line 3805, in get_loc
+    return self._engine.get_loc(casted_key)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc
+  File "index.pyx", line 196, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas\\_libs\\hashtable_class_helper.pxi", line 7081, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas\\_libs\\hashtable_class_helper.pxi", line 7089, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: 'close'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\user\projects\Perplexity Combined\myQuant\core\liveStrategy.py", line 471, in _generate_signal_from_tick
+    if self.entry_signal(updated_tick):
+       ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\user\projects\Perplexity Combined\myQuant\core\liveStrategy.py", line 361, in entry_signal
+    row['close'] > row['htf_ema'])
+    ~~~^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\series.py", line 1121, in __getitem__
+    return self._get_value(key)
+           ~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\series.py", line 1237, in _get_value
+    loc = self.index.get_loc(label)
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\indexes\base.py", line 3812, in get_loc
+    raise KeyError(key) from err
+KeyError: 'close'
+
+22:04:02 [ERROR] live_strategy: 🔥 DEV ERROR [HIGH] in tick_processing_main
+22:04:02 [ERROR] live_strategy: 🔥 Exception: KeyError: 'close'
+22:04:02 [ERROR] live_strategy: 🔥 Full traceback:
+Traceback (most recent call last):
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\indexes\base.py", line 3805, in get_loc
+    return self._engine.get_loc(casted_key)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc
+  File "index.pyx", line 196, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas\\_libs\\hashtable_class_helper.pxi", line 7081, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas\\_libs\\hashtable_class_helper.pxi", line 7089, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: 'close'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\user\projects\Perplexity Combined\myQuant\core\liveStrategy.py", line 449, in on_tick
+    return self._generate_signal_from_tick(updated_tick, timestamp)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\projects\Perplexity Combined\myQuant\core\liveStrategy.py", line 507, in _generate_signal_from_tick
+    return self.error_handler.handle_error(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        error=e,
+        ^^^^^^^^
+    ...<2 lines>...
+        default_return=None
+        ^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\user\projects\Perplexity Combined\myQuant\utils\enhanced_error_handler.py", line 109, in handle_error
+    return self._handle_development_error(error, context, severity, default_return)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\projects\Perplexity Combined\myQuant\utils\enhanced_error_handler.py", line 156, in _handle_development_error
+    raise error
+  File "C:\Users\user\projects\Perplexity Combined\myQuant\core\liveStrategy.py", line 471, in _generate_signal_from_tick
+    if self.entry_signal(updated_tick):
+       ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\user\projects\Perplexity Combined\myQuant\core\liveStrategy.py", line 361, in entry_signal
+    row['close'] > row['htf_ema'])
+    ~~~^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\series.py", line 1121, in __getitem__
+    return self._get_value(key)
+           ~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\series.py", line 1237, in _get_value
+    loc = self.index.get_loc(label)
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\indexes\base.py", line 3812, in get_loc
+    raise KeyError(key) from err
+KeyError: 'close'
+
+22:04:02 [WARNING] live.trader: Tick processing failed (streak: 1/7): 'close'
+22:04:02 [INFO] __main__: Forward test initiated for  with frozen MappingProxyType config
+22:04:03 [ERROR] live_strategy: 🔥 DEV ERROR [HIGH] in signal_generation
+22:04:03 [ERROR] live_strategy: 🔥 Exception: KeyError: 'close'
+22:04:03 [ERROR] live_strategy: 🔥 Full traceback:
+Traceback (most recent call last):
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\indexes\base.py", line 3805, in get_loc
+    return self._engine.get_loc(casted_key)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc
+  File "index.pyx", line 196, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas\\_libs\\hashtable_class_helper.pxi", line 7081, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas\\_libs\\hashtable_class_helper.pxi", line 7089, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: 'close'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\user\projects\Perplexity Combined\myQuant\core\liveStrategy.py", line 471, in _generate_signal_from_tick
+    if self.entry_signal(updated_tick):
+       ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\user\projects\Perplexity Combined\myQuant\core\liveStrategy.py", line 361, in entry_signal
+    row['close'] > row['htf_ema'])
+    ~~~^^^^^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\series.py", line 1121, in __getitem__
+    return self._get_value(key)
+           ~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\series.py", line 1237, in _get_value
+    loc = self.index.get_loc(label)
+  File "C:\Users\user\AppData\Roaming\Python\Python313\site-packages\pandas\core\indexes\base.py", line 3812, in get_loc
+    raise KeyError(key) from err
+KeyError: 'close'

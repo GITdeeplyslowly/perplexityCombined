@@ -19,6 +19,10 @@ from utils.logger import HighPerfLogger, increment_tick_counter, get_tick_counte
 
 from utils.config_helper import ConfigAccessor
 from core.indicators import IncrementalEMA, IncrementalMACD, IncrementalVWAP, IncrementalATR
+from utils.enhanced_error_handler import (
+    create_error_handler_from_config, ErrorSeverity, 
+    safe_tick_processing, safe_indicator_calculation
+)
 from dataclasses import dataclass
 
 @dataclass
@@ -149,6 +153,11 @@ class ModularIntradayStrategy:
         self.vwap_tracker = IncrementalVWAP()
         self.atr_tracker = IncrementalATR(period=self.config_accessor.get_strategy_param('atr_len'))
         
+        # HTF EMA tracker (initialize if HTF trend is enabled)
+        if self.use_htf_trend:
+            htf_period = self.config_accessor.get_strategy_param('htf_period')
+            self.htf_ema_tracker = IncrementalEMA(period=htf_period)
+        
         # --- Consecutive green bars for re-entry ---
         try:
             self.consecutive_green_bars_required = self.config_accessor.get_strategy_param('consecutive_green_bars')
@@ -162,6 +171,9 @@ class ModularIntradayStrategy:
         # Set name and version
         self.name = "Modular Intraday Long-Only Strategy"
         self.version = "3.0"
+        
+        # Initialize enhanced error handler
+        self.error_handler = create_error_handler_from_config(config, "live_strategy")
         
         # Emit concise initialization event via high-perf logger
         self.perf_logger.session_start(f"Strategy initialized: {self.name} v{self.version}")
@@ -251,11 +263,14 @@ class ModularIntradayStrategy:
             signal=self.macd_signal
         )
         self.vwap_tracker = IncrementalVWAP()
-        try:
-            atr_len = self.config_accessor.get_strategy_param('atr_len')
-        except Exception:
-            atr_len = 14
+        atr_len = self.config_accessor.get_strategy_param('atr_len')
         self.atr_tracker = IncrementalATR(period=atr_len)
+        
+        # Reset HTF EMA tracker if enabled
+        if self.use_htf_trend:
+            htf_period = self.config_accessor.get_strategy_param('htf_period')
+            self.htf_ema_tracker = IncrementalEMA(period=htf_period)
+        
         # reset green-bars tracking
         self.green_bars_count = 0
         self.last_bar_data = None
@@ -340,6 +355,7 @@ class ModularIntradayStrategy:
         if self.use_vwap:
             # STRICT: Fail if vwap not calculated
             pass_vwap = ('vwap' in row and row['vwap'] is not None and 
+                        'close' in row and row['close'] is not None and
                         row['close'] > row['vwap'])
         # --- MACD ---
         pass_macd = True
@@ -351,6 +367,7 @@ class ModularIntradayStrategy:
         if self.use_htf_trend:
             # STRICT: HTF EMA must be calculated
             pass_htf = ('htf_ema' in row and row['htf_ema'] is not None and 
+                       'close' in row and row['close'] is not None and
                        row['close'] > row['htf_ema'])
         # --- RSI ---
         pass_rsi = True
@@ -366,6 +383,7 @@ class ModularIntradayStrategy:
             # STRICT: Both BB levels must exist
             pass_bb = ('bb_lower' in row and 'bb_upper' in row and
                       row['bb_lower'] is not None and row['bb_upper'] is not None and
+                      'close' in row and row['close'] is not None and
                       row['bb_lower'] < row['close'] < row['bb_upper'])
         # --- Construct final pass signal (all enabled must be True) ---
         logic_checks = [pass_ema, pass_vwap, pass_macd, pass_htf, pass_rsi, pass_bb]
@@ -373,7 +391,13 @@ class ModularIntradayStrategy:
 
     def open_long(self, row: pd.Series, now: datetime, position_manager) -> Optional[str]:
         # For robust trade management, always use live/production-driven position config
-        entry_price = row['close']
+        # Safe extraction of entry price
+        if 'close' in row:
+            entry_price = row['close']
+        elif 'price' in row:
+            entry_price = row['price']
+        else:
+            return None  # Cannot execute without price data
 
         # Get instrument config with fail-fast behavior
         try:
@@ -442,12 +466,24 @@ class ModularIntradayStrategy:
             return self._generate_signal_from_tick(updated_tick, timestamp)
             
         except Exception as e:
-            return None
+            # Enhanced error handling - critical path gets HIGH severity
+            return self.error_handler.handle_error(
+                error=e,
+                context="tick_processing_main",
+                severity=ErrorSeverity.HIGH,  # Tick processing is critical for trading
+                default_return=None
+            )
 
     def _generate_signal_from_tick(self, updated_tick: pd.Series, timestamp: datetime) -> Optional[TradingSignal]:
-        """Generate trading signal from processed tick data."""
+        """
+        Generate trading signal from processed tick data.
+        
+        CRITICAL: This method validates ALL entry conditions (including green ticks) 
+        before generating a BUY signal. The trader should trust this validation 
+        and not re-check conditions to avoid race condition bugs.
+        """
         try:
-            # Check if we can enter new position
+            # Check if we can enter new position (includes green tick validation)
             if not self.in_position and self.can_enter_new_position(timestamp):
                 if self.entry_signal(updated_tick):
                     # GRACEFUL: Extract price safely for live trading resilience
@@ -483,8 +519,14 @@ class ModularIntradayStrategy:
                     )
                 
             return None
-        except Exception:
-            return None
+        except Exception as e:
+            # Enhanced error handling for signal generation
+            return self.error_handler.handle_error(
+                error=e,
+                context="signal_generation",
+                severity=ErrorSeverity.HIGH,  # Signal generation is critical
+                default_return=None
+            )
 
 
 
@@ -612,9 +654,11 @@ class ModularIntradayStrategy:
             open_price = float(row['open'] if 'open' in row and row['open'] is not None else close_price)
 
             updated = row.copy()
+            # Add the close price to the updated row for downstream processing
+            updated['close'] = close_price
 
             # EMA
-            if getattr(self, 'use_ema_crossover', False):
+            if self.use_ema_crossover:
                 fast_ema_val = self.ema_fast_tracker.update(close_price)
                 slow_ema_val = self.ema_slow_tracker.update(close_price)
                 updated['fast_ema'] = fast_ema_val
@@ -622,7 +666,7 @@ class ModularIntradayStrategy:
                 updated['ema_bullish'] = False if pd.isna(fast_ema_val) or pd.isna(slow_ema_val) else (fast_ema_val > slow_ema_val)
 
             # MACD
-            if getattr(self, 'use_macd', False):
+            if self.use_macd:
                 macd_val, macd_signal_val, macd_hist_val = self.macd_tracker.update(close_price)
                 updated['macd'] = macd_val
                 updated['macd_signal'] = macd_signal_val
@@ -631,21 +675,19 @@ class ModularIntradayStrategy:
                 updated['macd_histogram_positive'] = False if pd.isna(macd_hist_val) else (macd_hist_val > 0)
 
             # VWAP
-            if getattr(self, 'use_vwap', False):
+            if self.use_vwap:
                 vwap_val = self.vwap_tracker.update(price=close_price, volume=volume, high=high_price, low=low_price, close=close_price)
                 updated['vwap'] = vwap_val
                 updated['vwap_bullish'] = False if pd.isna(vwap_val) else (close_price > vwap_val)
 
-            # HTF EMA (lazy init)
-            if getattr(self, 'use_htf_trend', False):
-                if not hasattr(self, 'htf_ema_tracker'):
-                    self.htf_ema_tracker = IncrementalEMA(period=self.config_accessor.get_strategy_param('htf_period'))
+            # HTF EMA processing
+            if self.use_htf_trend:
                 htf_ema_val = self.htf_ema_tracker.update(close_price)
                 updated['htf_ema'] = htf_ema_val
                 updated['htf_bullish'] = False if pd.isna(htf_ema_val) else (close_price > htf_ema_val)
 
             # ATR
-            if getattr(self, 'use_atr', False):
+            if self.use_atr:
                 atr_val = self.atr_tracker.update(high=high_price, low=low_price, close=close_price)
                 updated['atr'] = atr_val
 
@@ -653,6 +695,8 @@ class ModularIntradayStrategy:
             self._update_green_tick_count(close_price)
             return updated
         except Exception as e:
+            # Config/indicator errors should propagate (fail-fast)
+            # Only catch and handle data processing errors in live trading
             return row
 
 
@@ -701,7 +745,13 @@ class ModularIntradayStrategy:
             self.prev_tick_price = current_price
             
         except Exception as e:
-            pass  # Suppress errors in tick count update
+            # Enhanced error handling - provides full debugging in development, silent in production
+            return self.error_handler.handle_error(
+                error=e,
+                context="green_tick_count_update",
+                severity=ErrorSeverity.MEDIUM,  # Can continue trading without green tick updates
+                default_return=None
+            )
 
     def _check_consecutive_green_ticks(self) -> bool:
         """Check if we have enough consecutive green ticks for entry."""

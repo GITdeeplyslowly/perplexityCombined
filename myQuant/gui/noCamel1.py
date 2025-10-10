@@ -40,6 +40,7 @@ from utils.config_helper import create_config_from_defaults, validate_config, fr
 from backtest.backtest_runner import BacktestRunner
 from utils.cache_manager import refresh_symbol_cache, load_symbol_cache
 from live.trader import LiveTrader
+from live.forward_test_results import ForwardTestResults
 
 from config.defaults import DEFAULT_CONFIG
 from utils.logger import setup_from_config
@@ -238,7 +239,6 @@ class UnifiedTradingGUI(tk.Tk):
 
         # Capital placeholders (required)
         self.bt_initial_capital = tk.StringVar(value=str(capital_config['initial_capital']))
-        self.bt_available_capital = tk.StringVar(value=str(capital_config['initial_capital']))
 
         # Session placeholders (required)
         self.bt_is_intraday = tk.BooleanVar(value=session_config['is_intraday'])
@@ -313,7 +313,6 @@ class UnifiedTradingGUI(tk.Tk):
 
         # Forward Test Capital management (from defaults.py)
         self.ft_initial_capital = tk.StringVar(value=str(capital_config['initial_capital']))
-        self.ft_available_capital = tk.StringVar(value=str(capital_config['initial_capital']))
         self.ft_position_size_method = tk.StringVar(value="fixed_amount")  # UI default
         self.ft_fixed_amount = tk.StringVar(value="10000")  # UI default (10% of default capital)
         self.ft_fixed_quantity = tk.StringVar(value="25")  # UI default 
@@ -812,11 +811,12 @@ class UnifiedTradingGUI(tk.Tk):
 
         button_frame = ttk.Frame(parent)
         button_frame.grid(row=row, column=0, columnspan=2, sticky="ew", pady=10)
-        button_frame.columnconfigure((0,1,2), weight=1)
+        button_frame.columnconfigure((0,1,2,3), weight=1)
         
         ttk.Button(button_frame, text="🚀 Run Forward Test", command=self._ft_run_forward_test, style='RunBacktest.TButton').grid(row=0, column=0, padx=5, sticky="ew")
         ttk.Button(button_frame, text="⏹️ Stop Forward Test", command=self._ft_stop_forward_test).grid(row=0, column=1, padx=5, sticky="ew")
         ttk.Button(button_frame, text="📊 Status Monitor", command=self._ft_open_status_monitor).grid(row=0, column=2, padx=5, sticky="ew")
+        ttk.Button(button_frame, text="📄 Export Results", command=self._ft_export_results).grid(row=0, column=3, padx=5, sticky="ew")
         row += 1
 
         # Add separator between Trading Controls and Live Status
@@ -1046,12 +1046,9 @@ class UnifiedTradingGUI(tk.Tk):
         # Capital Settings
         ttk.Label(capital_frame, text="Initial Capital:").grid(row=0, column=0, sticky="e", padx=5, pady=2)
         ttk.Entry(capital_frame, textvariable=self.ft_initial_capital, width=12).grid(row=0, column=1, padx=2)
-        
-        ttk.Label(capital_frame, text="Available:").grid(row=0, column=2, sticky="e", padx=5)
-        ttk.Entry(capital_frame, textvariable=self.ft_available_capital, width=12).grid(row=0, column=3, padx=2)
 
-        ttk.Label(capital_frame, text="Max Positions:").grid(row=0, column=4, sticky="e", padx=5)
-        ttk.Entry(capital_frame, textvariable=self.ft_max_positions, width=6).grid(row=0, column=5, padx=2)
+        ttk.Label(capital_frame, text="Max Positions:").grid(row=0, column=2, sticky="e", padx=5)
+        ttk.Entry(capital_frame, textvariable=self.ft_max_positions, width=6).grid(row=0, column=3, padx=2)
 
         # Position Sizing Method
         ttk.Label(capital_frame, text="Position Sizing:").grid(row=1, column=0, sticky="e", padx=5, pady=2)
@@ -2359,8 +2356,7 @@ class UnifiedTradingGUI(tk.Tk):
             logger.info(f"   Data Source: Live WebStream")
 
         # Update capital management from forward test GUI
-        config_dict['capital']['initial_capital'] = float(self.ft_initial_capital.get())
-        config_dict['capital']['available_capital'] = float(self.ft_available_capital.get())
+        config_dict['capital']['initial_capital'] = float(self.ft_initial_capital.get())  # Use the GUI initial capital field
         config_dict['capital']['position_size_method'] = self.ft_position_size_method.get()
         config_dict['capital']['fixed_amount'] = float(self.ft_fixed_amount.get())
         config_dict['capital']['fixed_quantity'] = int(self.ft_fixed_quantity.get())
@@ -2492,6 +2488,13 @@ class UnifiedTradingGUI(tk.Tk):
                 messagebox.showerror("LiveTrader Error", f"Could not create LiveTrader: {e}")
                 return
             
+            # Create ForwardTestResults instance
+            self.forward_test_results = ForwardTestResults(
+                config=dict(ft_frozen_config),  # Convert MappingProxyType to dict
+                position_manager=trader.position_manager,
+                start_time=datetime.now()
+            )
+            
             # Start forward test in background thread to avoid blocking GUI
             import threading
             def run_forward_test():
@@ -2504,8 +2507,12 @@ class UnifiedTradingGUI(tk.Tk):
                         trading="🔄 Starting..."
                     ))
                     
-                    # Start the trader
-                    trader.start(run_once=False, result_box=self.ft_result_box)
+                    # Start the trader with performance callback
+                    performance_callback = lambda trader: self.after(0, lambda: self._update_performance_summary(trader))
+                    trader.start(run_once=False, result_box=self.ft_result_box, performance_callback=performance_callback)
+                    
+                    # Initial performance summary
+                    self.after(0, lambda: self._update_performance_summary(trader))
                     
                     # Update status to show active trading
                     self.after(0, lambda: self._update_ft_status(
@@ -2623,6 +2630,109 @@ class UnifiedTradingGUI(tk.Tk):
                 
         except Exception as e:
             logger.warning(f"Failed to update forward test status: {e}")
+
+    def _update_performance_summary(self, trader=None):
+        """Update performance tab with comprehensive trading results"""
+        try:
+            if not hasattr(self, 'ft_performance_box'):
+                return
+                
+            if not trader or not hasattr(trader, 'position_manager'):
+                return
+                
+            # Get performance data from position manager
+            perf_data = trader.position_manager.get_performance_summary()
+            
+            # Generate performance report
+            performance_text = self._generate_performance_report(perf_data, trader.position_manager)
+            
+            # Update performance tab
+            self.ft_performance_box.config(state="normal")
+            self.ft_performance_box.delete(1.0, tk.END)
+            self.ft_performance_box.insert(1.0, performance_text)
+            self.ft_performance_box.config(state="disabled")
+            
+        except Exception as e:
+            logger.warning(f"Failed to update performance summary: {e}")
+
+    def _generate_performance_report(self, perf_data, position_manager):
+        """Generate comprehensive performance report text"""
+        
+        lines = []
+        lines.append("=" * 80)
+        lines.append("                          PERFORMANCE SUMMARY")
+        lines.append("=" * 80)
+        lines.append("")
+        
+        # Overall Statistics
+        lines.append("OVERALL STATISTICS")
+        lines.append("-" * 40)
+        lines.append(f"Total Trades:        {perf_data['total_trades']}")
+        lines.append(f"Winning Trades:      {perf_data['winning_trades']}")
+        lines.append(f"Losing Trades:       {perf_data['losing_trades']}")
+        lines.append(f"Win Rate:            {perf_data['win_rate']:.1f}%")
+        lines.append("")
+        
+        # Financial Summary
+        lines.append("FINANCIAL SUMMARY")
+        lines.append("-" * 40)
+        lines.append(f"Total P&L:           ₹{perf_data['total_pnl']:,.2f}")
+        lines.append(f"Average Win:         ₹{perf_data['avg_win']:,.2f}")
+        lines.append(f"Average Loss:        ₹{perf_data['avg_loss']:,.2f}")
+        lines.append(f"Largest Win:         ₹{perf_data['max_win']:,.2f}")
+        lines.append(f"Largest Loss:        ₹{perf_data['max_loss']:,.2f}")
+        lines.append(f"Profit Factor:       {perf_data['profit_factor']:.2f}")
+        lines.append(f"Total Commission:    ₹{perf_data['total_commission']:,.2f}")
+        lines.append("")
+        
+        # Capital Performance
+        lines.append("CAPITAL PERFORMANCE")
+        lines.append("-" * 40)
+        initial_capital = position_manager.initial_capital
+        # Use P&L-based capital calculation for display consistency
+        # (position_manager.current_capital uses reservation system, not suitable for display)
+        total_pnl = perf_data['total_pnl']  # Already calculated correctly from trades
+        current_capital = initial_capital + total_pnl
+        capital_change = total_pnl  # Capital change equals total P&L
+        capital_change_pct = (capital_change / initial_capital) * 100 if initial_capital > 0 else 0
+        
+        lines.append(f"Initial Capital:     ₹{initial_capital:,.2f}")
+        lines.append(f"Current Capital:     ₹{current_capital:,.2f}")
+        lines.append(f"Capital Change:      ₹{capital_change:,.2f} ({capital_change_pct:+.2f}%)")
+        lines.append("")
+        
+        # Trade Details (if any trades exist)
+        if perf_data['total_trades'] > 0:
+            lines.append("RECENT TRADES")
+            lines.append("-" * 40)
+            
+            # Show last few completed trades
+            completed_trades = position_manager.completed_trades
+            recent_trades = completed_trades[-5:] if len(completed_trades) > 5 else completed_trades
+            
+            for i, trade in enumerate(recent_trades, 1):
+                result = "WIN" if trade.net_pnl > 0 else "LOSS"
+                lines.append(f"Trade {len(completed_trades) - len(recent_trades) + i}: "
+                           f"{result} - ₹{trade.net_pnl:,.2f} "
+                           f"(Entry: ₹{trade.entry_price:.2f}, Exit: ₹{trade.exit_price:.2f})")
+            
+            if len(completed_trades) > 5:
+                lines.append(f"... and {len(completed_trades) - 5} earlier trades")
+        else:
+            lines.append("TRADE STATUS")
+            lines.append("-" * 40)
+            lines.append("No completed trades yet")
+            
+            # Show current position if any
+            if hasattr(position_manager, 'current_position') and position_manager.current_position:
+                pos = position_manager.current_position
+                lines.append(f"Current Position: {pos.side} {pos.quantity} @ ₹{pos.entry_price:.2f}")
+                lines.append(f"Unrealized P&L: ₹{pos.unrealized_pnl:,.2f}")
+        
+        lines.append("")
+        lines.append("=" * 80)
+        
+        return "\n".join(lines)
     
     def _ft_stop_forward_test(self):
         """Stop running forward test with proper thread cleanup"""
@@ -2638,6 +2748,21 @@ class UnifiedTradingGUI(tk.Tk):
                 
                 # Stop the trader (sets is_running = False)
                 self.active_trader.stop()
+                
+                # Export results if available
+                if hasattr(self, 'forward_test_results') and self.forward_test_results:
+                    try:
+                        self.forward_test_results.finalize()
+                        csv_file = self.forward_test_results.export_to_csv()
+                        excel_file = self.forward_test_results.export_to_excel()
+                        
+                        self._update_ft_result_box(f"📄 Results exported:\n", "live")
+                        self._update_ft_result_box(f"  CSV: {os.path.basename(csv_file)}\n", "live")
+                        self._update_ft_result_box(f"  Excel: {os.path.basename(excel_file)}\n", "live")
+                        logger.info(f"Forward test results exported successfully")
+                    except Exception as e:
+                        logger.warning(f"Failed to export results: {e}")
+                        self._update_ft_result_box(f"⚠️ Results export failed: {e}\n", "live")
                 
                 # Wait for thread to finish (with timeout to prevent hanging)
                 if hasattr(self, 'active_thread') and self.active_thread.is_alive():
@@ -2655,6 +2780,7 @@ class UnifiedTradingGUI(tk.Tk):
                 self.active_trader = None
                 if hasattr(self, 'active_thread'):
                     self.active_thread = None
+                self.forward_test_results = None
                 
                 # Add stop message to results
                 self._update_ft_result_box("⏹️ Forward test stopped by user.\n", "live")
@@ -2678,10 +2804,74 @@ class UnifiedTradingGUI(tk.Tk):
                 connection="🔴 Error",
                 trading="❌ Stop Failed"
             )
+    
+    def _ft_export_results(self):
+        """Export current forward test results - simple consolidation, no bloat"""
+        try:
+            if not hasattr(self, 'active_trader') or not self.active_trader:
+                messagebox.showinfo("No Results", "No active forward test results to export.\nPlease run a forward test first.")
+                return
+            
+            # Import the simple export function
+            from live.results_export import export_forward_test_results
+            
+            # Get existing configuration summary (reuse dialog text)
+            config_text = ""
+            if hasattr(self, 'ft_frozen_config'):
+                config_text = self._build_config_summary(
+                    self.ft_frozen_config, 
+                    "Forward Test Results Export",
+                    "Exported configuration and results", 
+                    ""
+                )
+            
+            # Export using existing data (no duplication) - single CSV format
+            result = export_forward_test_results(config_text, self.active_trader)
+            
+            if "error" in result:
+                messagebox.showerror("Export Failed", f"Failed to export results: {result['error']}")
+                return
+            
+            # Show success message with CSV file (single file like backtest)
+            csv_file = result.get("file_path", "")
+            filename = os.path.basename(csv_file) if csv_file else "results.csv"
+            
+            messagebox.showinfo(
+                "Export Successful", 
+                f"Forward test results exported successfully!\n\n"
+                f"File: {filename}\n"
+                f"Location: {os.path.dirname(csv_file) if csv_file else 'results'}\n\n"
+                f"Format: Single CSV with configuration and trades\n"
+                f"(Same format as backtest module)"
+            )
+            
+            # Update result box
+            self._update_ft_result_box(f"📄 Results exported: {filename}\n", "live")
+            logger.info(f"Manual export successful: {csv_file}")
+            
+            # Ask if user wants to open the CSV file
+            if csv_file and messagebox.askyesno("Open File", "Would you like to open the results CSV?"):
+                try:
+                    os.startfile(csv_file)  # Windows
+                except:
+                    try:
+                        import subprocess
+                        subprocess.run(["notepad", csv_file], check=True)
+                    except:
+                        pass  # Fail silently if can't open
+                
+        except Exception as e:
+            logger.exception(f"Export failed: {e}")
+            messagebox.showerror("Export Error", f"Failed to export results:\n{e}")
+                
+        except Exception as e:
+            logger.exception(f"Failed to export results: {e}")
+            messagebox.showerror("Export Error", f"An error occurred while exporting results:\n{e}")
 
     def _show_config_review_dialog(self, config, data_source_msg, data_detail_msg, warning_msg):
         """Show comprehensive configuration review dialog before starting forward test"""
         
+
         # Create dialog window
         dialog = tk.Toplevel(self)
         dialog.title("Configuration Review")
@@ -2700,7 +2890,7 @@ class UnifiedTradingGUI(tk.Tk):
         main_frame = ttk.Frame(dialog)
         main_frame.pack(fill='both', expand=True, padx=20, pady=20)
         
-        # Build configuration text
+        # Build configuration text (safe now after validation)
         config_text = self._build_config_summary(config, data_source_msg, data_detail_msg, warning_msg)
         
         # Text widget to display configuration
@@ -2734,6 +2924,8 @@ class UnifiedTradingGUI(tk.Tk):
         dialog.wait_window()
         
         return self.dialog_result
+
+
 
     def _build_config_summary(self, config, data_source_msg, data_detail_msg, warning_msg):
         """Build a comprehensive configuration summary as formatted text"""
@@ -2779,34 +2971,46 @@ class UnifiedTradingGUI(tk.Tk):
         lines.append(f"Commission:          {config['risk']['commission_percent']}%")
         lines.append("")
         
-        # Strategy & Indicators
+        # Strategy & Indicators  
         lines.append("STRATEGY & INDICATORS")
         lines.append("-" * 40)
         strategy_cfg = config['strategy']
-        lines.append(f"Trading Mode:        {strategy_cfg['trading_mode']}")
-        lines.append(f"Entry Logic:         {strategy_cfg['entry_logic']}")
-        lines.append(f"Exit Logic:          {strategy_cfg['exit_logic']}")
+        lines.append(f"Strategy Version:    {strategy_cfg['strategy_version']}")
+        lines.append(f"Green Bars Required: {strategy_cfg['consecutive_green_bars']}")
         lines.append("")
         lines.append("Enabled Indicators:")
         
-        # Check each indicator
-        if strategy_cfg['ema_enabled']:
-            lines.append(f"  EMA:               Fast={strategy_cfg['fast_ema']}, Slow={strategy_cfg['slow_ema']}")
+        # Only show enabled indicators with their parameters
+        if strategy_cfg['use_ema_crossover']:
+            lines.append(f"  EMA Crossover:     Fast={strategy_cfg['fast_ema']}, Slow={strategy_cfg['slow_ema']}")
         
-        if strategy_cfg['macd_enabled']:
+        if strategy_cfg['use_macd']:
             lines.append(f"  MACD:              Fast={strategy_cfg['macd_fast']}, Slow={strategy_cfg['macd_slow']}, Signal={strategy_cfg['macd_signal']}")
         
-        if strategy_cfg['rsi_enabled']:
-            lines.append(f"  RSI:               Period={strategy_cfg['rsi_period']}, OB={strategy_cfg['rsi_overbought']}, OS={strategy_cfg['rsi_oversold']}")
+        if strategy_cfg['use_rsi_filter']:
+            lines.append(f"  RSI Filter:        Length={strategy_cfg['rsi_length']}, OB={strategy_cfg['rsi_overbought']}, OS={strategy_cfg['rsi_oversold']}")
         
-        if strategy_cfg['bollinger_enabled']:
-            lines.append(f"  Bollinger Bands:   Period={strategy_cfg['bollinger_period']}, StdDev={strategy_cfg['bollinger_std']}")
+        if strategy_cfg['use_bollinger_bands']:
+            lines.append(f"  Bollinger Bands:   Enabled")
         
-        if strategy_cfg['vwap_enabled']:
+        if strategy_cfg['use_vwap']:
             lines.append(f"  VWAP:              Enabled")
         
-        if strategy_cfg['adx_enabled']:
-            lines.append(f"  ADX:               Period={strategy_cfg['adx_period']}, Threshold={strategy_cfg['adx_threshold']}")
+        if strategy_cfg['use_htf_trend']:
+            lines.append(f"  HTF Trend:         Period={strategy_cfg['htf_period']}")
+        
+        if strategy_cfg['use_stochastic']:
+            lines.append(f"  Stochastic:        Enabled")
+        
+        if strategy_cfg['use_atr']:
+            lines.append(f"  ATR:               Length={strategy_cfg.get('atr_len', 'N/A')}")
+        
+        if strategy_cfg['use_consecutive_green']:
+            lines.append(f"  Consecutive Green: {strategy_cfg['consecutive_green_bars']} bars required")
+        
+        # Show noise filter if enabled
+        if strategy_cfg['noise_filter_enabled']:
+            lines.append(f"  Noise Filter:      {strategy_cfg['noise_filter_percentage']*100}% threshold")
         
         lines.append("")
         

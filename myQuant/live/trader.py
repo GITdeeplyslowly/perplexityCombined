@@ -86,8 +86,9 @@ class LiveTrader:
         
         logger.info("✅ Forward test session stopped successfully")
 
-    def start(self, run_once=False, result_box=None):
+    def start(self, run_once=False, result_box=None, performance_callback=None):
         self.is_running = True
+        self.performance_callback = performance_callback
         logger = logging.getLogger(__name__)
         self.broker.connect()
         logger.info("🟢 Forward testing session started - TRUE TICK-BY-TICK PROCESSING")
@@ -161,16 +162,15 @@ class LiveTrader:
                     current_price = tick.get('price', tick.get('ltp', 0))
                     
                     if signal.action == 'BUY' and not self.active_position_id:
-                        # Check if we can enter new position
-                        if getattr(self.strategy, "can_enter_new_position", lambda t: True)(now):
-                            # Create optimized tick row for position manager
-                            tick_row = self._create_tick_row(tick, signal.price, now)
-                            
-                            self.active_position_id = self.strategy.open_long(tick_row, now, self.position_manager)
-                            if self.active_position_id:
-                                qty = self.position_manager.positions[self.active_position_id].current_quantity
-                                logger.info(f"[TICK] ENTERED LONG at ₹{signal.price:.2f} ({qty} contracts) - {signal.reason}")
-                                self._update_result_box(result_box, f"Tick BUY: {qty} @ {signal.price:.2f} ({signal.reason})")
+                        # Trust the strategy's entry validation - signal was already generated with proper checks
+                        # Create optimized tick row for position manager
+                        tick_row = self._create_tick_row(tick, signal.price, now)
+                        
+                        self.active_position_id = self.strategy.open_long(tick_row, now, self.position_manager)
+                        if self.active_position_id:
+                            qty = self.position_manager.positions[self.active_position_id].current_quantity
+                            logger.info(f"[TICK] ENTERED LONG at ₹{signal.price:.2f} ({qty} contracts) - {signal.reason}")
+                            self._update_result_box(result_box, f"Tick BUY: {qty} @ {signal.price:.2f} ({signal.reason})")
                     
                     elif signal.action == 'CLOSE' and self.active_position_id:
                         self.close_position(f"Strategy Signal: {signal.reason}")
@@ -223,6 +223,13 @@ class LiveTrader:
             # CRITICAL FIX: Notify strategy of position closure to reset state
             self.strategy.on_position_closed(self.active_position_id, reason)
             self.active_position_id = None
+            
+            # Update performance summary in GUI when trade completes
+            if hasattr(self, 'performance_callback') and self.performance_callback:
+                try:
+                    self.performance_callback(self)
+                except Exception as e:
+                    logger.warning(f"Failed to update performance callback: {e}")
 
     def _create_tick_row(self, tick: dict, price: float, timestamp) -> pd.Series:
         """Create standardized tick row for position manager compatibility."""

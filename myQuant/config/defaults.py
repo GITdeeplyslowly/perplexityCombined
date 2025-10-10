@@ -65,6 +65,32 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "json_event_log": False,
         "json_event_file": os.path.join("logs", "events.jsonl")
     },
+    "debug": {
+        # Environment-aware error handling configuration
+        "environment": "DEVELOPMENT",  # DEVELOPMENT, TESTING, PRODUCTION
+        "log_all_errors": True,
+        "suppress_low_severity": False,
+        "suppress_medium_severity": False,
+        "performance_mode": False,
+        "max_errors_per_minute": 1000,
+        "detailed_green_tick_logging": True,
+        "detailed_signal_logging": True,
+        "enable_error_classification": True,
+        "halt_on_critical_errors": True
+    },
+    # Production-optimized debug configuration (use via GUI toggle or config override)
+    "debug_production": {
+        "environment": "PRODUCTION",
+        "log_all_errors": False,
+        "suppress_low_severity": True,
+        "suppress_medium_severity": True,
+        "performance_mode": True,
+        "max_errors_per_minute": 10,
+        "detailed_green_tick_logging": False,
+        "detailed_signal_logging": False,
+        "enable_error_classification": True,
+        "halt_on_critical_errors": True
+    },
     "strategy": {
         "strategy_version": 1,
         "use_ema_crossover": True,
