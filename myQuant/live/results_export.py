@@ -98,9 +98,9 @@ def _create_config_info_table(config_summary: str, trader) -> pd.DataFrame:
     rows.append({"Key": "Profit Factor", "Value": f"{perf_data.get('profit_factor', 0):.2f}"})
     
     # Capital change info
-    if hasattr(trader.position_manager, 'initial_capital') and hasattr(trader.position_manager, 'available_capital'):
+    if hasattr(trader.position_manager, 'initial_capital') and hasattr(trader.position_manager, 'current_capital'):
         initial = trader.position_manager.initial_capital
-        current = trader.position_manager.available_capital
+        current = trader.position_manager.current_capital
         change = current - initial
         change_pct = (change / initial) * 100 if initial > 0 else 0
         rows.append({"Key": "Capital Change", "Value": f"₹{change:,.2f} ({change_pct:+.2f}%)"})

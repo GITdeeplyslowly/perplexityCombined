@@ -2580,7 +2580,7 @@ class UnifiedTradingGUI(tk.Tk):
             logger.warning(f"Failed to update forward test {tab} box: {e}")
 
     def _update_ft_status(self, connection=None, trading=None, price=None, position=None, pnl=None, tick_count=None, 
-                         available_capital=None, trades_today=None, max_trades=None):
+                         current_capital=None, trades_today=None, max_trades=None):
         """Update forward test status indicators across all interfaces"""
         try:
             if connection is not None and hasattr(self, 'ft_connection_status'):
@@ -2620,8 +2620,8 @@ class UnifiedTradingGUI(tk.Tk):
             if tick_count is not None and hasattr(self, 'ft_tick_count'):
                 self.ft_tick_count.set(str(tick_count))
             
-            if available_capital is not None and hasattr(self, 'ft_capital_display'):
-                capital_text = f"₹{available_capital:,.0f}" if isinstance(available_capital, (int, float)) else str(available_capital)
+            if current_capital is not None and hasattr(self, 'ft_capital_display'):
+                capital_text = f"₹{current_capital:,.0f}" if isinstance(current_capital, (int, float)) else str(current_capital)
                 self.ft_capital_display.set(capital_text)
             
             if trades_today is not None and hasattr(self, 'ft_trades_today'):
@@ -2753,11 +2753,9 @@ class UnifiedTradingGUI(tk.Tk):
                 if hasattr(self, 'forward_test_results') and self.forward_test_results:
                     try:
                         self.forward_test_results.finalize()
-                        csv_file = self.forward_test_results.export_to_csv()
                         excel_file = self.forward_test_results.export_to_excel()
                         
                         self._update_ft_result_box(f"📄 Results exported:\n", "live")
-                        self._update_ft_result_box(f"  CSV: {os.path.basename(csv_file)}\n", "live")
                         self._update_ft_result_box(f"  Excel: {os.path.basename(excel_file)}\n", "live")
                         logger.info(f"Forward test results exported successfully")
                     except Exception as e:
@@ -2806,67 +2804,39 @@ class UnifiedTradingGUI(tk.Tk):
             )
     
     def _ft_export_results(self):
-        """Export current forward test results - simple consolidation, no bloat"""
+        """Export current forward test results using background thread for GUI responsiveness"""
         try:
             if not hasattr(self, 'active_trader') or not self.active_trader:
                 messagebox.showinfo("No Results", "No active forward test results to export.\nPlease run a forward test first.")
                 return
             
-            # Import the simple export function
-            from live.results_export import export_forward_test_results
-            
-            # Get existing configuration summary (reuse dialog text)
-            config_text = ""
-            if hasattr(self, 'ft_frozen_config'):
-                config_text = self._build_config_summary(
-                    self.ft_frozen_config, 
-                    "Forward Test Results Export",
-                    "Exported configuration and results", 
-                    ""
-                )
-            
-            # Export using existing data (no duplication) - single CSV format
-            result = export_forward_test_results(config_text, self.active_trader)
-            
-            if "error" in result:
-                messagebox.showerror("Export Failed", f"Failed to export results: {result['error']}")
+            # Check if ForwardTestResults instance exists
+            if not hasattr(self.active_trader, 'results_exporter') or not self.active_trader.results_exporter:
+                messagebox.showerror("Export Error", "Results exporter not available.\nPlease restart the forward test.")
                 return
             
-            # Show success message with CSV file (single file like backtest)
-            csv_file = result.get("file_path", "")
-            filename = os.path.basename(csv_file) if csv_file else "results.csv"
+            # Show progress indication
+            self._update_ft_result_box("Starting Excel export in background...\n", "live")
             
-            messagebox.showinfo(
-                "Export Successful", 
-                f"Forward test results exported successfully!\n\n"
-                f"File: {filename}\n"
-                f"Location: {os.path.dirname(csv_file) if csv_file else 'results'}\n\n"
-                f"Format: Single CSV with configuration and trades\n"
-                f"(Same format as backtest module)"
-            )
+            # Start background export
+            worker = self.active_trader.results_exporter.export_results()
+            logger.info("Started background Excel export")
             
-            # Update result box
-            self._update_ft_result_box(f"📄 Results exported: {filename}\n", "live")
-            logger.info(f"Manual export successful: {csv_file}")
+            # Define completion handler
+            def on_export_done():
+                """Called when export is complete"""
+                self._update_ft_result_box("Excel export completed successfully\n", "live")
+                messagebox.showinfo("Export Complete", "Forward test results have been exported to Excel.")
             
-            # Ask if user wants to open the CSV file
-            if csv_file and messagebox.askyesno("Open File", "Would you like to open the results CSV?"):
-                try:
-                    os.startfile(csv_file)  # Windows
-                except:
-                    try:
-                        import subprocess
-                        subprocess.run(["notepad", csv_file], check=True)
-                    except:
-                        pass  # Fail silently if can't open
+            # Monitor completion in background
+            from threading import Thread
+            monitor_thread = Thread(target=lambda: (worker.join(), on_export_done()), daemon=True)
+            monitor_thread.start()
                 
         except Exception as e:
-            logger.exception(f"Export failed: {e}")
-            messagebox.showerror("Export Error", f"Failed to export results:\n{e}")
-                
-        except Exception as e:
-            logger.exception(f"Failed to export results: {e}")
-            messagebox.showerror("Export Error", f"An error occurred while exporting results:\n{e}")
+            logger.exception(f"Export initiation failed: {e}")
+            messagebox.showerror("Export Error", f"Failed to start export:\n{e}")
+            self._update_ft_result_box(f"Export error: {e}\n", "live")
 
     def _show_config_review_dialog(self, config, data_source_msg, data_detail_msg, warning_msg):
         """Show comprehensive configuration review dialog before starting forward test"""

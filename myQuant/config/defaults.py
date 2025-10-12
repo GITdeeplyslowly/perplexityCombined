@@ -126,7 +126,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "max_positions_per_day": 25,
         "base_sl_points": 10.0,
         "tp_points": [10.0, 25.0, 50.0, 100.0],
-        "tp_percents": [0.25, 0.25, 0.25, 0.25],
+        "tp_percents": [0.40, 0.30, 0.20, 0.10],
         "use_trail_stop": True,
         "trail_activation_points": 5.0,
         "trail_distance_points": 7.0,

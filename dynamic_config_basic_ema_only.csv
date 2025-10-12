@@ -1,0 +1,27 @@
+Parameter,Value
+Data Source Type,LIVE WEBSTREAM
+Data Status,Live market data
+Symbol,BANKNIFTY2511050000CE
+Exchange,NFO
+Product Type,INTRADAY
+Lot Size,15
+Tick Size,0.05
+Session Start,09:15
+Session End,15:30
+Auto Stop,Enabled
+Max Loss/Day,1000.0
+Initial Capital,50000.0
+Max Trades/Day,10
+Base Stop Loss,15.0 points
+Risk per Trade,2.0%
+Commission,0.05%
+Strategy Version,1
+Green Bars Required,3
+EMA Crossover Enabled,True
+Fast EMA,5
+Slow EMA,13
+Enabled Indicators,"EMA Crossover: Fast=5, Slow=13; Consecutive Green: 3 bars required"
+Mode,Live WebStream
+Status,Live market connection
+Start Time,2025-10-12 14:30:00
+End Time,2025-10-12 15:45:00

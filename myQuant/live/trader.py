@@ -15,6 +15,7 @@ import pandas as pd
 from types import MappingProxyType
 from core.position_manager import PositionManager
 from live.broker_adapter import BrokerAdapter
+from live.forward_test_results import ForwardTestResults
 from utils.time_utils import now_ist
 from utils.config_helper import validate_config, freeze_config, create_config_from_defaults
 
@@ -65,6 +66,7 @@ class LiveTrader:
         # Pass frozen config directly to PositionManager (it expects MappingProxyType)
         self.position_manager = PositionManager(config)
         self.broker = BrokerAdapter(config)  # Pass frozen config downstream
+        self.results_exporter = ForwardTestResults(config, self.position_manager, now_ist())
         self.is_running = False
         self.active_position_id = None
 
@@ -83,6 +85,14 @@ class LiveTrader:
             self.broker.disconnect()
         except Exception as e:
             logger.warning(f"Error disconnecting broker: {e}")
+        
+        # Finalize and export results automatically
+        self.results_exporter.finalize()
+        try:
+            filename = self.results_exporter.export_to_excel()
+            logger.info(f"Forward test results automatically exported to: {filename}")
+        except Exception as e:
+            logger.error(f"Failed to export results: {e}")
         
         logger.info("✅ Forward test session stopped successfully")
 
@@ -212,6 +222,14 @@ class LiveTrader:
         finally:
             self.broker.disconnect()
             logger.info("Session ended, data connection closed.")
+            
+            # Finalize and export results automatically
+            self.results_exporter.finalize()
+            try:
+                filename = self.results_exporter.export_to_excel()
+                logger.info(f"Forward test results automatically exported to: {filename}")
+            except Exception as e:
+                logger.error(f"Failed to export results: {e}")
 
     def close_position(self, reason: str = "Manual"):
         if self.active_position_id and self.active_position_id in self.position_manager.positions:

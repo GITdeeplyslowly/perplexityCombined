@@ -1,0 +1,32 @@
+Parameter,Value
+Data Source Type,FILE DATA SIMULATION
+Historical File,C:/data/sbin_historical.csv
+Data Warning,"Uses HISTORICAL data, not live market prices"
+Symbol,SBIN2511250CE
+Exchange,NFO
+Product Type,INTRADAY
+Lot Size,3000
+Session Start,09:30
+Session End,15:00
+Auto Stop,Disabled
+Initial Capital,75000.0
+Max Trades/Day,15
+Base Stop Loss,8.0 points
+Take Profit Levels,2 levels
+TP Points,"[10.0, 20.0]"
+TP Percentages,"[0.7, 0.3]"
+Trail Stop,Disabled
+Commission,0.04%
+Strategy Version,1
+Green Bars Required,4
+MACD Enabled,True
+MACD Fast Period,8
+MACD Slow Period,21
+RSI Filter Enabled,True
+RSI Period,21
+Enabled Indicators,MACD Signal; RSI Filter; Consecutive Green: 4 bars required
+Mode,File Simulation
+File Path,C:/data/sbin_historical.csv
+Status,Historical data replay
+Start Time,2025-10-12 14:30:00
+End Time,2025-10-12 15:45:00

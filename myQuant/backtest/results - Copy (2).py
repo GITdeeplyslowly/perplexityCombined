@@ -289,10 +289,14 @@ class Results:
 
     def export_to_csv(self, output_dir: str = "results") -> str:
         """Dump trades and performance to CSV. (No separate equity file)"""
-        os.makedirs(output_dir, exist_ok=True)
+        # Use new directory structure in Perplexity Combined folder
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Go up to Perplexity Combined
+        results_dir = os.path.join(base_dir, "results", "Back Test")
+        os.makedirs(results_dir, exist_ok=True)
+        
         trades_df = self.get_trade_summary()
-        timestamp = format_timestamp(datetime.now())
-        trades_file = os.path.join(output_dir, f"trades_{timestamp}.csv")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        trades_file = os.path.join(results_dir, f"bt-{timestamp}-data.csv")
 
         # Create additional info table with trading configuration
         additional_info_df = self._create_additional_info_table()
@@ -303,10 +307,19 @@ class Results:
             f.write('\n')  # Add empty line between tables
             trades_df.to_csv(f, index=False)
 
+        # Log the successful save
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Backtest CSV results saved to: {trades_file}")
+        print(f"✅ Backtest CSV results saved: {trades_file}")
+
         return trades_file
 
     def create_enhanced_excel_report(self, output_dir: str = "results") -> str:
         """Create a comprehensive, professional Excel dashboard report with improved layout."""
+        # Use Perplexity Combined/results/Back Test directory
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        output_dir = os.path.join(project_root, "results", "Back Test")
         os.makedirs(output_dir, exist_ok=True)
         
         # Get data
@@ -595,10 +608,21 @@ class Results:
             if ws.row_dimensions[row_num].height is None:
                 ws.row_dimensions[row_num].height = 20
         
-        # Save the enhanced file
+        # Save the enhanced file with new naming convention
         timestamp = format_timestamp(datetime.now())
-        enhanced_filename = os.path.join(output_dir, f"Enhanced_Backtest_Results_{timestamp}.xlsx")
+        # Get the Perplexity Combined results directory
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        results_dir = os.path.join(project_root, "results", "Back Test")
+        os.makedirs(results_dir, exist_ok=True)
+        
+        enhanced_filename = os.path.join(results_dir, f"bt-{timestamp}-data.xlsx")
         wb.save(enhanced_filename)
+        
+        # Log the successful save
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Backtest results saved to: {enhanced_filename}")
+        print(f"✅ Backtest results saved: {enhanced_filename}")
         
         return enhanced_filename
 
@@ -623,8 +647,13 @@ class Results:
         trades_df_1 = trades_df[trade_cols[:break_idx]]
         trades_df_2 = trades_df[trade_cols[break_idx:]]
 
-        timestamp = format_timestamp(datetime.now())
-        excel_file = os.path.join(output_dir, f"trades_{timestamp}.xlsx")
+        # Use new directory structure in Perplexity Combined folder
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Go up to Perplexity Combined
+        results_dir = os.path.join(base_dir, "results", "Back Test")
+        os.makedirs(results_dir, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        excel_file = os.path.join(results_dir, f"bt-{timestamp}-data-detailed.xlsx")
 
         with pd.ExcelWriter(excel_file, engine="openpyxl") as writer:
             # Write config and trades tables starting from row 3 (Excel row 3, pandas startrow=2)
@@ -724,6 +753,13 @@ class Results:
             ws.column_dimensions[col_letter].width = min(max(max_length + 6, 20), 80)
 
         wb.save(excel_file)
+        
+        # Log the successful save
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Backtest detailed results saved to: {excel_file}")
+        print(f"✅ Backtest detailed results saved: {excel_file}")
+        
         # Also produce enhanced report automatically
         self.create_enhanced_excel_report(output_dir)
         return excel_file

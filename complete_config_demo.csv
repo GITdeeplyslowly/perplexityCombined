@@ -1,0 +1,39 @@
+Parameter,Value
+Data Source Type,FILE DATA SIMULATION
+Historical File,C:/Users/user/projects/angelalgo windsurf/smartapi/data/live_ticks_20251001_170006.csv
+Data Warning,"Uses HISTORICAL data, not live market prices"
+Symbol,DATA_SIMULATION_PLACEHOLDER
+Exchange,NFO
+Product Type,INTRADAY
+Lot Size,75
+Tick Size,0.05
+Session Start,09:15
+Session End,15:30
+Auto Stop,Enabled
+Max Loss/Day,500.0
+Initial Capital,100000.0
+Max Trades/Day,25
+Base Stop Loss,10.0 points
+Take Profit Levels,4 levels
+TP Points,"[10.0, 25.0, 50.0, 100.0]"
+TP Percentages,"[0.4, 0.3, 0.2, 0.1]"
+Trail Stop,Enabled
+Trail Activation,5.0 points
+Trail Distance,7.0 points
+Risk per Trade,1.0%
+Commission,0.03%
+Strategy Version,1
+Green Bars Required,5
+Enabled Indicators,"EMA Crossover: Fast=9, Slow=21; Consecutive Green: 5 bars required; Noise Filter: 0.01% threshold"
+EMA Crossover Enabled,True
+Fast EMA,9
+Slow EMA,21
+MACD Enabled,False
+RSI Filter Enabled,False
+VWAP Enabled,False
+HTF Trend Enabled,False
+Mode,File Simulation
+File Path,C:/Users/user/projects/angelalgo windsurf/smartapi/data/live_ticks_20251001_170006.csv
+Status,Historical data replay
+Start Time,2025-10-12 13:28:26
+End Time,2025-10-12 13:37:07

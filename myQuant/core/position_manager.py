@@ -24,24 +24,24 @@ from utils.time_utils import now_ist, is_within_session, apply_buffer_to_time
 
 logger = logging.getLogger(__name__)
 
-def compute_number_of_lots(cfg_accessor: ConfigAccessor, available_capital: float, price: float) -> int:
+def compute_number_of_lots(cfg_accessor: ConfigAccessor, current_capital: float, price: float) -> int:
     """
-    Compute number of lots (integer) using only available capital and instrument.lot_size (exchange fixed).
+    Compute number of lots (integer) using only current capital and instrument.lot_size (exchange fixed).
     Formula:
-        lots = floor( available_capital / (lot_size * price) )
+        lots = floor( current_capital / (lot_size * price) )
 
     - cfg_accessor: strict accessor (GUI-validated, frozen config)
-    - available_capital: cash available to deploy (float)
+    - current_capital: cash available to deploy (float)
     - price: current price / LTP (float)
 
     Returns int >= 0.
     """
     try:
-        if available_capital is None or price is None:
+        if current_capital is None or price is None:
             return 0
-        available_capital = float(available_capital)
+        current_capital = float(current_capital)
         price = float(price)
-        if available_capital <= 0 or price <= 0:
+        if current_capital <= 0 or price <= 0:
             return 0
 
         # instrument_mappings.lot_size is the single SSOT for contract size
@@ -52,7 +52,7 @@ def compute_number_of_lots(cfg_accessor: ConfigAccessor, available_capital: floa
         if units_value_per_lot <= 0:
             return 0
 
-        lots = int(available_capital // units_value_per_lot)
+        lots = int(current_capital // units_value_per_lot)
         if lots < 0:
             return 0
         return lots
@@ -111,6 +111,7 @@ class Position:
     realized_pnl: float = 0.0
     unrealized_pnl: float = 0.0
     total_commission: float = 0.0
+    original_reserved_capital: float = 0.0
 
     exit_transactions: List[Dict] = field(default_factory=list)
 
@@ -308,7 +309,8 @@ class PositionManager:
             trailing_activation_points=self.trailing_activation_points,
             trailing_distance_points=self.trailing_distance_points,
             highest_price=actual_entry_price,
-            total_commission=entry_costs['total_costs']
+            total_commission=entry_costs['total_costs'],
+            original_reserved_capital=required_capital
         )
         self.current_capital -= required_capital
         self.reserved_margin += required_capital
@@ -334,12 +336,13 @@ class PositionManager:
             return False
         exit_costs = self.calculate_total_costs(exit_price, quantity_to_close, is_buy=False)
         gross_pnl = (exit_price - position.entry_price) * quantity_to_close
-        net_pnl = gross_pnl - exit_costs['total_costs']
+        commission = exit_costs['total_costs']
+        net_pnl = gross_pnl - commission
         proceeds = exit_costs['turnover'] - exit_costs['total_costs']
         self.current_capital += proceeds
         position.current_quantity -= quantity_to_close
         position.realized_pnl += net_pnl
-        position.total_commission += exit_costs['total_costs']
+        position.total_commission += commission
         duration = int((timestamp - position.entry_time).total_seconds() / 60)
         lots_closed = quantity_to_close // position.lot_size if position.lot_size > 0 else quantity_to_close
         trade = Trade(
@@ -352,7 +355,7 @@ class PositionManager:
             exit_price=exit_price,
             quantity=quantity_to_close,
             gross_pnl=gross_pnl,
-            commission=exit_costs['total_costs'],
+            commission=commission,
             net_pnl=net_pnl,
             exit_reason=exit_reason,
             duration_minutes=duration,
@@ -369,7 +372,7 @@ class PositionManager:
         })
         if position.current_quantity == 0:
             position.status = PositionStatus.CLOSED
-            self.reserved_margin -= (position.initial_quantity * position.entry_price)
+            self.reserved_margin -= position.original_reserved_capital
             del self.positions[position_id]
             logger.info(f"Fully closed position {position_id}")
         else:

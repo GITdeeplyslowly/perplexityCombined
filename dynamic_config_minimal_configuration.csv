@@ -1,0 +1,16 @@
+Parameter,Value
+Data Source Type,LIVE WEBSTREAM
+Data Status,Live market data
+Symbol,RELIANCE
+Exchange,NSE
+Product Type,N/A
+Initial Capital,10000.0
+Base Stop Loss,5.0 points
+Trail Stop,Disabled
+Strategy Version,1
+Green Bars Required,2
+Enabled Indicators,Consecutive Green: 2 bars required
+Mode,Live WebStream
+Status,Live market connection
+Start Time,2025-10-12 14:30:00
+End Time,2025-10-12 15:45:00
