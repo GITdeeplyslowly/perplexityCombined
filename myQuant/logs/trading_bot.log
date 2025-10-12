@@ -32678,3 +32678,202 @@ NameError: name 'get_column_letter' is not defined
 2025-10-12 15:07:28 INFO core.liveStrategy: TRADE BUY: 75 @ 229.80 - Strategy signal
 2025-10-12 15:07:28 INFO live.trader: [TICK] ENTERED LONG at ₹229.80 (375 contracts) - Strategy entry signal
 2025-10-12 15:07:29 INFO core.position_manager: Trailing stop activated for 050cea58 at 227.9
+2025-10-12 15:07:31 INFO core.position_manager: Fully closed position 050cea58
+2025-10-12 15:07:31 INFO core.position_manager: Closed position 050cea58
+2025-10-12 15:07:31 INFO core.position_manager: Lots closed: 5 (375 units)
+2025-10-12 15:07:31 INFO core.position_manager: Exit price: â‚¹228.50 per unit
+2025-10-12 15:07:31 INFO core.position_manager: P&L: â‚¹-542.29 (Trailing Stop)
+2025-10-12 15:07:31 INFO live.trader: Position closed by risk management (TP/SL/trailing).
+2025-10-12 15:07:33 INFO core.position_manager: Opened position 1dbb9b21
+2025-10-12 15:07:33 INFO core.position_manager: Lots: 5 (375 total units)
+2025-10-12 15:07:33 INFO core.position_manager: Entry price: â‚¹232.75 per unit
+2025-10-12 15:07:33 INFO core.position_manager: Stop loss: â‚¹222.75
+2025-10-12 15:07:33 INFO core.position_manager: Take profit levels: ['â‚¹242.75', 'â‚¹257.75', 'â‚¹282.75', 'â‚¹332.75']
+2025-10-12 15:07:33 INFO core.position_manager: Position value: ₹87,281.25
+2025-10-12 15:07:33 INFO core.liveStrategy: TRADE BUY: 75 @ 232.75 - Strategy signal
+2025-10-12 15:07:33 INFO live.trader: [TICK] ENTERED LONG at ₹232.75 (375 contracts) - Strategy entry signal
+2025-10-12 15:07:40 INFO core.position_manager: Trailing stop activated for 1dbb9b21 at 231.0
+2025-10-12 15:07:44 INFO core.position_manager: Fully closed position 1dbb9b21
+2025-10-12 15:07:44 INFO core.position_manager: Closed position 1dbb9b21
+2025-10-12 15:07:44 INFO core.position_manager: Lots closed: 5 (375 units)
+2025-10-12 15:07:44 INFO core.position_manager: Exit price: â‚¹230.95 per unit
+2025-10-12 15:07:44 INFO core.position_manager: P&L: â‚¹-730.38 (Trailing Stop)
+2025-10-12 15:07:44 INFO live.trader: Position closed by risk management (TP/SL/trailing).
+2025-10-12 15:07:46 INFO live.data_simulator: 📊 Simulation progress: 20% (6518/32591)
+2025-10-12 15:07:50 INFO core.position_manager: Opened position 83974837
+2025-10-12 15:07:50 INFO core.position_manager: Lots: 5 (375 total units)
+2025-10-12 15:07:50 INFO core.position_manager: Entry price: â‚¹227.80 per unit
+2025-10-12 15:07:50 INFO core.position_manager: Stop loss: â‚¹217.80
+2025-10-12 15:07:50 INFO core.position_manager: Take profit levels: ['â‚¹237.80', 'â‚¹252.80', 'â‚¹277.80', 'â‚¹327.80']
+2025-10-12 15:07:50 INFO core.position_manager: Position value: ₹85,425.00
+2025-10-12 15:07:50 INFO core.liveStrategy: TRADE BUY: 75 @ 227.80 - Strategy signal
+2025-10-12 15:07:50 INFO live.trader: [TICK] ENTERED LONG at ₹227.80 (375 contracts) - Strategy entry signal
+2025-10-12 15:07:55 INFO core.position_manager: Trailing stop activated for 83974837 at 225.85
+2025-10-12 15:07:57 INFO core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+2025-10-12 15:07:57 INFO core.position_manager: Partially closed position 83974837: 150 @ â‚¹238.05
+2025-10-12 15:07:57 INFO core.position_manager: Closed position 83974837
+2025-10-12 15:07:57 INFO core.position_manager: Lots closed: 2 (150 units)
+2025-10-12 15:07:57 INFO core.position_manager: Exit price: â‚¹238.05 per unit
+2025-10-12 15:07:57 INFO core.position_manager: P&L: â‚¹1514.67 (Take Profit 1)
+2025-10-12 15:08:00 INFO core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+2025-10-12 15:08:00 INFO core.position_manager: Partially closed position 83974837: 75 @ â‚¹255.2
+2025-10-12 15:08:00 INFO core.position_manager: Closed position 83974837
+2025-10-12 15:08:00 INFO core.position_manager: Lots closed: 1 (75 units)
+2025-10-12 15:08:00 INFO core.position_manager: Exit price: â‚¹255.20 per unit
+2025-10-12 15:08:00 INFO core.position_manager: P&L: â‚¹2042.76 (Take Profit 2)
+2025-10-12 15:08:04 INFO core.position_manager: Fully closed position 83974837
+2025-10-12 15:08:04 INFO core.position_manager: Closed position 83974837
+2025-10-12 15:08:04 INFO core.position_manager: Lots closed: 2 (150 units)
+2025-10-12 15:08:05 INFO core.position_manager: Exit price: â‚¹258.00 per unit
+2025-10-12 15:08:05 INFO core.position_manager: P&L: â‚¹4505.26 (Trailing Stop)
+2025-10-12 15:08:05 INFO live.trader: Position closed by risk management (TP/SL/trailing).
+2025-10-12 15:08:06 INFO core.liveStrategy: ENTRY BLOCKED (#3001): Need 5 green ticks, have 1
+2025-10-12 15:08:16 INFO core.position_manager: Opened position 3c2d0684
+2025-10-12 15:08:16 INFO core.position_manager: Lots: 5 (375 total units)
+2025-10-12 15:08:16 INFO core.position_manager: Entry price: â‚¹253.30 per unit
+2025-10-12 15:08:16 INFO core.position_manager: Stop loss: â‚¹243.30
+2025-10-12 15:08:16 INFO core.position_manager: Take profit levels: ['â‚¹263.30', 'â‚¹278.30', 'â‚¹303.30', 'â‚¹353.30']
+2025-10-12 15:08:16 INFO core.position_manager: Position value: ₹94,987.50
+2025-10-12 15:08:16 INFO core.liveStrategy: TRADE BUY: 75 @ 253.30 - Strategy signal
+2025-10-12 15:08:16 INFO live.trader: [TICK] ENTERED LONG at ₹253.30 (375 contracts) - Strategy entry signal
+2025-10-12 15:08:18 INFO core.position_manager: Fully closed position 3c2d0684
+2025-10-12 15:08:18 INFO core.position_manager: Closed position 3c2d0684
+2025-10-12 15:08:18 INFO core.position_manager: Lots closed: 5 (375 units)
+2025-10-12 15:08:18 INFO core.position_manager: Exit price: â‚¹243.15 per unit
+2025-10-12 15:08:19 INFO core.position_manager: P&L: â‚¹-3864.55 (Stop Loss)
+2025-10-12 15:08:19 INFO live.trader: Position closed by risk management (TP/SL/trailing).
+2025-10-12 15:08:26 INFO core.liveStrategy: ENTRY BLOCKED (#4001): Need 5 green ticks, have 0
+2025-10-12 15:08:33 INFO core.position_manager: Opened position 49b44252
+2025-10-12 15:08:33 INFO core.position_manager: Lots: 5 (375 total units)
+2025-10-12 15:08:33 INFO core.position_manager: Entry price: â‚¹240.30 per unit
+2025-10-12 15:08:33 INFO core.position_manager: Stop loss: â‚¹230.30
+2025-10-12 15:08:33 INFO core.position_manager: Take profit levels: ['â‚¹250.30', 'â‚¹265.30', 'â‚¹290.30', 'â‚¹340.30']
+2025-10-12 15:08:33 INFO core.position_manager: Position value: ₹90,112.50
+2025-10-12 15:08:33 INFO core.liveStrategy: TRADE BUY: 75 @ 240.30 - Strategy signal
+2025-10-12 15:08:33 INFO live.trader: [TICK] ENTERED LONG at ₹240.30 (375 contracts) - Strategy entry signal
+2025-10-12 15:08:41 INFO live.data_simulator: 📊 Simulation progress: 30% (9777/32591)
+2025-10-12 15:08:44 INFO core.position_manager: Trailing stop activated for 49b44252 at 239.55
+2025-10-12 15:08:50 INFO core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+2025-10-12 15:08:50 INFO core.position_manager: Partially closed position 49b44252: 150 @ â‚¹251.1
+2025-10-12 15:08:50 INFO core.position_manager: Closed position 49b44252
+2025-10-12 15:08:50 INFO core.position_manager: Lots closed: 2 (150 units)
+2025-10-12 15:08:50 INFO core.position_manager: Exit price: â‚¹251.10 per unit
+2025-10-12 15:08:50 INFO core.position_manager: P&L: â‚¹1595.92 (Take Profit 1)
+2025-10-12 15:08:54 INFO core.position_manager: Fully closed position 49b44252
+2025-10-12 15:08:54 INFO core.position_manager: Closed position 49b44252
+2025-10-12 15:08:54 INFO core.position_manager: Lots closed: 3 (225 units)
+2025-10-12 15:08:54 INFO core.position_manager: Exit price: â‚¹248.70 per unit
+2025-10-12 15:08:54 INFO core.position_manager: P&L: â‚¹1854.22 (Trailing Stop)
+2025-10-12 15:08:54 INFO live.trader: Position closed by risk management (TP/SL/trailing).
+2025-10-12 15:08:58 INFO core.position_manager: Opened position 034605e5
+2025-10-12 15:08:58 INFO core.position_manager: Lots: 5 (375 total units)
+2025-10-12 15:08:58 INFO core.position_manager: Entry price: â‚¹254.00 per unit
+2025-10-12 15:08:58 INFO core.position_manager: Stop loss: â‚¹244.00
+2025-10-12 15:08:58 INFO core.position_manager: Take profit levels: ['â‚¹264.00', 'â‚¹279.00', 'â‚¹304.00', 'â‚¹354.00']
+2025-10-12 15:08:58 INFO core.position_manager: Position value: ₹95,250.00
+2025-10-12 15:08:58 INFO core.liveStrategy: TRADE BUY: 75 @ 254.00 - Strategy signal
+2025-10-12 15:08:58 INFO live.trader: [TICK] ENTERED LONG at ₹254.00 (375 contracts) - Strategy entry signal
+2025-10-12 15:08:59 INFO core.position_manager: Trailing stop activated for 034605e5 at 252.25
+2025-10-12 15:09:05 INFO core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+2025-10-12 15:09:05 INFO core.position_manager: Partially closed position 034605e5: 150 @ â‚¹264.6
+2025-10-12 15:09:05 INFO core.position_manager: Closed position 034605e5
+2025-10-12 15:09:05 INFO core.position_manager: Lots closed: 2 (150 units)
+2025-10-12 15:09:05 INFO core.position_manager: Exit price: â‚¹264.60 per unit
+2025-10-12 15:09:05 INFO core.position_manager: P&L: â‚¹1564.62 (Take Profit 1)
+2025-10-12 15:09:09 INFO core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+2025-10-12 15:09:09 INFO core.position_manager: Partially closed position 034605e5: 75 @ â‚¹279.0
+2025-10-12 15:09:09 INFO core.position_manager: Closed position 034605e5
+2025-10-12 15:09:09 INFO core.position_manager: Lots closed: 1 (75 units)
+2025-10-12 15:09:09 INFO core.position_manager: Exit price: â‚¹279.00 per unit
+2025-10-12 15:09:09 INFO core.position_manager: P&L: â‚¹1861.62 (Take Profit 2)
+2025-10-12 15:09:16 INFO core.position_manager: Fully closed position 034605e5
+2025-10-12 15:09:16 INFO core.position_manager: Closed position 034605e5
+2025-10-12 15:09:17 INFO core.position_manager: Lots closed: 2 (150 units)
+2025-10-12 15:09:17 INFO core.position_manager: Exit price: â‚¹286.10 per unit
+2025-10-12 15:09:17 INFO core.position_manager: P&L: â‚¹4787.56 (Trailing Stop)
+2025-10-12 15:09:17 INFO live.trader: Position closed by risk management (TP/SL/trailing).
+2025-10-12 15:09:24 INFO core.liveStrategy: ENTRY BLOCKED (#5001): Need 5 green ticks, have 0
+2025-10-12 15:09:29 INFO core.position_manager: Opened position b875f96a
+2025-10-12 15:09:29 INFO core.position_manager: Lots: 5 (375 total units)
+2025-10-12 15:09:29 INFO core.position_manager: Entry price: â‚¹289.75 per unit
+2025-10-12 15:09:29 INFO core.position_manager: Stop loss: â‚¹279.75
+2025-10-12 15:09:29 INFO core.position_manager: Take profit levels: ['â‚¹299.75', 'â‚¹314.75', 'â‚¹339.75', 'â‚¹389.75']
+2025-10-12 15:09:29 INFO core.position_manager: Position value: ₹108,656.25
+2025-10-12 15:09:29 INFO core.liveStrategy: TRADE BUY: 75 @ 289.75 - Strategy signal
+2025-10-12 15:09:29 INFO live.trader: [TICK] ENTERED LONG at ₹289.75 (375 contracts) - Strategy entry signal
+2025-10-12 15:09:35 INFO core.position_manager: Trailing stop activated for b875f96a at 288.35
+2025-10-12 15:09:36 INFO core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+2025-10-12 15:09:36 INFO core.position_manager: Partially closed position b875f96a: 150 @ â‚¹300.15
+2025-10-12 15:09:36 INFO core.position_manager: Closed position b875f96a
+2025-10-12 15:09:36 INFO core.position_manager: Lots closed: 2 (150 units)
+2025-10-12 15:09:36 INFO core.position_manager: Exit price: â‚¹300.15 per unit
+2025-10-12 15:09:36 INFO core.position_manager: P&L: â‚¹1531.21 (Take Profit 1)
+2025-10-12 15:09:36 INFO live.data_simulator: 📊 Simulation progress: 40% (13036/32591)
+2025-10-12 15:09:41 INFO core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+2025-10-12 15:09:41 INFO core.position_manager: Partially closed position b875f96a: 75 @ â‚¹314.95
+2025-10-12 15:09:41 INFO core.position_manager: Closed position b875f96a
+2025-10-12 15:09:41 INFO core.position_manager: Lots closed: 1 (75 units)
+2025-10-12 15:09:41 INFO core.position_manager: Exit price: â‚¹314.95 per unit
+2025-10-12 15:09:41 INFO core.position_manager: P&L: â‚¹1874.90 (Take Profit 2)
+2025-10-12 15:09:43 INFO core.position_manager: Fully closed position b875f96a
+2025-10-12 15:09:43 INFO core.position_manager: Closed position b875f96a
+2025-10-12 15:09:43 INFO core.position_manager: Lots closed: 2 (150 units)
+2025-10-12 15:09:43 INFO core.position_manager: Exit price: â‚¹310.20 per unit
+2025-10-12 15:09:43 INFO core.position_manager: P&L: â‚¹3037.75 (Trailing Stop)
+2025-10-12 15:09:43 INFO live.trader: Position closed by risk management (TP/SL/trailing).
+2025-10-12 15:09:51 INFO core.position_manager: Opened position 923265ac
+2025-10-12 15:09:51 INFO core.position_manager: Lots: 4 (300 total units)
+2025-10-12 15:09:51 INFO core.position_manager: Entry price: â‚¹312.90 per unit
+2025-10-12 15:09:51 INFO core.position_manager: Stop loss: â‚¹302.90
+2025-10-12 15:09:51 INFO core.position_manager: Take profit levels: ['â‚¹322.90', 'â‚¹337.90', 'â‚¹362.90', 'â‚¹412.90']
+2025-10-12 15:09:51 INFO core.position_manager: Position value: ₹93,870.00
+2025-10-12 15:09:51 INFO core.liveStrategy: TRADE BUY: 75 @ 312.90 - Strategy signal
+2025-10-12 15:09:51 INFO live.trader: [TICK] ENTERED LONG at ₹312.90 (300 contracts) - Strategy entry signal
+2025-10-12 15:09:54 INFO core.position_manager: Trailing stop activated for 923265ac at 311.5
+2025-10-12 15:09:55 INFO core.position_manager: ðŸŽ¯ TP1 Exit: 1 lots (75 units)
+2025-10-12 15:09:55 INFO core.position_manager: Partially closed position 923265ac: 75 @ â‚¹323.1
+2025-10-12 15:09:55 INFO core.position_manager: Closed position 923265ac
+2025-10-12 15:09:55 INFO core.position_manager: Lots closed: 1 (75 units)
+2025-10-12 15:09:55 INFO core.position_manager: Exit price: â‚¹323.10 per unit
+2025-10-12 15:09:55 INFO core.position_manager: P&L: â‚¹749.51 (Take Profit 1)
+2025-10-12 15:09:58 INFO core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+2025-10-12 15:09:58 INFO core.position_manager: Partially closed position 923265ac: 75 @ â‚¹338.55
+2025-10-12 15:09:58 INFO core.position_manager: Closed position 923265ac
+2025-10-12 15:09:58 INFO core.position_manager: Lots closed: 1 (75 units)
+2025-10-12 15:09:58 INFO core.position_manager: Exit price: â‚¹338.55 per unit
+2025-10-12 15:09:58 INFO core.position_manager: P&L: â‚¹1907.51 (Take Profit 2)
+2025-10-12 15:10:00 INFO core.position_manager: Fully closed position 923265ac
+2025-10-12 15:10:00 INFO core.position_manager: Closed position 923265ac
+2025-10-12 15:10:00 INFO core.position_manager: Lots closed: 2 (150 units)
+2025-10-12 15:10:00 INFO core.position_manager: Exit price: â‚¹337.90 per unit
+2025-10-12 15:10:00 INFO core.position_manager: P&L: â‚¹3717.59 (Session End)
+2025-10-12 15:10:00 INFO live.trader: [SIM] Position closed at 337.9 for reason: Session End
+2025-10-12 15:10:00 INFO live.trader: Session end: all positions flattened.
+2025-10-12 15:10:00 INFO live.trader: Session ended, data connection closed.
+2025-10-12 15:10:00 INFO live.forward_test_results: Path detection: Using data simulation mode
+2025-10-12 15:10:00 INFO live.forward_test_results: Created trades DataFrame with 28 rows and 11 columns
+2025-10-12 15:10:00 INFO live.forward_test_results: DataFrame columns: ['#', 'Entry Time', 'Exit Time', 'Entry Price', 'Exit Price', 'Qty', 'Gross PnL', 'Commission', 'Net PnL', 'Exit Reason', 'Duration (min)']
+2025-10-12 15:10:00 INFO live.forward_test_results: Sample row data: {'#': 1, 'Entry Time': '2025-10-12 15:06:08', 'Exit Time': '2025-10-12 15:06:10', 'Entry Price': 233.9, 'Exit Price': 223.9, 'Qty': 375, 'Gross PnL': -3750.0, 'Commission': 53.69, 'Net PnL': -3803.69, 'Exit Reason': 'Stop Loss', 'Duration (min)': 0.0}
+2025-10-12 15:10:00 INFO live.forward_test_results: P&L Validation - Summary Net P&L: 22179.35
+2025-10-12 15:10:00 INFO live.forward_test_results: P&L Validation - Trades Net P&L Sum: 22179.33
+2025-10-12 15:10:00 INFO live.forward_test_results: P&L Validation - Difference: 0.02
+2025-10-12 15:10:00 WARNING live.forward_test_results: P&L mismatch detected: 0.02 difference between summary and trades
+2025-10-12 15:10:00 INFO live.forward_test_results: Created trades DataFrame with 28 rows and 11 columns
+2025-10-12 15:10:00 INFO live.forward_test_results: DataFrame columns: ['#', 'Entry Time', 'Exit Time', 'Entry Price', 'Exit Price', 'Qty', 'Gross PnL', 'Commission', 'Net PnL', 'Exit Reason', 'Duration (min)']
+2025-10-12 15:10:00 INFO live.forward_test_results: Sample row data: {'#': 1, 'Entry Time': '2025-10-12 15:06:08', 'Exit Time': '2025-10-12 15:06:10', 'Entry Price': 233.9, 'Exit Price': 223.9, 'Qty': 375, 'Gross PnL': -3750.0, 'Commission': 53.69, 'Net PnL': -3803.69, 'Exit Reason': 'Stop Loss', 'Duration (min)': 0.0}
+2025-10-12 15:10:00 INFO live.forward_test_results: Created trades DataFrame with 28 rows and 11 columns
+2025-10-12 15:10:00 INFO live.forward_test_results: DataFrame columns: ['#', 'Entry Time', 'Exit Time', 'Entry Price', 'Exit Price', 'Qty', 'Gross PnL', 'Commission', 'Net PnL', 'Exit Reason', 'Duration (min)']
+2025-10-12 15:10:00 INFO live.forward_test_results: Sample row data: {'#': 1, 'Entry Time': '2025-10-12 15:06:08', 'Exit Time': '2025-10-12 15:06:10', 'Entry Price': 233.9, 'Exit Price': 223.9, 'Qty': 375, 'Gross PnL': -3750.0, 'Commission': 53.69, 'Net PnL': -3803.69, 'Exit Reason': 'Stop Loss', 'Duration (min)': 0.0}
+2025-10-12 15:10:00 INFO shared.dashboard_components: Creating trades table with 28 rows, 11 columns
+2025-10-12 15:10:00 INFO shared.dashboard_components: Trades DataFrame columns: ['#', 'Entry Time', 'Exit Time', 'Entry Price', 'Exit Price', 'Qty', 'Gross PnL', 'Commission', 'Net PnL', 'Exit Reason', 'Duration (min)']
+2025-10-12 15:10:00 INFO shared.dashboard_components: Trades DataFrame shape: (28, 11)
+2025-10-12 15:10:00 INFO live.forward_test_results: ================================================================================
+2025-10-12 15:10:00 INFO live.forward_test_results: FORWARD TEST RESULTS EXPORT COMPLETED
+2025-10-12 15:10:00 INFO live.forward_test_results: ================================================================================
+2025-10-12 15:10:00 INFO live.forward_test_results: Mode detected: DATA
+2025-10-12 15:10:00 INFO live.forward_test_results: Results folder: C:\Users\user\projects\Perplexity Combined\results\Forward Test\data
+2025-10-12 15:10:00 INFO live.forward_test_results: Full file path: C:\Users\user\projects\Perplexity Combined\results\Forward Test\data\ft-20251012_151000-data.xlsx
+2025-10-12 15:10:00 INFO live.forward_test_results: File size: 8908 bytes
+2025-10-12 15:10:00 INFO live.forward_test_results: File contains: Enhanced Excel report with all consolidated information
+2025-10-12 15:10:00 INFO live.forward_test_results: ================================================================================
+2025-10-12 15:10:00 INFO live.trader: Forward test results automatically exported to: C:\Users\user\projects\Perplexity Combined\results\Forward Test\data\ft-20251012_151000-data.xlsx
