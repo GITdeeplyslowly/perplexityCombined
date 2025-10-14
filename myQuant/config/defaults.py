@@ -115,7 +115,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "atr_len": 14,
         "indicator_update_mode": "tick",
         # Add noise filter parameters
-        "noise_filter_enabled": True,
+        "noise_filter_enabled": False,  # DISABLED - Count all price movements as green/red ticks
         "noise_filter_percentage": 0.0001,  # 0.01% threshold
         "noise_filter_min_ticks": 1.0,      # Minimum number of ticks to consider
         # nan/recovery thresholds (kept here for future use)

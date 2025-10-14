@@ -13,6 +13,9 @@ import logging
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime, time, timedelta
 import pytz
+
+# Initialize module-level logger
+logger = logging.getLogger(__name__)
 from utils.time_utils import now_ist, normalize_datetime_to_ist, is_time_to_exit, is_within_session, ensure_tz_aware, apply_buffer_to_time
 from types import MappingProxyType
 from utils.logger import HighPerfLogger, increment_tick_counter, get_tick_counter, format_tick_message
@@ -219,7 +222,16 @@ class ModularIntradayStrategy:
         if not self._check_consecutive_green_ticks():
             gating_reasons.append(f"Need {self.consecutive_green_bars_required} green ticks, have {self.green_bars_count}")
         if gating_reasons:
-            self.perf_logger.entry_blocked('; '.join(gating_reasons))
+            # LIGHTWEIGHT: Only enhance logging if we have cached price (no method calls)
+            reason_text = '; '.join(gating_reasons)
+            if hasattr(self, 'prev_tick_price') and self.prev_tick_price:
+                try:
+                    symbol = self.config_accessor.get_instrument_param('symbol')
+                    reason_text += f", {symbol} @ ₹{self.prev_tick_price}"
+                except Exception:
+                    pass  # DEFENSIVE: Never fail on logging enhancement
+            
+            self.perf_logger.entry_blocked(reason_text)
             return False
         return True
 

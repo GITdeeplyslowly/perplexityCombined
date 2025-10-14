@@ -166,8 +166,9 @@ except KeyError as e:
     raise RuntimeError(f"DEFAULT_CONFIG missing required logging.logfile: {e}")
 
 def now_ist():
-    """Return current time in India Standard Time"""
-    return datetime.now(pytz.timezone('Asia/Kolkata'))
+    """Return current time in India Standard Time using SSOT timezone"""
+    from config.defaults import DEFAULT_CONFIG
+    return datetime.now(pytz.timezone(DEFAULT_CONFIG['session']['timezone']))
 
 class UnifiedTradingGUI(tk.Tk):
     
@@ -2373,6 +2374,14 @@ class UnifiedTradingGUI(tk.Tk):
             'reconnect_attempts': 3,
             'tick_timeout': 30
         }
+        
+        # Load SmartAPI credentials for live data streaming (required for both live and paper trading)
+        from config.defaults import load_live_trading_credentials
+        credentials = load_live_trading_credentials()
+        config_dict['live'].update(credentials)
+        
+        logger.info(f"🔐 Credentials loaded: api_key={'✅' if credentials.get('api_key') else '❌'}, "
+                   f"client_code={'✅' if credentials.get('client_code') else '❌'}")
         
         # Validate and freeze the forward test configuration
         try:

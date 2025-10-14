@@ -6,7 +6,10 @@ import logging
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
-IST = pytz.timezone("Asia/Kolkata")
+
+# Import timezone from SSOT
+from config.defaults import DEFAULT_CONFIG
+IST = pytz.timezone(DEFAULT_CONFIG['session']['timezone'])
 
 def load_data_simple(file_path, process_as_ticks=True):
     """

@@ -43,6 +43,11 @@ def compute_number_of_lots(cfg_accessor: ConfigAccessor, current_capital: float,
         price = float(price)
         if current_capital <= 0 or price <= 0:
             return 0
+        
+        # Safety check: prevent trading with obviously wrong option prices
+        if price > 10000:  # Options shouldn't cost more than ₹10,000
+            logger.warning(f"Rejecting trade: price ₹{price:,.2f} appears to be incorrect for options trading")
+            return 0
 
         # instrument_mappings.lot_size is the single SSOT for contract size
         units_per_lot = cfg_accessor.get_current_instrument_param('lot_size')
@@ -203,8 +208,8 @@ class PositionManager:
         if dt is None:
             return None
         if dt.tzinfo is None:
-            import pytz
-            return pytz.timezone('Asia/Kolkata').localize(dt)
+            from utils.time_utils import IST
+            return IST.localize(dt)
         return dt
 
     def calculate_lot_aligned_quantity(self, desired_quantity: int, lot_size: int) -> int:

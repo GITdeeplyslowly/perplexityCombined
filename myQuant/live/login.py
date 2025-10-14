@@ -27,7 +27,7 @@ except ImportError:
     pyotp = None
     logging.warning("pyotp not installed. Install with `pip install pyotp` for dynamic TOTP generation.")
 
-SESSION_FILE = "smartapi/session_token.json"
+SESSION_FILE = r"C:\Users\user\projects\angelalgo\auth_token.json"
 
 class SmartAPISessionManager:
     def __init__(self, api_key: str, client_code: str, pin: str, totp_secret: str):
@@ -65,13 +65,8 @@ class SmartAPISessionManager:
                 "refresh_time": datetime.now().isoformat(),
                 "profile": profile,
             }
-            # Ensure directory exists before writing file
-            session_dir = os.path.dirname(SESSION_FILE)
-            if session_dir and not os.path.exists(session_dir):
-                os.makedirs(session_dir, exist_ok=True)
-                logging.info(f"Created session directory: {session_dir}")
             with open(SESSION_FILE, "w", encoding="utf-8") as f:
-                json.dump(self.session_info, f, indent=2)
+                json.dump({"data": {"auth_token": jwt_token, "client_id": self.client_code}}, f)
             logging.info(f"SmartAPI login successful for {self.client_code}. Session token saved.")
             self.session = smartapi
             return self.session_info
@@ -87,7 +82,16 @@ class SmartAPISessionManager:
             logging.warning("No session token file found.")
             return None
         with open(SESSION_FILE, "r", encoding="utf-8") as f:
-            self.session_info = json.load(f)
+            token_data = json.load(f)
+            if "data" in token_data:
+                # Convert Wind format to myQuant format
+                self.session_info = {
+                    "jwt_token": token_data["data"]["auth_token"],
+                    "feed_token": None,
+                    "client_code": token_data["data"]["client_id"]
+                }
+            else:
+                self.session_info = token_data
         logging.info(f"Loaded SmartAPI session from file (client {self.session_info.get('client_code')}).")
         return self.session_info
 

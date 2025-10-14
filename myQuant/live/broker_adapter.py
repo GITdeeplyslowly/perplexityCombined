@@ -29,7 +29,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
-from utils.time_utils import now_ist, normalize_datetime_to_ist
+from utils.time_utils import now_ist, normalize_datetime_to_ist, IST
 from types import MappingProxyType
 
 logger = logging.getLogger(__name__)
@@ -54,15 +54,18 @@ class BrokerAdapter:
         self.config_accessor = ConfigAccessor(config)
         
         self.live_params = config["live"]
+        self.instrument = config["instrument"]
+        self.symbol = self.instrument["symbol"]
         
-        # Symbol/instrument management moved to live trading path only
-        # Data simulation has no business with symbol/token management
-        self.instrument = None
-        self.symbol = None  
-        self.exchange = None
-        self.lot_size = None
-        self.tick_size = None
-        self.product_type = None
+        # STRICT ACCESS - NO FALLBACKS IN TRADING SYSTEMS
+        self.exchange = self.instrument["exchange"]  # Will raise KeyError if missing
+        
+        # Use SSOT for instrument parameters - STRICT ACCESS ONLY
+        self.lot_size = int(self.config_accessor.get_current_instrument_param('lot_size'))
+        self.tick_size = float(self.config_accessor.get_current_instrument_param('tick_size'))
+            
+        # STRICT ACCESS - NO FALLBACKS IN TRADING SYSTEMS  
+        self.product_type = self.instrument["product_type"]  # Will raise KeyError if missing
         
         # instrument_token: Dynamic per option contract, set by user/token cache
         # Will be validated when actually needed for trading operations
@@ -89,6 +92,10 @@ class BrokerAdapter:
         self.max_reconnect_attempts = 3
         self.last_reconnect_time = None
         self.reconnect_cooldown = 60  # seconds between reconnect attempts
+        
+        # Rate limiting for polling mode
+        self.last_poll_time = None
+        self.min_poll_interval = 1.0  # minimum 1 second between polls
 
         # Optional file simulation (ONLY when explicitly enabled by user)
         self.file_simulator = None
@@ -96,6 +103,7 @@ class BrokerAdapter:
             file_path = config.get('data_simulation', {}).get('file_path', '')
             if file_path:
                 from live.data_simulator import DataSimulator
+                # DataSimulator only takes file_path parameter
                 self.file_simulator = DataSimulator(file_path)
                 logger.info(f"File simulation enabled with: {file_path}")
 
@@ -117,54 +125,30 @@ class BrokerAdapter:
 
     def connect(self):
         """Authenticate and establish live SmartAPI session with WebSocket streaming."""
-        
-        # 🚀 SURGICAL FIX: Honor user's explicit file simulation choice FIRST
-        if self.file_simulator:
+        # Handle file simulation first (if enabled)
+        if self.paper_trading and self.file_simulator:
             if self.file_simulator.load_data():
                 logger.info("Paper trading mode: using user-selected file simulation.")
                 self.stream_status = "file_simulation"
-                return  # ✅ EXIT - completely independent of SmartAPI
+                return
             else:
                 logger.error("File simulation failed to load data.")
                 self.stream_status = "error"
                 raise RuntimeError("File simulation data could not be loaded")
         
-        # 🔒 SACRED PATH: Only reached when user wants live trading
+        # For both paper trading and live trading, we need SmartAPI for live data
         if not self.SmartConnect:
             error_msg = (
                 "🚨 CRITICAL ERROR: SmartAPI package is not installed!\n"
                 "💡 SOLUTION: Install SmartAPI package: pip install smartapi-python\n"
-                "❌ LIVE WEBSTREAM TRADING CANNOT OPERATE WITHOUT BROKER CONNECTION\n"
-                "💡 TIP: Use file simulation for testing without SmartAPI"
+                "❌ TRADING SYSTEM CANNOT OPERATE WITHOUT BROKER CONNECTION"
             )
             logger.error(error_msg)
             self.stream_status = "error"
             raise RuntimeError("SmartAPI package missing - cannot establish broker connection")
-        
-        # Use SmartAPI for live data (works in both paper trading and live trading modes)
-        logger.info("Connecting to SmartAPI for live data streaming...")
-        
-        # Load live trading credentials (only when live trading is needed)
-        from config.defaults import load_live_trading_credentials
-        credentials = load_live_trading_credentials()
-        
-        # Update live params with loaded credentials
-        live = dict(self.live_params)  # Convert to mutable dict for updates
-        live.update(credentials)
-        
-        # Initialize symbol/instrument management (LIVE TRADING ONLY)
-        self.instrument = self.params["instrument"]
-        self.symbol = self.instrument["symbol"]
-        self.exchange = self.instrument["exchange"]  # Will raise KeyError if missing
-        
-        # Use SSOT for instrument parameters - STRICT ACCESS ONLY
-        self.lot_size = int(self.config_accessor.get_current_instrument_param('lot_size'))
-        self.tick_size = float(self.config_accessor.get_current_instrument_param('tick_size'))
-        self.product_type = self.instrument["product_type"]  # Will raise KeyError if missing
-        
-        logger.info(f"🎯 Live Trading Symbol: {self.symbol} | Exchange: {self.exchange} | Token: {self.instrument.get('token', 'Not Set')}")
             
         # FAIL-FAST: Validate minimum credentials for authentication
+        live = self.live_params
         
         # Check minimum required credentials (session manager mode)
         min_required = ["api_key", "client_code"]
@@ -217,22 +201,33 @@ class BrokerAdapter:
                 self._buffer_tick(tick)
             return tick
         
-        # Priority 1: WebSocket streaming (real-time)
-        if self.streaming_mode and self.tick_buffer:
+        # Priority 1: WebSocket streaming (real-time) - ONLY mode when WebSocket is active
+        if self.streaming_mode:
             try:
                 with self.tick_lock:
                     if self.tick_buffer:
                         tick = self.tick_buffer.pop(0)
                         self.last_price = tick['price']
-                        self._buffer_tick(tick)
+                        # DON'T call _buffer_tick() here - tick is already buffered by WebSocket handler
                         return tick
+                    else:
+                        # WebSocket is active but buffer is empty - return None (don't poll)
+                        return None
             except Exception as e:
                 logger.error(f"Error processing WebSocket tick buffer: {e}")
+                return None
         
-        # Priority 2: SmartAPI polling mode (if WebSocket unavailable)
+        # Priority 2: SmartAPI polling mode (ONLY if WebSocket unavailable)
         if not self.connection:
             logger.error("No SmartAPI connection available - live data streaming not possible")
             return None
+        
+        # Rate limiting for polling mode to prevent API limits
+        current_time = time.time()
+        if self.last_poll_time and (current_time - self.last_poll_time) < self.min_poll_interval:
+            return None  # Skip this poll to respect rate limits
+        
+        self.last_poll_time = current_time
             
         try:
             # Use SmartAPI getLTP for polling
@@ -241,17 +236,20 @@ class BrokerAdapter:
                 logger.error(f"Token not set for symbol '{self.instrument.get('symbol', 'Unknown')}'")
                 return None
                 
-            # SmartAPI getLTP call
-            ltp_response = self.connection.getLTP({
-                "exchange": self.exchange,
-                "tradingsymbol": self.instrument.get('symbol', ''),
-                "symboltoken": instrument_token
-            })
+            # SmartAPI ltpData call - requires positional arguments
+            ltp_response = self.connection.ltpData(
+                self.exchange,
+                self.instrument.get('symbol', ''),
+                instrument_token
+            )
             
             if 'data' in ltp_response and 'ltp' in ltp_response['data']:
-                price = float(ltp_response["data"]["ltp"])
+                # CRITICAL FIX: SmartAPI returns prices in paise, convert to rupees
+                raw_price = ltp_response["data"]["ltp"]
+                price = float(raw_price) / 100.0  # Convert paise to rupees
+                
                 tick = {
-                    "timestamp": pd.Timestamp.now(tz='Asia/Kolkata'),
+                    "timestamp": pd.Timestamp.now(tz=IST),
                     "price": price, 
                     "volume": 1,  # LTP doesn't include volume
                     "source": "smartapi_polling"
@@ -271,7 +269,11 @@ class BrokerAdapter:
     def _buffer_tick(self, tick: Dict[str, Any]):
         """Buffer each tick and limit rolling window for memory safety."""
         self.tick_buffer.append(tick)
-        self.df_tick = pd.concat([self.df_tick, pd.DataFrame([tick])], ignore_index=True)
+        # Fix pandas warning: avoid concatenating empty DataFrame
+        if len(self.df_tick) == 0:
+            self.df_tick = pd.DataFrame([tick])
+        else:
+            self.df_tick = pd.concat([self.df_tick, pd.DataFrame([tick])], ignore_index=True)
         if len(self.df_tick) > 2500:
             self.df_tick = self.df_tick.tail(2000)  # Keep last 2000 for memory management
 
@@ -320,9 +322,9 @@ class BrokerAdapter:
             raise ValueError("SmartAPI credentials missing: api_key and client_code required")
         
         try:
-            # Try direct authentication if PIN and TOTP secret are provided
+            # Try direct authentication if PIN and TOTP are provided
             if live.get('pin') and live.get('totp_secret'):
-                logger.info("🔐 Using direct SmartAPI authentication with fresh TOTP...")
+                logger.info("🔐 Using direct SmartAPI authentication...")
                 session_manager = SmartAPISessionManager(
                     api_key=live['api_key'],
                     client_code=live['client_code'], 
@@ -347,11 +349,12 @@ class BrokerAdapter:
             
             # Store session for use by streaming components
             self.session_manager = session_manager
-            self.connection = session_info
+            self.connection = session_manager.session  # Use the SmartConnect object, not session_info dict
+            self.session_info = session_info  # Store session info separately for WebSocket
             
             # Initialize WebSocket streaming if available and token is provided
             if self.WebSocketTickStreamer and self.instrument.get("token"):
-                self._initialize_websocket_streaming(session_info)
+                self._initialize_websocket_streaming(self.session_info)
             else:
                 logger.info("📊 WebSocket not available, using polling mode for data collection")
                 self.streaming_mode = False
@@ -380,13 +383,14 @@ class BrokerAdapter:
                 api_key=live['api_key'],
                 client_code=live['client_code'],
                 feed_token=session_info['feed_token'],
+                auth_token=session_info['jwt_token'],  # Add missing auth_token
                 symbol_tokens=symbol_tokens,
                 feed_type=live.get('feed_type', 'LTP'),
                 on_tick=self._handle_websocket_tick
             )
             
             # Start WebSocket in background thread
-            self.ws_streamer.start()
+            self.ws_streamer.start_stream()
             logger.info("📡 WebSocket streaming started successfully")
             self.streaming_mode = True
             
@@ -401,14 +405,14 @@ class BrokerAdapter:
             with self.tick_lock:
                 # Add timestamp if not present
                 if 'timestamp' not in tick:
-                    tick['timestamp'] = pd.Timestamp.now(tz='Asia/Kolkata')
+                    tick['timestamp'] = pd.Timestamp.now(tz=IST)
                 
                 # Store in tick buffer for strategy processing
                 self.tick_buffer.append(tick)
                 self.last_price = float(tick.get('price', tick.get('ltp', 0)))
-                self.last_tick_time = pd.Timestamp.now(tz='Asia/Kolkata')
-                
-                logger.debug(f"📊 Live tick received: {symbol} @ {self.last_price}")
+                self.last_tick_time = pd.Timestamp.now(tz=IST)
                 
         except Exception as e:
             logger.error(f"Error processing WebSocket tick: {e}")
+            # Log WebSocket connection status on error
+            logger.error(f"WebSocket streaming_mode: {self.streaming_mode}, stream_status: {self.stream_status}")

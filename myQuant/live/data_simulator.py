@@ -35,7 +35,7 @@ class DataSimulator:
         self.data = None
         self.index = 0
         # Fixed delay for consistent simulation speed
-        self.tick_delay = 0.01  # 100 tps - good balance of speed and visibility
+        self.tick_delay = 0.0005  # 100 tps - good balance of speed and visibility
         self.loaded = False
         self.completed = False  # Flag to prevent repeated completion messages
         

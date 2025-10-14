@@ -120,7 +120,17 @@ class LiveTrader:
                         if hasattr(self.broker.file_simulator, 'completed') and self.broker.file_simulator.completed:
                             logger.info("File simulation completed - ending trading session")
                             break
-                    time.sleep(0.1)
+                    
+                    # Intelligent sleep based on data source
+                    if hasattr(self.broker, 'streaming_mode') and self.broker.streaming_mode:
+                        # WebSocket mode: shorter sleep as ticks arrive asynchronously
+                        time.sleep(0.05)  # 50ms for WebSocket
+                        # Debug: Log every 200 empty tick cycles (10 seconds)
+                        if tick_count % 200 == 0:
+                            logger.info(f"[DEBUG] WebSocket active but no ticks received (cycle {tick_count})")
+                    else:
+                        # Polling mode: longer sleep to respect rate limits
+                        time.sleep(1.0)   # 1 second for polling
                     continue
                 
                 # Check stop condition more frequently during processing
@@ -132,6 +142,8 @@ class LiveTrader:
                 tick_count += 1
                 if tick_count % 100 == 0:
                     time.sleep(0.001)  # Minimal yield to allow GUI updates
+                    # Heartbeat logging every 100 ticks
+                    logger.info(f"[HEARTBEAT] Trading loop active - tick count: {tick_count}, position: {self.active_position_id is not None}")
                     # Check stop condition during GUI yield
                     if not self.is_running:
                         logger.info("Stop requested during GUI yield - exiting immediately")
@@ -193,10 +205,18 @@ class LiveTrader:
                 
                 # STEP 5: Position manager processes TP/SL/trail exits (if position exists)
                 if self.active_position_id:
+                    # Debug logging every 100 ticks when in position
+                    if tick_count % 100 == 0:
+                        logger.info(f"[DEBUG] Position active: {self.active_position_id} | Tick count: {tick_count} | Price: ₹{tick.get('price', 0):.2f}")
+                    
                     current_price = tick.get('price', tick.get('ltp', 0))
                     current_tick_row = self._create_tick_row(tick, current_price, now)
                     
-                    self.position_manager.process_positions(current_tick_row, now)
+                    try:
+                        self.position_manager.process_positions(current_tick_row, now)
+                    except Exception as e:
+                        logger.error(f"Error in position_manager.process_positions: {e}")
+                        logger.exception("Position processing exception details:")
                     
                     # Check if position was closed by risk management
                     if self.active_position_id not in self.position_manager.positions:

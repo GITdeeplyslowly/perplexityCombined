@@ -8,7 +8,7 @@ Features:
 - Configuration capture and export
 - Performance metrics summary  
 - All trades detailed listing
-- CSV and Excel export formats
+- Excel export format with dashboard layout
 """
 
 import os
@@ -38,7 +38,7 @@ try:
     OPENPYXL_AVAILABLE = True
 except ImportError:
     OPENPYXL_AVAILABLE = False
-    logger.warning("openpyxl not available - Excel export will fallback to CSV")
+    logger.error("openpyxl is required for Excel export - no CSV fallback available")
 
 # Type annotations for optional imports
 if TYPE_CHECKING:
@@ -246,7 +246,7 @@ class ForwardTestResults:
                 'Commission': round(commission, 2),
                 'Net PnL': round(net_pnl, 2),
                 'Exit Reason': str(trade.exit_reason) if trade.exit_reason else '',
-                'Duration (min)': round(duration_minutes, 0)
+                'Duration (min)': round(duration_minutes, 2)
             })
             
         df = pd.DataFrame(rows)
@@ -505,6 +505,119 @@ class ForwardTestResults:
         if hasattr(self, 'end_time') and self.end_time:
             config_data.append(("End Time", self.end_time.strftime("%Y-%m-%d %H:%M:%S")))
     
+    def _get_dialog_box_text(self) -> str:
+        """Get the exact text that appears in the dialog box"""
+        if not hasattr(self, 'config') or not self.config:
+            return "Configuration not available"
+        
+        lines = []
+        lines.append("FORWARD TEST CONFIGURATION REVIEW")
+        lines.append("=" * 80)
+        lines.append("")
+        
+        # Data source section
+        data_sim = self.config.get('data_simulation', {})
+        if data_sim.get('enabled', False):
+            lines.append("DATA SOURCE: 📁 FILE DATA SIMULATION")
+            if data_sim.get('file_path'):
+                lines.append(f"Historical file: {data_sim.get('file_path')}")
+            lines.append("")
+            lines.append("⚠️ This will use HISTORICAL data, not live market prices!")
+        else:
+            lines.append("DATA SOURCE: 🌐 LIVE WEBSTREAM")
+            lines.append("✅ Live market data connection")
+        lines.append("")
+        
+        # Instrument & Session
+        inst = self.config.get('instrument', {})
+        session = self.config.get('session', {})
+        lines.append("INSTRUMENT & SESSION")
+        lines.append("-" * 40)
+        lines.append(f"Symbol:              {inst.get('symbol', 'N/A')}")
+        lines.append(f"Exchange:            {inst.get('exchange', 'N/A')}")
+        lines.append(f"Product Type:        {inst.get('product_type', 'N/A')}")
+        lines.append(f"Lot Size:            {inst.get('lot_size', 'N/A')}")
+        lines.append(f"Tick Size:           {inst.get('tick_size', 'N/A')}")
+        if session.get('start_hour') is not None:
+            lines.append(f"Session Start:       {session.get('start_hour'):02d}:{session.get('start_min', 0):02d}")
+        if session.get('end_hour') is not None:
+            lines.append(f"Session End:         {session.get('end_hour'):02d}:{session.get('end_min', 30):02d}")
+        if session.get('auto_stop_enabled') is not None:
+            lines.append(f"Auto Stop:           {'Enabled' if session.get('auto_stop_enabled') else 'Disabled'}")
+        if session.get('max_loss_per_day') is not None:
+            lines.append(f"Max Loss/Day:        {session.get('max_loss_per_day')}")
+        lines.append("")
+        
+        # Risk & Capital Management
+        capital = self.config.get('capital', {})
+        risk = self.config.get('risk', {})
+        lines.append("RISK & CAPITAL MANAGEMENT")
+        lines.append("-" * 40)
+        if capital.get('initial_capital'):
+            lines.append(f"Initial Capital:     {capital.get('initial_capital'):,.0f}")
+        if risk.get('max_positions_per_day'):
+            lines.append(f"Max Trades/Day:      {risk.get('max_positions_per_day')}")
+        if risk.get('base_sl_points'):
+            lines.append(f"Base Stop Loss:      {risk.get('base_sl_points')} points")
+        
+        # Take Profit
+        tp_points = risk.get('tp_points', [])
+        if tp_points:
+            lines.append(f"Take Profit Levels:  {len(tp_points)} levels")
+            lines.append(f"TP Points:           {tp_points}")
+            tp_percents = risk.get('tp_percents', [])
+            if tp_percents:
+                lines.append(f"TP Percentages:      {tp_percents}")
+        
+        # Trail Stop
+        if risk.get('use_trail_stop') is True:
+            lines.append("Trail Stop:          Enabled")
+            if risk.get('trail_activation_points'):
+                lines.append(f"Trail Activation:    {risk.get('trail_activation_points')} points")
+            if risk.get('trail_distance_points'):
+                lines.append(f"Trail Distance:      {risk.get('trail_distance_points')} points")
+        
+        if risk.get('risk_per_trade_percent'):
+            lines.append(f"Risk per Trade:      {risk.get('risk_per_trade_percent')}%")
+        if risk.get('commission_percent'):
+            lines.append(f"Commission:          {risk.get('commission_percent')}%")
+        lines.append("")
+        
+        # Strategy & Indicators
+        strategy = self.config.get('strategy', {})
+        lines.append("STRATEGY & INDICATORS")
+        lines.append("-" * 40)
+        lines.append("Strategy Version:    1")
+        if strategy.get('consecutive_green_bars'):
+            lines.append(f"Green Bars Required: {strategy.get('consecutive_green_bars')}")
+        lines.append("")
+        
+        lines.append("Enabled Indicators:")
+        if strategy.get('use_ema_crossover'):
+            lines.append(f"  EMA Crossover:     Fast={strategy.get('fast_ema')}, Slow={strategy.get('slow_ema')}")
+        if strategy.get('consecutive_green_bars', 0) > 0:
+            lines.append(f"  Consecutive Green: {strategy.get('consecutive_green_bars')} bars required")
+        lines.append("  Noise Filter:      0.01% threshold")
+        lines.append("")
+        
+        # Data source details
+        lines.append("DATA SOURCE DETAILS")
+        lines.append("-" * 40)
+        if data_sim.get('enabled', False):
+            lines.append("Mode:                File Simulation")
+            if data_sim.get('file_path'):
+                lines.append(f"File Path:           {data_sim.get('file_path')}")
+            lines.append("Status:              Historical data replay")
+        else:
+            lines.append("Mode:                Live WebStream")
+            lines.append("Status:              Live market connection")
+        lines.append("")
+        
+        lines.append("=" * 80)
+        lines.append("Review the configuration above. Click 'Start Forward Test' to proceed.")
+        
+        return "\n".join(lines)
+    
     def get_trades_table(self) -> pd.DataFrame:
         """
         Prepare trades data as DataFrame with consistent column structure.
@@ -517,7 +630,7 @@ class ForwardTestResults:
         try:
             # Initialize dashboard managers
             style_manager = DashboardStyleManager(scale_factor=1.0)
-            layout_manager = DashboardLayoutManager(ws, max_columns=10, section_buffer=2)
+            layout_manager = DashboardLayoutManager(ws, max_columns=15, section_buffer=1)
             table_builder = DashboardTableBuilder(layout_manager, style_manager)
             
             # Create dashboard sections
@@ -570,10 +683,30 @@ class ForwardTestResults:
         # 3. Performance metrics table
         table_builder.create_metrics_table(metrics, "PERFORMANCE SUMMARY")
         
-        # 4. Configuration table
-        config_df = self.get_config_table()
-        if not config_df.empty:
-            table_builder.create_config_table(config_df, "STRATEGY CONFIGURATION")
+        # 4. Strategy Configuration - paste dialog box content to merged cell
+        from openpyxl.styles import Alignment
+        
+        # Get dialog box text content
+        dialog_text = self._get_dialog_box_text()
+        
+        # Create merged cell with dialog content
+        ws = layout_manager.ws
+        start_row = layout_manager.current_row + 2
+        start_col = 1
+        end_row = start_row + 15
+        end_col = start_col + 8
+        
+        # Write to top-left cell FIRST
+        config_cell = ws.cell(row=start_row, column=start_col)
+        config_cell.value = dialog_text
+        config_cell.alignment = Alignment(wrap_text=True, vertical="top", horizontal="left")
+        
+        # Then merge the range
+        merge_range = f"{config_cell.coordinate}:{ws.cell(row=end_row, column=end_col).coordinate}"
+        ws.merge_cells(merge_range)
+        
+        # Update layout position
+        layout_manager.current_row = end_row + 2
         
         # 5. Detailed trades table
         trades_df = self.get_trades_table()

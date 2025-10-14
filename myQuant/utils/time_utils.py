@@ -18,8 +18,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Indian market timezone
-IST = pytz.timezone('Asia/Kolkata')
+# Import timezone from SSOT (defaults.py)
+from config.defaults import DEFAULT_CONFIG
+IST = pytz.timezone(DEFAULT_CONFIG['session']['timezone'])
 
 # Market session defaults
 DEFAULT_MARKET_OPEN = time(9, 15)  # 9:15 AM
@@ -430,8 +431,8 @@ def get_market_calendar(year: int) -> list:
     
     return trading_days
 
-def ensure_tz_aware(dt, fallback_tz=None, default_tz="Asia/Kolkata"):
-    """Ensure datetime is timezone aware."""
+def ensure_tz_aware(dt, fallback_tz=None, default_tz=None):
+    """Ensure datetime is timezone aware using SSOT timezone."""
     if dt.tzinfo is not None:
         return dt
     
@@ -445,7 +446,8 @@ def ensure_tz_aware(dt, fallback_tz=None, default_tz="Asia/Kolkata"):
             tz_name = fallback_tz
         return pytz.timezone(tz_name).localize(dt)
     else:
-        return pytz.timezone(default_tz).localize(dt)
+        # Use SSOT timezone from defaults.py
+        return IST.localize(dt)
 
 def is_within_session(current_time, session_start, session_end):
     """

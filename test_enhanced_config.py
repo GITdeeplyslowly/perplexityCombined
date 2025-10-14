@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Test the enhanced strategy configuration that mirrors the GUI dialog
+Test the updated forward_test_results.py with merged cell configuration approach.
+Verify Excel-only export and text-based strategy configuration.
 """
 
 import pandas as pd
 from datetime import datetime
 
-def test_enhanced_strategy_config():
-    """Test the comprehensive strategy configuration display"""
+def test_new_config_approach():
+    """Test the new merged cell configuration approach"""
     
     # Create mock configuration that matches what GUI would generate
     mock_config = {
@@ -206,17 +207,102 @@ def test_enhanced_strategy_config():
     csv_file = "enhanced_config_test.csv"
     config_df.to_csv(csv_file, index=False)
     print(f"\n✅ Enhanced configuration exported to {csv_file}")
+
+
+def test_new_config_approach():
+    """Test the new merged cell configuration approach"""
+    print("=" * 80)
+    print("TESTING NEW EXCEL-ONLY WITH MERGED CELL CONFIG")
+    print("=" * 80)
     
-    # Count sections
-    sections = config_df[config_df['Parameter'].str.startswith('===')]['Parameter'].tolist()
-    print(f"\n📊 Configuration contains {len(sections)} major sections:")
-    for section in sections:
-        print(f"  - {section}")
-    
-    return config_df
+    try:
+        from myQuant.live.forward_test_results import ForwardTestResults
+        
+        # Create test configuration
+        config = {
+            'instrument': {
+                'symbol': 'NIFTY2510524500CE',
+                'exchange': 'NFO',
+                'product_type': 'INTRADAY',
+                'lot_size': 50,
+                'tick_size': 0.05
+            },
+            'capital': {
+                'initial_capital': 100000.0
+            },
+            'risk': {
+                'max_positions_per_day': 20,
+                'base_sl_points': 15.0,
+                'use_trail_stop': True,
+                'trail_activation_points': 8.0,
+                'tp_points': [10.0, 25.0],
+                'risk_per_trade_percent': 2.0,
+                'commission_percent': 0.03
+            },
+            'session': {
+                'start_hour': 9, 'start_min': 15,
+                'end_hour': 15, 'end_min': 30,
+                'auto_stop_enabled': True
+            },
+            'strategy': {
+                'use_ema_crossover': True,
+                'fast_ema': 9,
+                'slow_ema': 21,
+                'use_macd': True,
+                'consecutive_green_bars': 5
+            },
+            'data_simulation': {
+                'enabled': True,
+                'file_path': 'C:/data/test_ticks.csv'
+            }
+        }
+        
+        # Mock position manager
+        class MockPositionManager:
+            def __init__(self):
+                self.completed_trades = []
+                self.initial_capital = 100000.0
+                self.current_capital = 105000.0
+            
+            def get_performance_summary(self):
+                return {
+                    'total_trades': 0,
+                    'winning_trades': 0,
+                    'losing_trades': 0,
+                    'win_rate': 0.0,
+                    'total_pnl': 0.0,
+                    'profit_factor': 0.0,
+                    'max_win': 0.0,
+                    'max_loss': 0.0
+                }
+        
+        mock_pm = MockPositionManager()
+        start_time = datetime(2025, 10, 12, 14, 30, 0)
+        
+        # Create ForwardTestResults instance
+        results = ForwardTestResults(config, mock_pm, start_time)
+        results.end_time = datetime(2025, 10, 12, 15, 45, 0)
+        
+        # Test new text generation method
+        print("Testing _generate_strategy_config_text()...")
+        config_text = results._generate_strategy_config_text()
+        
+        print("\nGenerated Strategy Configuration Text:")
+        print("-" * 50)
+        print(config_text)
+        print("-" * 50)
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 if __name__ == "__main__":
-    df = test_enhanced_strategy_config()
-    print(f"\n🎉 Enhanced strategy configuration test completed!")
-    print(f"✅ Now mirrors all parameters from 'Run Forward Test' dialog box")
-    print(f"✅ Comprehensive configuration with {len(df)} total parameters")
+    success = test_new_config_approach()
+    if success:
+        print("\n🎯 SUCCESS: New merged cell config approach working correctly!")
+    else:
+        print("\n💥 FAILURE: Issues detected with new approach")
