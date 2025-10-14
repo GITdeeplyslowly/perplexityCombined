@@ -25,9 +25,10 @@ import time
 import logging
 import pandas as pd
 import threading
+import queue
 
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Callable
 
 from utils.time_utils import now_ist, normalize_datetime_to_ist, IST
 from types import MappingProxyType
@@ -72,7 +73,7 @@ class BrokerAdapter:
         self.paper_trading = self.live_params["paper_trading"]
 
         # Data streaming components
-        self.tick_buffer: List[Dict] = []
+        self.tick_buffer = queue.Queue(maxsize=1000)  # Thread-safe queue (no lock needed)
         self.df_tick = pd.DataFrame(columns=["timestamp", "price", "volume"])
         self.last_price: float = 0.0
         self.connection = None
@@ -85,7 +86,9 @@ class BrokerAdapter:
         self.last_tick_time = None
         self.heartbeat_threshold = 30  # seconds - switch to polling if no ticks
         self.stream_status = "disconnected"  # disconnected, connecting, streaming, polling, error
-        self.tick_lock = threading.Lock()
+        
+        # Direct callback support (Wind-style, optional)
+        self.on_tick_callback: Optional[Callable] = None
         
         # Auto-recovery settings
         self.reconnect_attempts = 0
@@ -96,7 +99,7 @@ class BrokerAdapter:
         # Rate limiting for polling mode
         self.last_poll_time = None
         self.min_poll_interval = 1.0  # minimum 1 second between polls
-
+        
         # Optional file simulation (ONLY when explicitly enabled by user)
         self.file_simulator = None
         if config.get('data_simulation', {}).get('enabled', False):
@@ -204,71 +207,30 @@ class BrokerAdapter:
         # Priority 1: WebSocket streaming (real-time) - ONLY mode when WebSocket is active
         if self.streaming_mode:
             try:
-                with self.tick_lock:
-                    if self.tick_buffer:
-                        tick = self.tick_buffer.pop(0)
-                        self.last_price = tick['price']
-                        # DON'T call _buffer_tick() here - tick is already buffered by WebSocket handler
-                        return tick
-                    else:
-                        # WebSocket is active but buffer is empty - return None (don't poll)
-                        return None
+                try:
+                    # Non-blocking get from thread-safe queue (no lock needed)
+                    tick = self.tick_buffer.get_nowait()
+                    self.last_price = tick['price']
+                    return tick
+                except queue.Empty:
+                    # WebSocket is active but buffer is empty - return None (don't poll)
+                    return None
             except Exception as e:
                 logger.error(f"Error processing WebSocket tick buffer: {e}")
                 return None
         
-        # Priority 2: SmartAPI polling mode (ONLY if WebSocket unavailable)
+        # PURE WebSocket Mode - NO POLLING when WebSocket is active
         if not self.connection:
-            logger.error("No SmartAPI connection available - live data streaming not possible")
+            logger.error("No SmartAPI connection available")
             return None
         
-        # Rate limiting for polling mode to prevent API limits
-        current_time = time.time()
-        if self.last_poll_time and (current_time - self.last_poll_time) < self.min_poll_interval:
-            return None  # Skip this poll to respect rate limits
-        
-        self.last_poll_time = current_time
-            
-        try:
-            # Use SmartAPI getLTP for polling
-            instrument_token = self.instrument.get('token', '').strip()
-            if not instrument_token:
-                logger.error(f"Token not set for symbol '{self.instrument.get('symbol', 'Unknown')}'")
-                return None
-                
-            # SmartAPI ltpData call - requires positional arguments
-            ltp_response = self.connection.ltpData(
-                self.exchange,
-                self.instrument.get('symbol', ''),
-                instrument_token
-            )
-            
-            if 'data' in ltp_response and 'ltp' in ltp_response['data']:
-                # CRITICAL FIX: SmartAPI returns prices in paise, convert to rupees
-                raw_price = ltp_response["data"]["ltp"]
-                price = float(raw_price) / 100.0  # Convert paise to rupees
-                
-                tick = {
-                    "timestamp": pd.Timestamp.now(tz=IST),
-                    "price": price, 
-                    "volume": 1,  # LTP doesn't include volume
-                    "source": "smartapi_polling"
-                }
-                self.last_price = price
-                self._buffer_tick(tick)
-                logger.debug(f"📊 Polling tick: {price}")
-                return tick
-            else:
-                logger.error(f"Invalid LTP response: {ltp_response}")
-                return None
-                
-        except Exception as e:
-            logger.error(f"Error fetching SmartAPI LTP: {e}")
-            return None
+        # If we reach here, WebSocket is disabled - no data available
+        logger.warning("WebSocket inactive and polling disabled - no data available")
+        return None
 
     def _buffer_tick(self, tick: Dict[str, Any]):
-        """Buffer each tick and limit rolling window for memory safety."""
-        self.tick_buffer.append(tick)
+        """Buffer each tick for historical df_tick tracking (file simulation only)"""
+        # Update historical dataframe for compatibility with existing code
         # Fix pandas warning: avoid concatenating empty DataFrame
         if len(self.df_tick) == 0:
             self.df_tick = pd.DataFrame([tick])
@@ -276,6 +238,17 @@ class BrokerAdapter:
             self.df_tick = pd.concat([self.df_tick, pd.DataFrame([tick])], ignore_index=True)
         if len(self.df_tick) > 2500:
             self.df_tick = self.df_tick.tail(2000)  # Keep last 2000 for memory management
+        
+        # Add to queue for get_next_tick() compatibility
+        try:
+            self.tick_buffer.put_nowait(tick)
+        except queue.Full:
+            # Queue full, drop oldest and retry
+            try:
+                self.tick_buffer.get_nowait()
+                self.tick_buffer.put_nowait(tick)
+            except:
+                pass
 
     def place_order(self, side: str, price: float, quantity: int, order_type: str = "MARKET") -> str:
         """Simulate all orders by default. Never sends real order in paper/forward test."""
@@ -367,9 +340,17 @@ class BrokerAdapter:
             self.stream_status = "error"
             raise RuntimeError(f"Failed to establish SmartAPI connection: {e}")
     
-    def _initialize_websocket_streaming(self, session_info):
-        """Initialize WebSocket streaming for real-time data"""
+    def _initialize_websocket_streaming(self, session_info, on_tick_callback: Optional[Callable] = None):
+        """Initialize WebSocket streaming for real-time data
+        
+        Args:
+            session_info: Session information from login
+            on_tick_callback: Optional direct callback for Wind-style performance (bypasses queue)
+        """
         try:
+            # Store callback for hybrid tick processing
+            self.on_tick_callback = on_tick_callback
+            
             live = self.live_params
             symbol_tokens = [{
                 "symbol": self.instrument.get("symbol", ""),
@@ -378,6 +359,8 @@ class BrokerAdapter:
             }]
             
             logger.info(f"📡 Initializing WebSocket for {symbol_tokens[0]['symbol']} (Token: {symbol_tokens[0]['token']})")
+            if on_tick_callback:
+                logger.info("⚡ Direct callback mode enabled (Wind-style performance)")
             
             self.ws_streamer = self.WebSocketTickStreamer(
                 api_key=live['api_key'],
@@ -400,17 +383,39 @@ class BrokerAdapter:
             self.streaming_mode = False
     
     def _handle_websocket_tick(self, tick, symbol):
-        """Handle incoming WebSocket tick data"""
+        """Handle incoming WebSocket tick data with hybrid approach
+        
+        Supports both:
+        1. Direct callbacks (Wind-style, highest performance)
+        2. Queue-based polling (backwards compatible)
+        """
         try:
-            with self.tick_lock:
-                # Add timestamp if not present
-                if 'timestamp' not in tick:
-                    tick['timestamp'] = pd.Timestamp.now(tz=IST)
-                
-                # Store in tick buffer for strategy processing
-                self.tick_buffer.append(tick)
-                self.last_price = float(tick.get('price', tick.get('ltp', 0)))
-                self.last_tick_time = pd.Timestamp.now(tz=IST)
+            # Add timestamp if not present
+            if 'timestamp' not in tick:
+                tick['timestamp'] = pd.Timestamp.now(tz=IST)
+            
+            # Update state (no lock needed - simple assignment is atomic)
+            self.last_price = float(tick.get('price', tick.get('ltp', 0)))
+            self.last_tick_time = pd.Timestamp.now(tz=IST)
+            
+            # Option 1: Direct callback (Wind-style, highest performance)
+            if self.on_tick_callback:
+                try:
+                    self.on_tick_callback(tick, symbol)
+                except Exception as e:
+                    logger.error(f"Error in tick callback: {e}")
+            
+            # Option 2: Queue for polling (backwards compatible)
+            # Always queue tick for backwards compatibility with trader.py
+            try:
+                self.tick_buffer.put_nowait(tick)
+            except queue.Full:
+                # Queue full, drop oldest tick and retry
+                try:
+                    self.tick_buffer.get_nowait()  # Drop oldest
+                    self.tick_buffer.put_nowait(tick)  # Add new
+                except:
+                    pass  # Drop tick if queue operations fail
                 
         except Exception as e:
             logger.error(f"Error processing WebSocket tick: {e}")

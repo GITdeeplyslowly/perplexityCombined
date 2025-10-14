@@ -683,17 +683,24 @@ class ForwardTestResults:
         # 3. Performance metrics table
         table_builder.create_metrics_table(metrics, "PERFORMANCE SUMMARY")
         
-        # 4. Strategy Configuration - paste dialog box content to merged cell
+        # 4. Strategy Configuration - paste dialog box content to merged cell with DYNAMIC sizing
         from openpyxl.styles import Alignment
+        from openpyxl.utils import get_column_letter
         
         # Get dialog box text content
         dialog_text = self._get_dialog_box_text()
+        
+        # DYNAMIC SIZE CALCULATION: Calculate rows needed based on content length
+        lines_in_text = dialog_text.count('\n') + 1
+        
+        # Heuristic: ~2 lines per Excel row for readability, minimum 15 rows for aesthetics
+        estimated_rows_needed = max(15, lines_in_text // 2)
         
         # Create merged cell with dialog content
         ws = layout_manager.ws
         start_row = layout_manager.current_row + 2
         start_col = 1
-        end_row = start_row + 15
+        end_row = start_row + estimated_rows_needed  # DYNAMIC END ROW
         end_col = start_col + 8
         
         # Write to top-left cell FIRST
@@ -704,6 +711,10 @@ class ForwardTestResults:
         # Then merge the range
         merge_range = f"{config_cell.coordinate}:{ws.cell(row=end_row, column=end_col).coordinate}"
         ws.merge_cells(merge_range)
+        
+        # Set row heights for all spanned rows for better readability
+        for r in range(start_row, end_row + 1):
+            ws.row_dimensions[r].height = 25
         
         # Update layout position
         layout_manager.current_row = end_row + 2

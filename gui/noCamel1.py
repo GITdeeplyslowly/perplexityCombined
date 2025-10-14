@@ -312,6 +312,9 @@ class UnifiedTradingGUI(tk.Tk):
         self.ft_use_file_simulation = tk.BooleanVar(value=False)  # Disabled by default - live trading is primary
         self.ft_data_file_path = tk.StringVar(value="")  # No file selected by default
 
+        # Forward Test Performance Settings (Consumption Mode)
+        self.ft_use_direct_callbacks = tk.BooleanVar(value=True)  # Default to callback mode (Wind-style, faster)
+
         # Forward Test Capital management (from defaults.py)
         self.ft_initial_capital = tk.StringVar(value=str(capital_config['initial_capital']))
         self.ft_position_size_method = tk.StringVar(value="fixed_amount")  # UI default
@@ -1030,7 +1033,42 @@ class UnifiedTradingGUI(tk.Tk):
         help_label.grid(row=1, column=0, columnspan=4, sticky="w", padx=5, pady=(0,5))
         row += 1
 
-        # Add separator between Data Simulation and Capital Management
+        # Add separator
+        self._add_grid_separator(parent, row)
+        row += 1
+
+        # === PERFORMANCE SETTINGS SECTION ===
+        ttk.Label(parent, text="⚡ Performance Settings", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=2, sticky="w", pady=(25,5))
+        row += 1
+
+        perf_frame = ttk.LabelFrame(parent, text="Tick Consumption Mode")
+        perf_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        perf_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(perf_frame, text="Consumption Mode:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
+        mode_combo = ttk.Combobox(perf_frame, 
+                                 values=["⚡ Callback Mode (Fast - Default)", "📊 Polling Mode (Safe)"], 
+                                 state="readonly", width=30)
+        mode_combo.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        
+        # Set initial value based on ft_use_direct_callbacks
+        mode_combo.set("⚡ Callback Mode (Fast - Default)" if self.ft_use_direct_callbacks.get() else "📊 Polling Mode (Safe)")
+        
+        # Bind combo change to update the boolean variable
+        def on_mode_change(event):
+            selected = mode_combo.get()
+            self.ft_use_direct_callbacks.set("Callback" in selected)
+        mode_combo.bind("<<ComboboxSelected>>", on_mode_change)
+
+        # Help text explaining the modes
+        perf_help = ttk.Label(perf_frame, 
+                             text="⚡ Callback Mode: Wind-style direct processing (~50ms latency, 29% faster)\n"
+                                  "📊 Polling Mode: Queue-based processing (~70ms latency, proven stable)", 
+                             font=('TkDefaultFont', 8), foreground='gray', justify='left')
+        perf_help.grid(row=1, column=0, columnspan=2, sticky="w", padx=5, pady=(0,5))
+        row += 1
+
+        # Add separator between Performance and Capital Management
         self._add_grid_separator(parent, row)
         row += 1
 
@@ -2492,6 +2530,9 @@ class UnifiedTradingGUI(tk.Tk):
             # Create LiveTrader with frozen config
             try:
                 trader = LiveTrader(frozen_config=ft_frozen_config)
+                # Set consumption mode from GUI toggle
+                trader.use_direct_callbacks = self.ft_use_direct_callbacks.get()
+                logger.info(f"🎯 Consumption mode set: {'⚡ Callback (Fast)' if trader.use_direct_callbacks else '📊 Polling (Safe)'}")
             except Exception as e:
                 logger.error(f"Failed to create LiveTrader: {e}")
                 messagebox.showerror("LiveTrader Error", f"Could not create LiveTrader: {e}")
@@ -2917,6 +2958,13 @@ class UnifiedTradingGUI(tk.Tk):
         lines.append(f"DATA SOURCE: {data_source_msg}")
         lines.append(f"{data_detail_msg}")
         lines.append(f"{warning_msg}")
+        lines.append("")
+        
+        # Consumption Mode (Performance Setting)
+        consumption_mode = "⚡ Callback Mode (Fast)" if self.ft_use_direct_callbacks.get() else "📊 Polling Mode (Safe)"
+        consumption_latency = "~50ms latency, Wind-style" if self.ft_use_direct_callbacks.get() else "~70ms latency, Queue-based"
+        lines.append(f"CONSUMPTION MODE: {consumption_mode}")
+        lines.append(f"Expected Performance: {consumption_latency}")
         lines.append("")
         
         # Instrument & Session

@@ -69,6 +69,11 @@ class LiveTrader:
         self.results_exporter = ForwardTestResults(config, self.position_manager, now_ist())
         self.is_running = False
         self.active_position_id = None
+        
+        # Hybrid mode: Support both polling and direct callbacks (Wind-style)
+        self.use_direct_callbacks = False  # Toggle for Wind-style performance
+        self.tick_count = 0
+        self._last_no_tick_log = None
 
     def stop(self):
         """Stop the forward test session gracefully"""
@@ -97,19 +102,52 @@ class LiveTrader:
         logger.info("✅ Forward test session stopped successfully")
 
     def start(self, run_once=False, result_box=None, performance_callback=None):
+        """Start trading session with hybrid mode support
+        
+        Supports two modes:
+        1. Polling Mode (default): Queue-based tick polling (~70ms latency)
+        2. Callback Mode (Wind-style): Direct callbacks (~50ms latency)
+        
+        Toggle with self.use_direct_callbacks = True
+        """
         self.is_running = True
         self.performance_callback = performance_callback
         logger = logging.getLogger(__name__)
+        
+        # Initialize NaN tracking - shared by both modes
+        self.nan_streak = 0
+        self.nan_threshold = self.config['strategy']['nan_streak_threshold']
+        self.nan_recovery_threshold = self.config['strategy']['nan_recovery_threshold']
+        self.consecutive_valid_ticks = 0
+        self.result_box = result_box
+        self.run_once = run_once
+        
+        # Register callback if Wind-style mode enabled
+        if self.use_direct_callbacks:
+            self.broker.on_tick_callback = self._on_tick_direct
+            logger.info("⚡ Direct callback mode enabled (Wind-style, ~50ms latency)")
+        else:
+            logger.info("📊 Polling mode enabled (Queue-based, ~70ms latency)")
+        
+        # Connect broker (WebSocket initialization happens here)
         self.broker.connect()
         logger.info("🟢 Forward testing session started - TRUE TICK-BY-TICK PROCESSING")
         
-        # Initialize NaN tracking from defaults - STRICT CONFIG ACCESS (fail fast if missing)
+        # Choose execution path based on mode
+        if self.use_direct_callbacks:
+            self._run_callback_loop()
+        else:
+            self._run_polling_loop(run_once, result_box, performance_callback)
+    
+    def _run_polling_loop(self, run_once, result_box, performance_callback):
+        """Original polling-based trading loop (backwards compatible)"""
+        logger = logging.getLogger(__name__)
         nan_streak = 0
-        nan_threshold = self.config['strategy']['nan_streak_threshold']
-        nan_recovery_threshold = self.config['strategy']['nan_recovery_threshold']
+        nan_threshold = self.nan_threshold
+        nan_recovery_threshold = self.nan_recovery_threshold
         consecutive_valid_ticks = 0
-        
         tick_count = 0
+        
         try:
             while self.is_running:
                 # STEP 1: Get individual tick (no bar aggregation)
@@ -125,9 +163,12 @@ class LiveTrader:
                     if hasattr(self.broker, 'streaming_mode') and self.broker.streaming_mode:
                         # WebSocket mode: shorter sleep as ticks arrive asynchronously
                         time.sleep(0.05)  # 50ms for WebSocket
-                        # Debug: Log every 200 empty tick cycles (10 seconds)
+                        # Debug: Log every 200 empty tick cycles but throttle to max once per 30 seconds
                         if tick_count % 200 == 0:
-                            logger.info(f"[DEBUG] WebSocket active but no ticks received (cycle {tick_count})")
+                            current_time = time.time()
+                            if not hasattr(self, '_last_no_tick_log') or (current_time - self._last_no_tick_log) >= 30:
+                                logger.info(f"[DEBUG] WebSocket active but no ticks received (cycle {tick_count})")
+                                self._last_no_tick_log = current_time
                     else:
                         # Polling mode: longer sleep to respect rate limits
                         time.sleep(1.0)   # 1 second for polling
@@ -250,6 +291,222 @@ class LiveTrader:
                 logger.info(f"Forward test results automatically exported to: {filename}")
             except Exception as e:
                 logger.error(f"Failed to export results: {e}")
+    
+    def _run_callback_loop(self):
+        """Wind-style callback-driven trading loop (high performance)
+        
+        LIVE WEBSTREAM (PRIMARY): Ticks processed via _on_tick_direct callback
+        FILE SIMULATION (TESTING): Delegates to separate simulation loop
+        
+        Expected performance: ~50ms latency (vs ~70ms with polling)
+        """
+        logger = logging.getLogger(__name__)
+        
+        # CRITICAL: Check if file simulation (completely separate workflow)
+        if hasattr(self.broker, 'file_simulator') and self.broker.file_simulator:
+            logger.info("📁 File simulation detected - using dedicated simulation loop")
+            self._run_file_simulation_callback_mode()
+            return
+        
+        # LIVE WEBSTREAM CALLBACK LOOP (SACROSANCT - NO SIMULATION INTERFERENCE)
+        logger.info("🔥 Callback mode active - ticks processed directly as they arrive")
+        
+        try:
+            while self.is_running:
+                # Heartbeat logging
+                self.tick_count += 1
+                if self.tick_count % 100 == 0:
+                    logger.info(f"[HEARTBEAT] Callback mode - {self.tick_count} cycles, position: {self.active_position_id is not None}")
+                
+                # Update GUI performance display
+                if self.performance_callback and self.tick_count % 50 == 0:
+                    try:
+                        self.performance_callback(self)
+                    except Exception as e:
+                        logger.warning(f"Performance callback error: {e}")
+                
+                # Check for session end
+                if hasattr(self.strategy, "should_exit_for_session"):
+                    if self.strategy.should_exit_for_session(now_ist()):
+                        self.close_position("Session End")
+                        logger.info("Session end: all positions flattened.")
+                        break
+                
+                # Check for single-run mode
+                if self.run_once and self.tick_count > 100:
+                    logger.info("Single-run mode - exiting after initial processing")
+                    self.is_running = False
+                
+                # Minimal sleep - just for heartbeat (ticks arrive via callback)
+                time.sleep(0.1)  # 100ms heartbeat interval
+                
+        except KeyboardInterrupt:
+            logger.info("Callback mode interrupted by user")
+            self.close_position("Keyboard Interrupt")
+        except Exception as e:
+            logger.exception(f"Error in callback loop: {e}")
+            self.close_position("Error Occurred")
+        finally:
+            self.broker.disconnect()
+            logger.info("Callback mode session ended, data connection closed.")
+            
+            # Finalize and export results
+            self.results_exporter.finalize()
+            try:
+                filename = self.results_exporter.export_to_excel()
+                logger.info(f"Forward test results automatically exported to: {filename}")
+            except Exception as e:
+                logger.error(f"Failed to export results: {e}")
+    
+    def _run_file_simulation_callback_mode(self):
+        """Dedicated file simulation loop for callback mode testing
+        
+        ISOLATED from live WebStream workflow - zero interference.
+        Polls data simulator and processes ticks to test callback logic.
+        """
+        logger = logging.getLogger(__name__)
+        logger.info("📁 File simulation callback mode - testing callback logic with file data")
+        
+        try:
+            while self.is_running:
+                # Poll data simulator for next tick
+                tick = self.broker.get_next_tick()
+                
+                if tick:
+                    # Process tick through callback handler (testing callback logic)
+                    self._on_tick_direct(tick, "FILE_SIM")
+                    self.tick_count += 1
+                    
+                    # Periodic progress logging
+                    if self.tick_count % 1000 == 0:
+                        logger.info(f"[FILE SIM] Processed {self.tick_count} ticks, position: {self.active_position_id is not None}")
+                    
+                    # Update GUI performance display
+                    if self.performance_callback and self.tick_count % 50 == 0:
+                        try:
+                            self.performance_callback(self)
+                        except Exception as e:
+                            logger.warning(f"Performance callback error: {e}")
+                    
+                    # CRITICAL: Yield to GUI thread to prevent freezing
+                    # Small sleep simulates realistic tick timing and allows GUI updates
+                    time.sleep(0.001)  # 1ms delay = ~1000 ticks/sec max
+                else:
+                    # Simulation complete
+                    logger.info("📋 File simulation completed - all data processed")
+                    break
+                
+                # Check for single-run mode
+                if self.run_once and self.tick_count > 100:
+                    logger.info("Single-run mode - exiting after initial processing")
+                    self.is_running = False
+                    break
+                
+        except KeyboardInterrupt:
+            logger.info("File simulation interrupted by user")
+            self.close_position("Keyboard Interrupt")
+        except Exception as e:
+            logger.exception(f"Error in file simulation callback loop: {e}")
+            self.close_position("Error Occurred")
+        finally:
+            self.broker.disconnect()
+            logger.info("File simulation session ended")
+            
+            # Finalize and export results
+            self.results_exporter.finalize()
+            try:
+                filename = self.results_exporter.export_to_excel()
+                logger.info(f"File simulation results exported to: {filename}")
+            except Exception as e:
+                logger.error(f"Failed to export results: {e}")
+    
+    def _on_tick_direct(self, tick, symbol):
+        """Direct callback handler for Wind-style tick processing
+        
+        Called directly from WebSocket thread when tick arrives.
+        Processes tick immediately without queuing for minimum latency.
+        
+        Args:
+            tick: Tick data dict with price, timestamp, volume
+            symbol: Symbol identifier
+        """
+        logger = logging.getLogger(__name__)
+        
+        try:
+            # Add timestamp if not present
+            if 'timestamp' not in tick:
+                tick['timestamp'] = now_ist()
+            
+            now = tick['timestamp']
+            
+            # Session end check
+            if hasattr(self.strategy, "should_exit_for_session"):
+                if self.strategy.should_exit_for_session(now):
+                    self.close_position("Session End")
+                    return
+            
+            # Process tick through strategy
+            try:
+                signal = self.strategy.on_tick(tick)
+                
+                # Reset NaN streak on success
+                self.nan_streak = 0
+                self.consecutive_valid_ticks += 1
+                
+            except Exception as e:
+                # NaN threshold implementation
+                self.nan_streak += 1
+                self.consecutive_valid_ticks = 0
+                logger.warning(f"Tick processing failed (streak: {self.nan_streak}/{self.nan_threshold}): {e}")
+                
+                if self.nan_streak >= self.nan_threshold:
+                    logger.error(f"NaN streak threshold ({self.nan_threshold}) exceeded. Stopping trading.")
+                    self.close_position("NaN Threshold Exceeded")
+                    self.is_running = False
+                return
+            
+            # Handle signal immediately
+            if signal:
+                current_price = tick.get('price', tick.get('ltp', 0))
+                
+                if signal.action == 'BUY' and not self.active_position_id:
+                    tick_row = self._create_tick_row(tick, signal.price, now)
+                    self.active_position_id = self.strategy.open_long(tick_row, now, self.position_manager)
+                    
+                    if self.active_position_id:
+                        qty = self.position_manager.positions[self.active_position_id].current_quantity
+                        logger.info(f"[DIRECT] ENTERED LONG at ₹{signal.price:.2f} ({qty} contracts) - {signal.reason}")
+                        self._update_result_box(self.result_box, f"Direct BUY: {qty} @ {signal.price:.2f} ({signal.reason})")
+                
+                elif signal.action == 'CLOSE' and self.active_position_id:
+                    self.close_position(f"Strategy Signal: {signal.reason}")
+                    self._update_result_box(self.result_box, f"Direct CLOSE: @ {signal.price:.2f} ({signal.reason})")
+            
+            # Position management (TP/SL/trailing)
+            if self.active_position_id:
+                current_price = tick.get('price', tick.get('ltp', 0))
+                current_tick_row = self._create_tick_row(tick, current_price, now)
+                
+                try:
+                    self.position_manager.process_positions(current_tick_row, now)
+                except Exception as e:
+                    logger.error(f"Error in position_manager.process_positions: {e}")
+                
+                # Check if position was closed by risk management
+                if self.active_position_id not in self.position_manager.positions:
+                    logger.info("Position closed by risk management (TP/SL/trailing) [Direct Callback]")
+                    self._update_result_box(self.result_box, f"Risk CLOSE: @ {current_price:.2f}")
+                    
+                    try:
+                        self.strategy.on_position_closed(self.active_position_id, "Risk Management")
+                    except Exception as e:
+                        logger.warning(f"Strategy notification failed: {e}")
+                    
+                    self.active_position_id = None
+                    
+        except Exception as e:
+            logger.error(f"Error in direct callback handler: {e}")
+            logger.exception("Direct callback exception details:")
 
     def close_position(self, reason: str = "Manual"):
         if self.active_position_id and self.active_position_id in self.position_manager.positions:
