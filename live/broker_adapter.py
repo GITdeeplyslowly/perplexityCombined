@@ -6,7 +6,7 @@ Pure SmartAPI broker/tick data adapter for live trading and forward testing.
 LIVE TRADING (Primary Function):
 - Handles SmartAPI login/session management
 - Streams live ticks via WebSocket or polling mode
-- Buffers ticks, generates 1-min OHLCV bars
+- Buffers ticks for tick-by-tick processing (NO bar aggregation)
 - Never sends real orders in paper trading mode
 
 DATA SOURCES (User-Controlled):
@@ -26,12 +26,20 @@ import logging
 import pandas as pd
 import threading
 import queue
+import os
+import csv
+from pathlib import Path
 
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Callable
 
 from utils.time_utils import now_ist, normalize_datetime_to_ist, IST
 from types import MappingProxyType
+
+# Derive project root dynamically and set tick log directory
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+TICK_LOG_DIR = PROJECT_ROOT / "LiveTickPrice"
+TICK_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +108,9 @@ class BrokerAdapter:
         self.last_poll_time = None
         self.min_poll_interval = 1.0  # minimum 1 second between polls
         
+        # Initialize tick CSV log for this session (performance-optimized)
+        self._init_tick_logging(config)
+        
         # Optional file simulation (ONLY when explicitly enabled by user)
         self.file_simulator = None
         if config.get('data_simulation', {}).get('enabled', False):
@@ -125,6 +136,40 @@ class BrokerAdapter:
         except ImportError:
             self.WebSocketTickStreamer = None
             logger.info("WebSocket streaming not available; will use polling mode.")
+
+    def _init_tick_logging(self, config):
+        """Initialize session-specific CSV tick logging for LIVE data only (no redundancy with historical files)"""
+        try:
+            # Only enable tick logging for live data, not file simulation
+            if config.get('data_simulation', {}).get('enabled', False):
+                self.tick_logging_enabled = False
+                self.tick_file = None
+                self.tick_writer = None
+                logger.info("📁 File simulation mode: tick logging disabled (source file already exists)")
+                return
+            
+            # Generate session-based filename using session end time
+            date = datetime.now().strftime("%Y%m%d")
+            eh, em = config['session']['end_hour'], config['session']['end_min']
+            fname = f"livePrice_{date}_{eh:02d}{em:02d}.csv"
+            
+            # Open file with buffered I/O for performance
+            tick_log_path = TICK_LOG_DIR / fname
+            self.tick_file = tick_log_path.open("w", newline="", encoding="utf-8", buffering=8192)
+            self.tick_writer = csv.writer(self.tick_file)
+            
+            # Write CSV header
+            self.tick_writer.writerow(["timestamp", "price", "volume", "symbol"])
+            
+            # Track logging state
+            self.tick_logging_enabled = True
+            logger.info(f"🌐 Live tick logging initialized: {tick_log_path}")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize tick logging: {e}")
+            self.tick_logging_enabled = False
+            self.tick_file = None
+            self.tick_writer = None
 
     def connect(self):
         """Authenticate and establish live SmartAPI session with WebSocket streaming."""
@@ -261,6 +306,9 @@ class BrokerAdapter:
 
     def disconnect(self):
         """Graceful cleanup of WebSocket and SmartAPI session."""
+        # Close tick logging file
+        self._close_tick_logging()
+        
         # Clean up WebSocket connection first
         if self.ws_streamer:
             try:
@@ -348,8 +396,9 @@ class BrokerAdapter:
             on_tick_callback: Optional direct callback for Wind-style performance (bypasses queue)
         """
         try:
-            # Store callback for hybrid tick processing
-            self.on_tick_callback = on_tick_callback
+            # Store callback for hybrid tick processing (only if provided, don't overwrite existing)
+            if on_tick_callback is not None:
+                self.on_tick_callback = on_tick_callback
             
             live = self.live_params
             symbol_tokens = [{
@@ -390,6 +439,17 @@ class BrokerAdapter:
         2. Queue-based polling (backwards compatible)
         """
         try:
+            # DEBUG: Track tick reception - initialize counter at broker level
+            if not hasattr(self, '_broker_tick_count'):
+                self._broker_tick_count = 0
+                logger.info("🔧 [BROKER] Initialized _broker_tick_count counter")
+            
+            self._broker_tick_count += 1
+            
+            # Log FIRST tick and then every 100 ticks to verify broker is receiving WebSocket data
+            if self._broker_tick_count == 1 or self._broker_tick_count % 100 == 0:
+                logger.info(f"🌐 [BROKER] WebSocket tick #{self._broker_tick_count} received, price: ₹{tick.get('price', 'N/A')}")
+            
             # Add timestamp if not present
             if 'timestamp' not in tick:
                 tick['timestamp'] = pd.Timestamp.now(tz=IST)
@@ -398,12 +458,22 @@ class BrokerAdapter:
             self.last_price = float(tick.get('price', tick.get('ltp', 0)))
             self.last_tick_time = pd.Timestamp.now(tz=IST)
             
+            # Log raw tick to CSV (buffered, minimal performance impact)
+            self._log_tick_to_csv(tick, symbol)
+            
             # Option 1: Direct callback (Wind-style, highest performance)
             if self.on_tick_callback:
+                # Log FIRST callback and every 100 ticks
+                if self._broker_tick_count == 1 or self._broker_tick_count % 100 == 0:
+                    logger.info(f"🔗 [BROKER] Calling on_tick_callback for tick #{self._broker_tick_count}")
                 try:
                     self.on_tick_callback(tick, symbol)
                 except Exception as e:
-                    logger.error(f"Error in tick callback: {e}")
+                    logger.error(f"🔥 [BROKER] Error in tick callback: {type(e).__name__}: {e}", exc_info=True)
+            else:
+                # Log FIRST tick and every 100 ticks if callback is None
+                if self._broker_tick_count == 1 or self._broker_tick_count % 100 == 0:
+                    logger.warning(f"⚠️ [BROKER] on_tick_callback is None! Callback not registered! (tick #{self._broker_tick_count})")
             
             # Option 2: Queue for polling (backwards compatible)
             # Always queue tick for backwards compatibility with trader.py
@@ -421,3 +491,31 @@ class BrokerAdapter:
             logger.error(f"Error processing WebSocket tick: {e}")
             # Log WebSocket connection status on error
             logger.error(f"WebSocket streaming_mode: {self.streaming_mode}, stream_status: {self.stream_status}")
+
+    def _log_tick_to_csv(self, tick, symbol):
+        """Log tick to CSV with minimal performance impact (buffered I/O)"""
+        if self.tick_logging_enabled and self.tick_writer:
+            try:
+                # Extract essential tick data efficiently
+                timestamp = tick.get('timestamp', datetime.now())
+                price = tick.get('price', tick.get('ltp', 0))
+                volume = tick.get('volume', 0)
+                
+                # Write row (buffered, non-blocking)
+                self.tick_writer.writerow([timestamp, price, volume, symbol])
+                
+            except Exception as e:
+                # Fail silently to avoid affecting trading performance
+                if not hasattr(self, '_tick_log_error_logged'):
+                    logger.warning(f"Tick logging error (will not repeat): {e}")
+                    self._tick_log_error_logged = True
+
+    def _close_tick_logging(self):
+        """Close tick logging file and save session data"""
+        if hasattr(self, 'tick_file') and self.tick_file:
+            try:
+                self.tick_file.close()
+                self.tick_logging_enabled = False
+                logger.info("📊 Tick log saved and session ended")
+            except Exception as e:
+                logger.warning(f"Error closing tick log file: {e}")

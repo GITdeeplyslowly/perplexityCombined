@@ -25,7 +25,7 @@ from datetime import datetime
 # Import timezone from SSOT
 from utils.time_utils import IST
 try:
-    from SmartApi.smartWebSocketV2 import SmartWebSocketV2
+    from SmartApi.smartWebSocketV2 import SmartWebSocketV2  # Capital 'A' - correct package name
 except ImportError:
     SmartWebSocketV2 = None  # Install with pip install smartapi-python
 

@@ -19,6 +19,9 @@ from live.forward_test_results import ForwardTestResults
 from utils.time_utils import now_ist
 from utils.config_helper import validate_config, freeze_config, create_config_from_defaults
 
+# Module-level logger
+logger = logging.getLogger(__name__)
+
 def get_strategy(config):
     """Get strategy instance with frozen MappingProxyType config - strict validation"""
     if not isinstance(config, MappingProxyType):
@@ -29,13 +32,14 @@ def get_strategy(config):
     return strat_module.ModularIntradayStrategy(config, ind_mod)
 
 class LiveTrader:
-    def __init__(self, config_path: str = None, config_dict: dict = None, frozen_config: MappingProxyType = None):
+    def __init__(self, config_path: str = None, config_dict: dict = None, frozen_config: MappingProxyType = None, dialog_text: str = None):
         """Initialize LiveTrader with frozen config validation
         
         Args:
             config_path: Path to YAML config file (legacy)
             config_dict: Raw dict config (legacy) 
             frozen_config: MappingProxyType from GUI workflow (preferred)
+            dialog_text: Configuration dialog text from GUI (REQUIRED for results export)
         """
         # Accept frozen config directly from GUI (preferred path)
         if frozen_config is not None:
@@ -66,13 +70,22 @@ class LiveTrader:
         # Pass frozen config directly to PositionManager (it expects MappingProxyType)
         self.position_manager = PositionManager(config)
         self.broker = BrokerAdapter(config)  # Pass frozen config downstream
-        self.results_exporter = ForwardTestResults(config, self.position_manager, now_ist())
+        
+        # 🔍 DEBUG: Log dialog_text before passing to ForwardTestResults
+        logger.info(f"🔍 LiveTrader creating ForwardTestResults - dialog_text type: {type(dialog_text)}, length: {len(dialog_text) if dialog_text else 0}")
+        if dialog_text:
+            logger.info(f"✅ Passing dialog_text to ForwardTestResults - first 100 chars: {dialog_text[:100]}")
+        else:
+            logger.warning(f"⚠️ dialog_text is empty or None before passing: {repr(dialog_text)}")
+        
+        self.results_exporter = ForwardTestResults(config, self.position_manager, now_ist(), dialog_text=dialog_text)
         self.is_running = False
         self.active_position_id = None
         
         # Hybrid mode: Support both polling and direct callbacks (Wind-style)
         self.use_direct_callbacks = False  # Toggle for Wind-style performance
         self.tick_count = 0
+        self.last_price = None  # Track last seen price for heartbeat logging
         self._last_no_tick_log = None
 
     def stop(self):
@@ -311,12 +324,26 @@ class LiveTrader:
         # LIVE WEBSTREAM CALLBACK LOOP (SACROSANCT - NO SIMULATION INTERFERENCE)
         logger.info("🔥 Callback mode active - ticks processed directly as they arrive")
         
+        # Check if WebSocket is available
+        has_websocket = hasattr(self.broker, 'streaming_mode') and self.broker.streaming_mode
+        
         try:
             while self.is_running:
+                # If no WebSocket, manually poll and trigger callback
+                if not has_websocket:
+                    tick = self.broker.get_next_tick()
+                    if tick:
+                        symbol = self.config['instrument']['symbol']
+                        self._on_tick_direct(tick, symbol)
+                    else:
+                        time.sleep(0.1)  # Brief sleep when no tick available
+                
                 # Heartbeat logging
                 self.tick_count += 1
                 if self.tick_count % 100 == 0:
-                    logger.info(f"[HEARTBEAT] Callback mode - {self.tick_count} cycles, position: {self.active_position_id is not None}")
+                    last_price = self.broker.get_last_price()
+                    price_str = f"₹{last_price:.2f}" if last_price > 0 else "N/A"
+                    logger.info(f"[HEARTBEAT] Callback mode - {self.tick_count} cycles, position: {self.active_position_id is not None}, price: {price_str}")
                 
                 # Update GUI performance display
                 if self.performance_callback and self.tick_count % 50 == 0:
@@ -433,11 +460,24 @@ class LiveTrader:
         logger = logging.getLogger(__name__)
         
         try:
+            # Track actual tick count (separate from heartbeat)
+            if not hasattr(self, '_callback_tick_count'):
+                self._callback_tick_count = 0
+                logger.info("🔧 [CALLBACK] Initialized _callback_tick_count counter")
+            
+            self._callback_tick_count += 1
+            
+            # Log FIRST tick and every 100 ticks to verify callback is receiving ticks
+            if self._callback_tick_count == 1 or self._callback_tick_count % 100 == 0:
+                logger.info(f"🔍 [CALLBACK] Processing tick #{self._callback_tick_count}, price: ₹{tick.get('price', 'N/A')}, keys: {list(tick.keys())}")
             # Add timestamp if not present
             if 'timestamp' not in tick:
                 tick['timestamp'] = now_ist()
             
             now = tick['timestamp']
+            
+            # Update last price for heartbeat logging
+            self.last_price = tick.get('price', tick.get('ltp', None))
             
             # Session end check
             if hasattr(self.strategy, "should_exit_for_session"):
@@ -447,7 +487,18 @@ class LiveTrader:
             
             # Process tick through strategy
             try:
+                # Log FIRST strategy call and every 300 ticks to verify strategy is being called
+                if self._callback_tick_count == 1 or self._callback_tick_count % 300 == 0:
+                    logger.info(f"📊 [CALLBACK] Calling strategy.on_tick() for tick #{self._callback_tick_count}")
+                
                 signal = self.strategy.on_tick(tick)
+                
+                # Log signal result for FIRST tick and occasionally
+                if self._callback_tick_count == 1 or self._callback_tick_count % 300 == 0:
+                    if signal:
+                        logger.info(f"✅ [CALLBACK] Strategy returned signal: {signal.action} @ ₹{signal.price}")
+                    else:
+                        logger.info(f"⏸️ [CALLBACK] Strategy returned None (no entry signal)")
                 
                 # Reset NaN streak on success
                 self.nan_streak = 0
@@ -468,6 +519,7 @@ class LiveTrader:
             # Handle signal immediately
             if signal:
                 current_price = tick.get('price', tick.get('ltp', 0))
+                self.last_price = current_price  # Update for heartbeat logging
                 
                 if signal.action == 'BUY' and not self.active_position_id:
                     tick_row = self._create_tick_row(tick, signal.price, now)
@@ -485,6 +537,7 @@ class LiveTrader:
             # Position management (TP/SL/trailing)
             if self.active_position_id:
                 current_price = tick.get('price', tick.get('ltp', 0))
+                self.last_price = current_price  # Update for heartbeat logging
                 current_tick_row = self._create_tick_row(tick, current_price, now)
                 
                 try:

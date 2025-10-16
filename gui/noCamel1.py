@@ -36,7 +36,7 @@ from copy import deepcopy
 from types import MappingProxyType
 from typing import Dict, Any
 
-from utils.config_helper import create_config_from_defaults, validate_config, freeze_config, ConfigAccessor
+from utils.config_helper import create_config_from_defaults, validate_config, freeze_config, ConfigAccessor, configure_log_path_for_mode
 from backtest.backtest_runner import BacktestRunner
 from utils.cache_manager import refresh_symbol_cache, load_symbol_cache
 from live.trader import LiveTrader
@@ -387,6 +387,9 @@ class UnifiedTradingGUI(tk.Tk):
         # 7. Initialize instrument selection (after GUI widgets are created)
         self._initialize_instrument_selection()
 
+        # 8. Register window close handler to prevent accidental closures
+        self.protocol("WM_DELETE_WINDOW", self._on_closing)
+
         logger.info("GUI initialized successfully with runtime config")
 
     def _load_user_preferences(self):
@@ -629,7 +632,8 @@ class UnifiedTradingGUI(tk.Tk):
                                  "Please fix configuration issues:\n\n" + "\n".join(errs))
             return None
 
-        # Freeze config to make it immutable for the run
+        # Configure log path for mode & session BEFORE freezing
+        config = configure_log_path_for_mode(config)
         try:
             frozen = freeze_config(config)
         except Exception as e:
@@ -2133,6 +2137,16 @@ class UnifiedTradingGUI(tk.Tk):
         except Exception as e:
             logger.error(f"Failed to clear logs: {e}")
 
+    def _get_gui_log_text(self):
+        """Get all log text from the GUI Logs tab for Excel export"""
+        try:
+            # Get all text from the log widget
+            log_text = self.log_text.get("1.0", "end-1c").strip()
+            return log_text
+        except Exception as e:
+            logger.error(f"Failed to get GUI log text: {e}")
+            return f"Error retrieving log text: {e}"
+
     def _ft_refresh_cache(self):
         """Refresh symbol cache for forward testing"""
         try:
@@ -2431,6 +2445,8 @@ class UnifiedTradingGUI(tk.Tk):
             logger.info(f"   🏢 Exchange: {config_dict['instrument']['exchange']}")
             
             validation = validate_config(config_dict)
+            # Configure log path for mode & session BEFORE freezing
+            config_dict = configure_log_path_for_mode(config_dict)
             frozen_config = freeze_config(config_dict)
             logger.info("🔒 Configuration frozen and validated successfully")
             return frozen_config
@@ -2512,6 +2528,16 @@ class UnifiedTradingGUI(tk.Tk):
                 data_detail_msg = f"Live market feed: {self.ft_feed_type.get()}"
                 warning_msg = "\n⚠️ This will connect to LIVE market data streams!"
             
+            # Build configuration text BEFORE showing dialog (we'll need it for Excel export)
+            config_text = self._build_config_summary(ft_frozen_config, data_source_msg, data_detail_msg, warning_msg)
+            
+            # 🔍 DEBUG: Log config_text generation
+            logger.info(f"🔍 GUI generated config_text - type: {type(config_text)}, length: {len(config_text) if config_text else 0}")
+            if config_text:
+                logger.info(f"✅ config_text generated successfully - first 100 chars: {config_text[:100]}")
+            else:
+                logger.error(f"❌ config_text is empty or None: {repr(config_text)}")
+            
             # Show comprehensive configuration review dialog
             confirmed = self._show_config_review_dialog(ft_frozen_config, data_source_msg, data_detail_msg, warning_msg)
             
@@ -2527,9 +2553,9 @@ class UnifiedTradingGUI(tk.Tk):
             setup_from_config(ft_frozen_config)
             logger.info("✅ Logging reconfigured with fresh user configuration")
             
-            # Create LiveTrader with frozen config
+            # Create LiveTrader with frozen config and dialog text
             try:
-                trader = LiveTrader(frozen_config=ft_frozen_config)
+                trader = LiveTrader(frozen_config=ft_frozen_config, dialog_text=config_text)
                 # Set consumption mode from GUI toggle
                 trader.use_direct_callbacks = self.ft_use_direct_callbacks.get()
                 logger.info(f"🎯 Consumption mode set: {'⚡ Callback (Fast)' if trader.use_direct_callbacks else '📊 Polling (Safe)'}")
@@ -2538,12 +2564,11 @@ class UnifiedTradingGUI(tk.Tk):
                 messagebox.showerror("LiveTrader Error", f"Could not create LiveTrader: {e}")
                 return
             
-            # Create ForwardTestResults instance
-            self.forward_test_results = ForwardTestResults(
-                config=dict(ft_frozen_config),  # Convert MappingProxyType to dict
-                position_manager=trader.position_manager,
-                start_time=datetime.now()
-            )
+            # Use trader's ForwardTestResults (already created with dialog_text)
+            self.forward_test_results = trader.results_exporter
+            
+            # Give ForwardTestResults access to GUI log data for automatic export
+            trader.results_exporter.gui_instance = self
             
             # Start forward test in background thread to avoid blocking GUI
             import threading
@@ -2583,24 +2608,6 @@ class UnifiedTradingGUI(tk.Tk):
             self.active_trader = trader
             self.active_thread = threading.Thread(target=run_forward_test, daemon=True)
             self.active_thread.start()
-            
-            # Determine data source mode for prominent display
-            if self.ft_use_file_simulation.get():
-                data_source = "📁 FILE DATA SIMULATION"
-                data_details = f"File: {self.ft_data_file_path.get()}"
-                mode_warning = "\n⚠️  Using historical file data - NOT live market data"
-            else:
-                data_source = "🌐 LIVE WEBSTREAM TRADING"
-                data_details = f"Feed: {self.ft_feed_type.get()}"
-                mode_warning = "\n⚠️  Using LIVE market data - real-time trading"
-            
-            # Update GUI with prominent data source indication
-            messagebox.showinfo("Forward Test Started", 
-                               f"Forward test started for {self.ft_symbol.get()}\n\n"
-                               f"DATA SOURCE: {data_source}\n"
-                               f"{data_details}\n"
-                               f"Mode: Paper Trading{mode_warning}\n\n"
-                               f"Monitor progress in the results section below.")
             
             logger.info(f"Forward test initiated for {self.ft_symbol.get()} with frozen MappingProxyType config")
             
@@ -3211,6 +3218,57 @@ class UnifiedTradingGUI(tk.Tk):
         except Exception as e:
             logger.exception(f"Demo updates failed: {e}")
             self._update_ft_result_box(f"❌ Demo error: {e}\n", "live")
+
+    def _on_closing(self):
+        """
+        Handle window close event with confirmation dialog.
+        
+        Warns user if forward test is running and confirms intention to close.
+        Stops active trader if user confirms closure.
+        """
+        # Check if forward test is running
+        is_running = hasattr(self, 'active_trader') and self.active_trader is not None
+        
+        if is_running:
+            # Show warning with details about running bot
+            response = messagebox.askyesno(
+                "Confirm Close",
+                "⚠️ WARNING: Forward test is currently running!\n\n"
+                "Closing the GUI will:\n"
+                "• Stop the trading bot immediately\n"
+                "• Close all active positions\n"
+                "• Export current results\n\n"
+                "Do you wish to close and stop the bot?",
+                icon='warning'
+            )
+            
+            if response:
+                # User confirmed - stop the bot first
+                logger.info("User confirmed GUI closure - stopping active trader")
+                try:
+                    self._ft_stop_forward_test()
+                except Exception as e:
+                    logger.error(f"Error stopping forward test during closure: {e}")
+                # Proceed with closing
+                self.destroy()
+            else:
+                # User cancelled - do nothing
+                logger.info("User cancelled GUI closure - keeping bot running")
+                return
+        else:
+            # No active trading - confirm close without warning
+            response = messagebox.askyesno(
+                "Confirm Close",
+                "Are you sure you want to close the application?",
+                icon='question'
+            )
+            
+            if response:
+                logger.info("User confirmed GUI closure - no active trading")
+                self.destroy()
+            else:
+                logger.info("User cancelled GUI closure")
+                return
 
     def destroy(self):
         """Override destroy to clean up GUI log handler"""

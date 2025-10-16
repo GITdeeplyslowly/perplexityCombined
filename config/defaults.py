@@ -111,7 +111,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "rsi_overbought": 70,
         "rsi_oversold": 30,
         "htf_period": 20,
-        "consecutive_green_bars": 5,
+        "consecutive_green_bars": 3,
         "atr_len": 14,
         "indicator_update_mode": "tick",
         # Add noise filter parameters
@@ -123,14 +123,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "nan_recovery_threshold": 3
     },
     "risk": {
-        "max_positions_per_day": 25,
+        "max_positions_per_day": 100,
         "base_sl_points": 10.0,
-        "tp_points": [10.0, 25.0, 50.0, 100.0],
+        "tp_points": [5.0, 12.0, 25.0, 50.0],
         "tp_percents": [0.40, 0.30, 0.20, 0.10],
         "use_trail_stop": True,
         "trail_activation_points": 5.0,
         "trail_distance_points": 7.0,
-        "risk_per_trade_percent": 1.0,
+        "risk_per_trade_percent": 5.0,
         "commission_percent": 0.03,
         "commission_per_trade": 0.0,
         "tick_size": 0.05,
@@ -238,7 +238,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "live": {
         "paper_trading": True,
         "exchange_type": "NFO",
-        "feed_type": "LTP",
+        "feed_type": "Quote",
         "log_ticks": False,
         "visual_indicator": True,
         "api_key": "",  # Loaded during live trading authentication only

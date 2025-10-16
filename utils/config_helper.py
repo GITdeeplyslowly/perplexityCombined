@@ -266,3 +266,76 @@ def validate_instrument_consistency(cfg: Dict[str, Any]) -> Dict[str, Any]:
         errors.append(f"Error validating instrument configuration: {str(e)}")
     
     return {"valid": len(errors) == 0, "errors": errors}
+
+
+def configure_log_path_for_mode(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Configure log file path based on trading mode (data simulation vs live webstream).
+    
+    This function modifies the config's logging.logfile path to use mode-specific directories:
+    - Data Simulation: C:\\Users\\user\\projects\\Perplexity Combined\\LogFiles\\Data
+    - Live WebStream: C:\\Users\\user\\projects\\Perplexity Combined\\LogFiles\\Live
+    
+    Generates session-based filenames using session end time (YYYYMMDD_HHMM format).
+    
+    Args:
+        config: Mutable config dict (before freezing)
+    
+    Returns:
+        Modified config dict with updated log path
+        
+    Raises:
+        ValueError: If config is missing required sections
+    """
+    if 'data_simulation' not in config:
+        raise ValueError("Missing 'data_simulation' section in config")
+    if 'logging' not in config:
+        raise ValueError("Missing 'logging' section in config")
+    
+    # Detect mode based on data_simulation.enabled flag
+    is_data_simulation = config.get('data_simulation', {}).get('enabled', False)
+    
+    # Define log base directories for Data vs Live
+    base_log_dir = r"C:\Users\user\projects\Perplexity Combined\LogFiles"
+    
+    if is_data_simulation:
+        log_dir = os.path.join(base_log_dir, "Data")
+        mode_name = "Data Simulation"
+    else:
+        log_dir = os.path.join(base_log_dir, "Live")
+        mode_name = "Live WebStream"
+    
+    # Create directory if it doesn't exist
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Generate timestamp using session end time (YYYYMMDD_HHMM)
+    from datetime import datetime
+    try:
+        from utils.time_utils import now_ist
+        current_time = now_ist()
+    except ImportError:
+        import pytz
+        IST = pytz.timezone('Asia/Kolkata')
+        current_time = datetime.now(IST)
+
+    session_cfg = config.get('session', {})
+    eh, em = session_cfg.get('end_hour', 15), session_cfg.get('end_min', 30)
+    session_timestamp = f"{current_time.strftime('%Y%m%d')}_{eh:02d}{em:02d}"
+    
+    # Generate session-based filenames
+    log_filename  = f"trading_bot_{session_timestamp}.log"
+    json_filename = f"events_{session_timestamp}.jsonl"
+    
+    # Update log file paths
+    log_file = os.path.join(log_dir, log_filename)
+    config['logging']['logfile'] = log_file
+    config['logging']['log_file'] = log_file  # Update legacy alias too
+    
+    # Update JSON event log path if enabled
+    if config['logging'].get('json_event_log', False):
+        json_file = os.path.join(log_dir, json_filename)
+        config['logging']['json_event_file'] = json_file
+    
+    logger.info(f"📁 Log path configured for {mode_name} mode: {log_file}")
+    
+    return config
