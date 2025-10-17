@@ -36,7 +36,7 @@ from copy import deepcopy
 from types import MappingProxyType
 from typing import Dict, Any
 
-from utils.config_helper import create_config_from_defaults, validate_config, freeze_config, ConfigAccessor, configure_log_path_for_mode
+from utils.config_helper import create_config_from_defaults, validate_config, freeze_config, ConfigAccessor
 from backtest.backtest_runner import BacktestRunner
 from utils.cache_manager import refresh_symbol_cache, load_symbol_cache
 from live.trader import LiveTrader
@@ -213,6 +213,10 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_rsi_overbought = tk.StringVar(value=str(strategy_config['rsi_overbought']))
         self.bt_htf_period = tk.StringVar(value=str(strategy_config['htf_period']))
         self.bt_consecutive_green_bars = tk.StringVar(value=str(strategy_config['consecutive_green_bars']))
+        
+        # Control Base SL parameters
+        self.bt_control_base_sl_enabled = tk.BooleanVar(value=strategy_config['control_base_sl_enabled'])
+        self.bt_control_base_sl_green_ticks = tk.StringVar(value=str(strategy_config['control_base_sl_green_ticks']))
 
         # Risk placeholders (required — no fallbacks)
         self.bt_base_sl_points = tk.StringVar(value=str(risk_config['base_sl_points']))
@@ -255,7 +259,6 @@ class UnifiedTradingGUI(tk.Tk):
         self.logger_levels = {}
         for logger_name in ["core.indicators", "core.researchStrategy", "backtest.backtest_runner", "utils.simple_loader"]:
             self.logger_levels[logger_name] = tk.StringVar(value="DEFAULT")
-        self.logger_tick_interval = tk.StringVar(value=str(logging_config['tick_log_interval']))
 
         # Noise filter placeholders (strategy section)
         self.bt_noise_filter_enabled = tk.BooleanVar(value=strategy_config['noise_filter_enabled'])
@@ -284,6 +287,10 @@ class UnifiedTradingGUI(tk.Tk):
         self.ft_rsi_overbought = tk.StringVar(value=str(strategy_config['rsi_overbought']))
         self.ft_htf_period = tk.StringVar(value=str(strategy_config['htf_period']))
         self.ft_consecutive_green_bars = tk.StringVar(value=str(strategy_config['consecutive_green_bars']))
+        
+        # Forward Test Control Base SL parameters
+        self.ft_control_base_sl_enabled = tk.BooleanVar(value=strategy_config['control_base_sl_enabled'])
+        self.ft_control_base_sl_green_ticks = tk.StringVar(value=str(strategy_config['control_base_sl_green_ticks']))
 
         # Forward Test Risk management (from defaults.py)
         self.ft_use_stop_loss = tk.BooleanVar(value=True)  # Always enabled for live trading
@@ -533,6 +540,10 @@ class UnifiedTradingGUI(tk.Tk):
         config['strategy']['macd_signal'] = int(self.bt_macd_signal.get())
         # Consecutive Green Bars
         config['strategy']['consecutive_green_bars'] = int(self.bt_consecutive_green_bars.get())
+        
+        # Control Base SL settings
+        config['strategy']['control_base_sl_enabled'] = self.bt_control_base_sl_enabled.get()
+        config['strategy']['control_base_sl_green_ticks'] = int(self.bt_control_base_sl_green_ticks.get())
 
         # Add noise filter settings (no hardcoded defaults)
         config['strategy']['noise_filter_enabled'] = self.bt_noise_filter_enabled.get()
@@ -611,12 +622,8 @@ class UnifiedTradingGUI(tk.Tk):
                     log_level_overrides[logger_name] = level
  
         config['logging']['log_level_overrides'] = log_level_overrides
-        # Include the tick logging interval from GUI (SSOT entry) - STRICT CONFIG ACCESS
-        try:
-            config['logging']['tick_log_interval'] = int(self.logger_tick_interval.get())
-        except Exception:
-            # STRICT: Use defaults without fallbacks - fail fast if defaults malformed
-            config['logging']['tick_log_interval'] = DEFAULT_CONFIG['logging']['tick_log_interval']
+        # Tick logging disabled - using default value only
+        config['logging']['tick_log_interval'] = DEFAULT_CONFIG['logging']['tick_log_interval']
  
         # FINAL: authoritative validation + freeze (GUI SSOT)
         try:
@@ -632,8 +639,6 @@ class UnifiedTradingGUI(tk.Tk):
                                  "Please fix configuration issues:\n\n" + "\n".join(errs))
             return None
 
-        # Configure log path for mode & session BEFORE freezing
-        config = configure_log_path_for_mode(config)
         try:
             frozen = freeze_config(config)
         except Exception as e:
@@ -931,6 +936,18 @@ class UnifiedTradingGUI(tk.Tk):
         # Consecutive Green Bars (moved to next row for better spacing)
         ttk.Label(params_frame, text="Green Bars Req:").grid(row=4, column=0, sticky="e", padx=2)
         ttk.Entry(params_frame, textvariable=self.ft_consecutive_green_bars, width=8).grid(row=4, column=1, padx=2)
+        
+        # Control Base SL Parameters
+        ttk.Label(params_frame, text="Base SL Green Ticks:").grid(row=4, column=2, sticky="e", padx=2)
+        ttk.Entry(params_frame, textvariable=self.ft_control_base_sl_green_ticks, width=8).grid(row=4, column=3, padx=2)
+        
+        # Control Base SL Enable checkbox
+        ttk.Checkbutton(params_frame, text="Enable Control Base SL", 
+                       variable=self.ft_control_base_sl_enabled).grid(row=4, column=4, columnspan=2, sticky="w", padx=2)
+        
+        # Info label explaining the feature
+        ttk.Label(params_frame, text="(Normal uses 'Green Bars Req' above, Base SL uses higher value)", 
+                 foreground='grey').grid(row=5, column=0, columnspan=6, sticky="w", padx=2, pady=(2,0))
         row += 1
 
         # Add separator between Strategy Configuration and Risk Management
@@ -1441,6 +1458,33 @@ class UnifiedTradingGUI(tk.Tk):
         # Store section reference for collapsing
         self.consecutive_green_section = green_section
 
+        # Control Base SL Settings
+        row += 1
+        control_sl_section = CollapsibleFrame(parent, "Control Base SL", collapsed=not self.bt_control_base_sl_enabled.get())
+        control_sl_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
+        control_sl_frame = control_sl_section.get_content_frame()
+        control_sl_frame.columnconfigure((1,3), weight=1)
+        
+        # Connect CollapsibleFrame toggle to feature enable/disable
+        control_sl_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('control_base_sl', control_sl_section))
+        
+        # Control Base SL Parameters - use enabled style if initially checked
+        initial_style = 'Enabled.TLabel' if self.bt_control_base_sl_enabled.get() else 'Parameter.TLabel'
+        ttk.Label(control_sl_frame, text="Green Ticks After Base SL:", style=initial_style).grid(row=0, column=0, sticky='e', padx=(0,5))
+        self.control_sl_green_ticks_entry = ttk.Entry(control_sl_frame, textvariable=self.bt_control_base_sl_green_ticks, width=6, style='Standard.TEntry')
+        self.control_sl_green_ticks_entry.grid(row=0, column=1, sticky='w', padx=(0,15))
+        
+        # Info label explaining the feature
+        ttk.Label(control_sl_frame, text="(Normal uses 'Green Bars Req' above)", 
+                 style='Parameter.TLabel', foreground='grey').grid(row=0, column=2, columnspan=2, sticky='w', padx=(10,0))
+        
+        # Enable checkbox in second row
+        ttk.Checkbutton(control_sl_frame, text="Enable Control Base SL", 
+                       variable=self.bt_control_base_sl_enabled).grid(row=1, column=0, columnspan=4, sticky='w', pady=(5,0))
+        
+        # Store section reference for collapsing
+        self.control_base_sl_section = control_sl_section
+
     def _build_optional_indicators_group(self, parent):
         """Optional indicators with toggle functionality: HTF, RSI, Bollinger Bands, Stochastic, ATR"""
         # Find next available row
@@ -1870,6 +1914,8 @@ class UnifiedTradingGUI(tk.Tk):
         # Get the appropriate variable name
         if group_name == 'consecutive_green':
             var_name = 'bt_use_consecutive_green'
+        elif group_name == 'control_base_sl':
+            var_name = 'bt_control_base_sl_enabled'
         elif group_name in ['stop_loss', 'take_profit']:
             var_name = f'bt_use_{group_name}'
         elif group_name == 'trail_stop':
@@ -2363,6 +2409,10 @@ class UnifiedTradingGUI(tk.Tk):
         config_dict['strategy']['htf_period'] = int(self.ft_htf_period.get())
         config_dict['strategy']['consecutive_green_bars'] = int(self.ft_consecutive_green_bars.get())
         
+        # Control Base SL parameters from forward test GUI
+        config_dict['strategy']['control_base_sl_enabled'] = self.ft_control_base_sl_enabled.get()
+        config_dict['strategy']['control_base_sl_green_ticks'] = int(self.ft_control_base_sl_green_ticks.get())
+        
         # Update risk management from forward test GUI
         config_dict['risk']['base_sl_points'] = float(self.ft_base_sl_points.get()) if self.ft_use_stop_loss.get() else 0.0
         config_dict['risk']['use_trail_stop'] = self.ft_use_trail_stop.get()
@@ -2445,8 +2495,6 @@ class UnifiedTradingGUI(tk.Tk):
             logger.info(f"   🏢 Exchange: {config_dict['instrument']['exchange']}")
             
             validation = validate_config(config_dict)
-            # Configure log path for mode & session BEFORE freezing
-            config_dict = configure_log_path_for_mode(config_dict)
             frozen_config = freeze_config(config_dict)
             logger.info("🔒 Configuration frozen and validated successfully")
             return frozen_config
@@ -3011,6 +3059,15 @@ class UnifiedTradingGUI(tk.Tk):
         strategy_cfg = config['strategy']
         lines.append(f"Strategy Version:    {strategy_cfg['strategy_version']}")
         lines.append(f"Green Bars Required: {strategy_cfg['consecutive_green_bars']}")
+        
+        # Control Base SL Configuration
+        if strategy_cfg.get('control_base_sl_enabled', False):
+            lines.append(f"Control Base SL:     ENABLED")
+            lines.append(f"  Normal Green Ticks: {strategy_cfg['consecutive_green_bars']}")
+            lines.append(f"  After Base SL:      {strategy_cfg['control_base_sl_green_ticks']} green ticks")
+        else:
+            lines.append(f"Control Base SL:     DISABLED")
+        
         lines.append("")
         lines.append("Enabled Indicators:")
         

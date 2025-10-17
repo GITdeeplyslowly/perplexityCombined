@@ -36,9 +36,8 @@ from typing import Dict, List, Optional, Any, Callable
 from utils.time_utils import now_ist, normalize_datetime_to_ist, IST
 from types import MappingProxyType
 
-# Derive project root dynamically and set tick log directory
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-TICK_LOG_DIR = PROJECT_ROOT / "LiveTickPrice"
+# Set tick log directory to user's Desktop BotResults folder
+TICK_LOG_DIR = Path(r"C:\Users\user\Desktop\BotResults\LiveTickPrice")
 TICK_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)

@@ -67,8 +67,8 @@ class LiveTrader:
         # Pass complete frozen config to strategy (not partial params)
         self.strategy = get_strategy(config)
         
-        # Pass frozen config directly to PositionManager (it expects MappingProxyType)
-        self.position_manager = PositionManager(config)
+        # Pass frozen config directly to PositionManager with strategy callback
+        self.position_manager = PositionManager(config, strategy_callback=self.strategy.on_position_exit)
         self.broker = BrokerAdapter(config)  # Pass frozen config downstream
         
         # 🔍 DEBUG: Log dialog_text before passing to ForwardTestResults

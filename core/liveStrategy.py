@@ -171,6 +171,17 @@ class ModularIntradayStrategy:
         except KeyError as e:
             raise
         
+        # --- Control Base SL feature for dynamic green tick requirements ---
+        try:
+            self.control_base_sl_enabled = self.config_accessor.get_strategy_param('control_base_sl_enabled')
+            self.base_sl_green_ticks = self.config_accessor.get_strategy_param('control_base_sl_green_ticks')
+            self.last_exit_was_base_sl = False
+            # Use existing consecutive_green_bars_required as normal threshold
+            self.current_green_tick_threshold = self.consecutive_green_bars_required
+        except KeyError as e:
+            logger.error(f"Missing Control Base SL parameters: {e}")
+            raise ValueError(f"Missing required Control Base SL parameter: {e}")
+        
         # Set name and version
         self.name = "Modular Intraday Long-Only Strategy"
         self.version = "3.0"
@@ -322,6 +333,30 @@ class ModularIntradayStrategy:
                 logger.warning(f"Position closure notification for unknown position: {position_id}")
             except Exception:
                 pass  # Continue trading even if logging fails
+
+    def on_position_exit(self, exit_info: Dict):
+        """
+        Callback for position exits to handle Control Base SL logic.
+        
+        Args:
+            exit_info: Dictionary containing exit details including exit_reason
+        """
+        if not self.control_base_sl_enabled:
+            return
+            
+        exit_reason = exit_info.get('exit_reason', '').lower()
+        
+        if 'base_sl' in exit_reason:
+            self.last_exit_was_base_sl = True
+            logger.info(
+                f"Base SL exit detected—next entry requires {self.base_sl_green_ticks} green ticks."
+            )
+        # Reset threshold on any profitable exit (TP or trailing stop)
+        elif exit_reason in ('target_profit', 'trailing_stop'):
+            self.last_exit_was_base_sl = False
+            logger.info(
+                f"Profitable exit detected—threshold reset to {self.consecutive_green_bars_required} green ticks."
+            )
 
     def process_historical_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -476,9 +511,10 @@ class ModularIntradayStrategy:
             logger.info(f"📊 ENTRY EVALUATION @ ₹{price}: Enabled checks: {', '.join(checks_performed)}")
             logger.info(f"   ❌ Entry REJECTED - Failed: {'; '.join(failed_checks)}")
         elif entry_allowed:
-            # Always log when entry is allowed (rare event)
+            # Always log when entry is allowed (rare event) - include green tick info
             price = row.get('close', row.get('price', 'N/A'))
-            logger.info(f"✅ ENTRY SIGNAL @ ₹{price}: All checks passed ({', '.join(checks_performed)})")
+            green_tick_info = f"Green ticks: {self.green_bars_count}/{self.current_green_tick_threshold}"
+            logger.info(f"✅ ENTRY SIGNAL @ ₹{price}: All checks passed ({', '.join(checks_performed)}) - {green_tick_info}")
         
         return entry_allowed
 
@@ -544,6 +580,12 @@ class ModularIntradayStrategy:
             TradingSignal if action should be taken, None otherwise
         """
         try:
+            # Update threshold dynamically based on last exit type
+            self.current_green_tick_threshold = (
+                self.base_sl_green_ticks if (self.control_base_sl_enabled and self.last_exit_was_base_sl)
+                else self.consecutive_green_bars_required
+            )
+            
             # DEBUG: Log FIRST tick and every 300 ticks to verify on_tick is being called
             if not hasattr(self, '_ontick_call_count'):
                 self._ontick_call_count = 0
@@ -599,6 +641,13 @@ class ModularIntradayStrategy:
                         price = updated_tick['price']
                     
                     if price is not None:
+                        # Reset Control Base SL threshold on successful entry
+                        if self.control_base_sl_enabled:
+                            self.last_exit_was_base_sl = False
+                            logger.info(
+                                f"Entry taken; threshold reset to {self.consecutive_green_bars_required} green ticks."
+                            )
+                        
                         return TradingSignal(
                             action="BUY",
                             timestamp=timestamp,
@@ -859,8 +908,8 @@ class ModularIntradayStrategy:
             )
 
     def _check_consecutive_green_ticks(self) -> bool:
-        """Check if we have enough consecutive green ticks for entry."""
-        return self.green_bars_count >= self.consecutive_green_bars_required
+        """Check if we have enough consecutive green ticks for entry using dynamic threshold."""
+        return self.green_bars_count >= self.current_green_tick_threshold
 
     def _validate_all_required_parameters(self):
         """

@@ -121,7 +121,7 @@ class ForwardTestResults:
 
             detected_mode = "data"
 
-            results_dir = r"C:\Users\user\projects\Perplexity Combined\results\Forward Test\data"
+            results_dir = r"C:\Users\user\Desktop\BotResults\results\Forward Test\data"
 
             logger.info("Path detection: Using data simulation mode")
 
@@ -129,7 +129,7 @@ class ForwardTestResults:
 
             detected_mode = "live"
 
-            results_dir = r"C:\Users\user\projects\Perplexity Combined\results\Forward Test\live"
+            results_dir = r"C:\Users\user\Desktop\BotResults\results\Forward Test\live"
 
             logger.info("Path detection: Using live webstream mode")
 
