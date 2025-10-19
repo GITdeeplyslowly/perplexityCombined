@@ -3,5 +3,10 @@
   "editor.formatOnSave": false,
   "editor.formatOnType": false,
   "editor.codeActionsOnSave": {},
-  "python.REPL.enableREPLSmartSend": false
+  "python.REPL.enableREPLSmartSend": false,
+  "github.copilot.nextEditSuggestions.enabled": false,
+  "github.copilot.editor.enableAutoCompletions": false,
+  "codeium.enableConfig": { "*": false },
+  "geminicodeassist.inlineSuggestions.enableAuto": false,
+  "editor.inlineSuggest.enabled": false
 }
