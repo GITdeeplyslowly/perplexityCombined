@@ -179,10 +179,15 @@ class HighPerfLogger:
             # defensive: never raise from hot-loop logging
             pass
 
-    def entry_blocked(self, reason: str, summary_every: int = 1000):
+    def entry_blocked(self, reason: str, summary_every: int = 300):
+        """
+        Log when entry is blocked (rate-limited to avoid spam).
+        Default: log every 300 blocks (~30 seconds at 10 ticks/sec).
+        """
         self._entry_block_count += 1
-        if (self._entry_block_count % summary_every) == 1:
-            self.logger.info(f"ENTRY BLOCKED (#{self._entry_block_count}): {reason}")
+        # Log first block, then every 300 blocks
+        if self._entry_block_count == 1 or (self._entry_block_count % summary_every) == 0:
+            self.logger.info(f"🚫 ENTRY BLOCKED (#{self._entry_block_count}): {reason}")
         elif self.logger.isEnabledFor(logging.DEBUG):
             self.logger.debug(f"Entry blocked #{self._entry_block_count}: {reason}")
 

@@ -46,24 +46,20 @@ def load_live_trading_credentials():
 # Single Source of Truth for defaults used by GUI and runners.
 DEFAULT_CONFIG: Dict[str, Any] = {
     "logging": {
-        # Canonical single key for file path
-        "logfile": os.path.join("logs", "trading_bot.log"),
-        # legacy alias kept for compatibility with older callers
-        "log_file": os.path.join("logs", "trading_bot.log"),
-        # Whether progress/logging of tick-level events is enabled
+        # Simplified logging - console only (Excel captures all important data)
+        "logfile": "console_only.log",  # Dummy value for compatibility
+        "log_file": "console_only.log",  # Legacy alias
         "log_progress": False,
-        # Maximum number of reason strings to include in signal logs (None == unlimited)
         "max_signal_reasons": 5,
-        "log_to_file": True,
-        "console_output": True,
+        "log_to_file": False,  # Disabled - Excel results capture everything
+        "console_output": True,  # Keep console for development
         "verbosity": "INFO",
         "tick_log_interval": 2500,
-        "max_file_size": 10 * 1024 * 1024,
-        "backup_count": 5,
+        "max_file_size": 0,  # Not used
+        "backup_count": 0,   # Not used
         "log_level_overrides": {},
-        # optional structured JSON event stream
-        "json_event_log": False,
-        "json_event_file": os.path.join("logs", "events.jsonl")
+        "json_event_log": False,  # Disabled
+        "json_event_file": "not_used.jsonl"  # Dummy value
     },
     "debug": {
         # Environment-aware error handling configuration
@@ -102,8 +98,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "use_stochastic": False,
         "use_atr": False,
         "use_consecutive_green": True,
-        "fast_ema": 9,
-        "slow_ema": 21,
+        "fast_ema": 18,
+        "slow_ema": 42,
         "macd_fast": 12,
         "macd_slow": 26,
         "macd_signal": 9,
@@ -111,7 +107,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "rsi_overbought": 70,
         "rsi_oversold": 30,
         "htf_period": 20,
-        "consecutive_green_bars": 5,
+        "consecutive_green_bars": 3,
         "atr_len": 14,
         "indicator_update_mode": "tick",
         # Add noise filter parameters
@@ -120,17 +116,20 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "noise_filter_min_ticks": 1.0,      # Minimum number of ticks to consider
         # nan/recovery thresholds (kept here for future use)
         "nan_streak_threshold": 7,
-        "nan_recovery_threshold": 3
+        "nan_recovery_threshold": 3,
+        # Control Base SL feature - dynamic green tick requirements after base SL exits
+        "control_base_sl_enabled": True,      # Enable dynamic entry control after base SL
+        "control_base_sl_green_ticks": 4      # Required green ticks after base SL (normal uses consecutive_green_bars)
     },
     "risk": {
-        "max_positions_per_day": 25,
-        "base_sl_points": 10.0,
-        "tp_points": [10.0, 25.0, 50.0, 100.0],
+        "max_positions_per_day": 100,
+        "base_sl_points": 15.0,
+        "tp_points": [5.0, 12.0, 20.0, 30.0],
         "tp_percents": [0.40, 0.30, 0.20, 0.10],
         "use_trail_stop": True,
         "trail_activation_points": 5.0,
-        "trail_distance_points": 7.0,
-        "risk_per_trade_percent": 1.0,
+        "trail_distance_points": 5.0,
+        "risk_per_trade_percent": 5.0,
         "commission_percent": 0.03,
         "commission_per_trade": 0.0,
         "tick_size": 0.05,
@@ -232,13 +231,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "allow_short": False,
         "close_at_session_end": True,
         "save_results": True,
-        "results_dir": "results",
+        "results_dir": r"C:\Users\user\Desktop\BotResults\results\Back Test",
         "log_level": "INFO"
     },
     "live": {
         "paper_trading": True,
         "exchange_type": "NFO",
-        "feed_type": "LTP",
+        "feed_type": "Quote",
         "log_ticks": False,
         "visual_indicator": True,
         "api_key": "",  # Loaded during live trading authentication only

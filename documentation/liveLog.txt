@@ -1,0 +1,423 @@
+GUI Log initialized at 2025-10-15 14:34:42
+==================================================
+14:34:42 [INFO] __main__: GUI log display is now active
+14:34:42 [INFO] __main__: Instrument changed to NIFTY: lot_size=75, exchange=NFO
+14:34:42 [INFO] __main__: Instrument selection initialized with default NIFTY settings
+14:34:42 [INFO] __main__: GUI initialized successfully with runtime config
+14:34:42 [INFO] __main__: Starting GUI main loop
+14:35:14 [INFO] __main__: Loaded 1 symbols matching 'NIFTY20OCT2525300CE'
+14:35:15 [INFO] __main__: Selected symbol: NIFTY20OCT2525300CE, Token: 45260
+14:35:18 [INFO] __main__: 🔄 Building fresh forward test configuration...
+14:35:18 [INFO] __main__: 🔄 Building fresh configuration from current GUI state...
+14:35:18 [INFO] __main__: 📋 Fresh GUI Configuration Captured:
+14:35:18 [INFO] __main__:    Max Trades/Day: 25 (from GUI: 25)
+14:35:18 [INFO] __main__:    Symbol: NIFTY20OCT2525300CE
+14:35:18 [INFO] __main__:    Capital: 100000.0
+14:35:18 [INFO] __main__:    Data Source: Live WebStream
+14:35:18 [INFO] __main__: 🔐 Credentials loaded: api_key=✅, client_code=✅
+14:35:18 [INFO] __main__: ✅ Fresh Configuration Ready for Forward Test:
+14:35:18 [INFO] __main__:    📊 Strategy: Max Trades = 25
+14:35:18 [INFO] __main__:    💰 Capital: 100000.0
+14:35:18 [INFO] __main__:    📈 Symbol: NIFTY20OCT2525300CE
+14:35:18 [INFO] __main__:    🏢 Exchange: NFO
+14:35:18 [INFO] __main__: 🔒 Configuration frozen and validated successfully
+14:35:18 [INFO] __main__: 🎯 Forward Test Starting with Fresh Configuration:
+14:35:18 [INFO] __main__:    Max Trades/Day: 25
+14:35:18 [INFO] __main__:    Symbol: NIFTY20OCT2525300CE
+14:35:18 [INFO] __main__:    Capital: $100,000.00
+14:35:18 [INFO] __main__:    Data: Live WebStream
+14:35:18 [INFO] __main__: 🔍 GUI generated config_text - type: <class 'str'>, length: 1781
+14:35:18 [INFO] __main__: ✅ config_text generated successfully - first 100 chars: ================================================================================
+                   
+14:35:21 [INFO] __main__: 🔄 Reconfiguring logging with user settings from GUI...
+14:35:21 [INFO] __main__: ✅ Logging reconfigured with fresh user configuration
+14:35:21 [INFO] core.liveStrategy: SESSION START: Session configured: 09:15 to 15:30 buffers=+5/-20m
+14:35:21 [INFO] core.liveStrategy: SESSION START: Strategy initialized: Modular Intraday Long-Only Strategy v3.0
+14:35:21 [INFO] core.position_manager: PositionManager initialized with capital: 100,000.0
+14:35:22 [INFO] live.trader: 🔍 LiveTrader creating ForwardTestResults - dialog_text type: <class 'str'>, length: 1781
+14:35:22 [INFO] live.trader: ✅ Passing dialog_text to ForwardTestResults - first 100 chars: ================================================================================
+                   
+14:35:22 [INFO] live.forward_test_results: 🔍 ForwardTestResults.__init__ - dialog_text type: <class 'str'>, length: 1781
+14:35:22 [INFO] live.forward_test_results: ✅ Received dialog_text - first 100 chars: ================================================================================
+                   
+14:35:22 [INFO] __main__: 🎯 Consumption mode set: ⚡ Callback (Fast)
+14:35:22 [INFO] __main__: Starting forward test for NIFTY20OCT2525300CE with frozen configuration
+14:35:22 [INFO] live.trader: ⚡ Direct callback mode enabled (Wind-style, ~50ms latency)
+14:35:22 [INFO] live.broker_adapter: 🔐 Using DIRECT AUTHENTICATION mode (all credentials provided)
+14:35:22 [INFO] live.broker_adapter: 🔌 Establishing SmartAPI connection for live data streaming...
+14:35:22 [INFO] live.broker_adapter: 🔐 Using direct SmartAPI authentication...
+14:35:22 [INFO] root: Generated fresh TOTP for authentication
+14:35:23 [INFO] root: SmartAPI login successful for H53749929. Session token saved.
+14:35:23 [INFO] live.broker_adapter: ✅ Direct SmartAPI authentication successful
+14:35:23 [INFO] live.broker_adapter: 📡 Initializing WebSocket for NIFTY20OCT2525300CE (Token: 45260)
+14:35:23 [INFO] live.websocket_stream: WebSocket thread started.
+14:35:23 [INFO] live.broker_adapter: 📡 WebSocket streaming started successfully
+14:35:23 [INFO] live.broker_adapter: 🟢 SmartAPI connection established successfully
+14:35:23 [INFO] live.trader: 🟢 Forward testing session started - TRUE TICK-BY-TICK PROCESSING
+14:35:23 [INFO] live.trader: 🔥 Callback mode active - ticks processed directly as they arrive
+14:35:23 [INFO] __main__: Forward test initiated for NIFTY20OCT2525300CE with frozen MappingProxyType config
+14:35:23 [INFO] websocket: Websocket connected
+14:35:23 [INFO] live.websocket_stream: WebSocket connection OPEN
+14:35:23 [INFO] live.websocket_stream: Mapped NFO -> exchange_type=2 for NIFTY20OCT2525300CE
+14:35:23 [INFO] live.websocket_stream: Subscribed to 1 stream(s): ['NIFTY20OCT2525300CE'] [mode=2, feed_type=Quote]
+14:35:23 [INFO] live.broker_adapter: 🔧 [BROKER] Initialized _broker_tick_count counter
+14:35:23 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #1 received, price: ₹161.1
+14:35:23 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #1
+14:35:24 [INFO] live.trader: 🔧 [CALLBACK] Initialized _callback_tick_count counter
+14:35:24 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1, price: ₹161.1, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:35:24 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #1
+14:35:24 [INFO] core.liveStrategy: 🔧 [STRATEGY] Initialized _ontick_call_count counter
+14:35:24 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #1, tick keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:35:24 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#1): Need 5 green ticks, have 0, NIFTY20OCT2525300CE @ ₹161.1
+14:35:24 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+14:35:33 [INFO] live.trader: [HEARTBEAT] Callback mode - 100 cycles, position: False, price: ₹162.00
+14:35:43 [INFO] live.trader: [HEARTBEAT] Callback mode - 200 cycles, position: False, price: ₹160.65
+14:35:53 [INFO] live.trader: [HEARTBEAT] Callback mode - 300 cycles, position: False, price: ₹159.75
+14:36:03 [INFO] live.trader: [HEARTBEAT] Callback mode - 400 cycles, position: False, price: ₹160.15
+14:36:13 [INFO] live.trader: [HEARTBEAT] Callback mode - 500 cycles, position: False, price: ₹160.60
+14:36:23 [INFO] live.trader: [HEARTBEAT] Callback mode - 600 cycles, position: False, price: ₹161.25
+14:36:24 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #100 received, price: ₹160.85
+14:36:24 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #100
+14:36:25 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #100, price: ₹160.85, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:36:33 [INFO] live.trader: [HEARTBEAT] Callback mode - 700 cycles, position: False, price: ₹161.20
+14:36:43 [INFO] live.trader: [HEARTBEAT] Callback mode - 800 cycles, position: False, price: ₹162.00
+14:36:53 [INFO] live.trader: [HEARTBEAT] Callback mode - 900 cycles, position: False, price: ₹162.05
+14:37:03 [INFO] live.trader: [HEARTBEAT] Callback mode - 1000 cycles, position: False, price: ₹161.45
+14:37:13 [INFO] live.trader: [HEARTBEAT] Callback mode - 1100 cycles, position: False, price: ₹161.80
+14:37:23 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹162.15: All checks passed (EMA Crossover)
+14:37:23 [INFO] core.position_manager: Opened position 8d0b13e3
+14:37:23 [INFO] core.position_manager: Lots: 8 (600 total units)
+14:37:23 [INFO] core.position_manager: Entry price: â‚¹162.15 per unit
+14:37:23 [INFO] core.position_manager: Stop loss: â‚¹152.15
+14:37:23 [INFO] core.position_manager: Take profit levels: ['â‚¹172.15', 'â‚¹187.15', 'â‚¹212.15', 'â‚¹262.15']
+14:37:23 [INFO] core.position_manager: Position value: ₹97,290.00
+14:37:23 [INFO] core.liveStrategy: TRADE BUY: 75 @ 162.15 - Strategy signal
+14:37:23 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹162.15 (600 contracts) - Strategy entry signal
+14:37:23 [INFO] live.trader: [HEARTBEAT] Callback mode - 1200 cycles, position: True, price: ₹162.15
+14:37:26 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #200 received, price: ₹162.15
+14:37:26 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #200
+14:37:26 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #200, price: ₹162.15, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:37:33 [INFO] live.trader: [HEARTBEAT] Callback mode - 1300 cycles, position: True, price: ₹161.95
+14:37:44 [INFO] live.trader: [HEARTBEAT] Callback mode - 1400 cycles, position: True, price: ₹160.95
+14:37:54 [INFO] live.trader: [HEARTBEAT] Callback mode - 1500 cycles, position: True, price: ₹161.45
+14:38:04 [INFO] live.trader: [HEARTBEAT] Callback mode - 1600 cycles, position: True, price: ₹163.85
+14:38:14 [INFO] live.trader: [HEARTBEAT] Callback mode - 1700 cycles, position: True, price: ₹163.25
+14:38:24 [INFO] live.trader: [HEARTBEAT] Callback mode - 1800 cycles, position: True, price: ₹163.00
+14:38:29 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #300 received, price: ₹163.0
+14:38:29 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #300
+14:38:29 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #300, price: ₹163.0, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:38:29 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #300
+14:38:29 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #300, tick keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:38:29 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+14:38:34 [INFO] live.trader: [HEARTBEAT] Callback mode - 1900 cycles, position: True, price: ₹162.80
+14:38:44 [INFO] live.trader: [HEARTBEAT] Callback mode - 2000 cycles, position: True, price: ₹161.20
+14:38:54 [INFO] live.trader: [HEARTBEAT] Callback mode - 2100 cycles, position: True, price: ₹161.25
+14:39:04 [INFO] live.trader: [HEARTBEAT] Callback mode - 2200 cycles, position: True, price: ₹159.60
+14:39:14 [INFO] live.trader: [HEARTBEAT] Callback mode - 2300 cycles, position: True, price: ₹159.20
+14:39:24 [INFO] live.trader: [HEARTBEAT] Callback mode - 2400 cycles, position: True, price: ₹158.00
+14:39:29 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #400 received, price: ₹155.1
+14:39:29 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #400
+14:39:29 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #400, price: ₹155.1, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:39:35 [INFO] live.trader: [HEARTBEAT] Callback mode - 2500 cycles, position: True, price: ₹156.50
+14:39:45 [INFO] live.trader: [HEARTBEAT] Callback mode - 2600 cycles, position: True, price: ₹156.35
+14:39:55 [INFO] live.trader: [HEARTBEAT] Callback mode - 2700 cycles, position: True, price: ₹156.70
+14:40:05 [INFO] live.trader: [HEARTBEAT] Callback mode - 2800 cycles, position: True, price: ₹156.25
+14:40:15 [INFO] live.trader: [HEARTBEAT] Callback mode - 2900 cycles, position: True, price: ₹155.00
+14:40:25 [INFO] live.trader: [HEARTBEAT] Callback mode - 3000 cycles, position: True, price: ₹154.90
+14:40:30 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #500 received, price: ₹154.8
+14:40:30 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #500
+14:40:30 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #500, price: ₹154.8, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:40:35 [INFO] live.trader: [HEARTBEAT] Callback mode - 3100 cycles, position: True, price: ₹155.75
+14:40:45 [INFO] live.trader: [HEARTBEAT] Callback mode - 3200 cycles, position: True, price: ₹156.85
+14:40:55 [INFO] live.trader: [HEARTBEAT] Callback mode - 3300 cycles, position: True, price: ₹156.95
+14:41:05 [INFO] live.trader: [HEARTBEAT] Callback mode - 3400 cycles, position: True, price: ₹157.50
+14:41:15 [INFO] live.trader: [HEARTBEAT] Callback mode - 3500 cycles, position: True, price: ₹156.40
+14:41:25 [INFO] live.trader: [HEARTBEAT] Callback mode - 3600 cycles, position: True, price: ₹157.85
+14:41:32 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #600 received, price: ₹158.0
+14:41:32 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #600
+14:41:32 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #600, price: ₹158.0, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:41:32 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #600
+14:41:32 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #600, tick keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:41:32 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+14:41:35 [INFO] live.trader: [HEARTBEAT] Callback mode - 3700 cycles, position: True, price: ₹157.90
+14:41:45 [INFO] live.trader: [HEARTBEAT] Callback mode - 3800 cycles, position: True, price: ₹157.30
+14:41:56 [INFO] live.trader: [HEARTBEAT] Callback mode - 3900 cycles, position: True, price: ₹157.15
+14:42:06 [INFO] live.trader: [HEARTBEAT] Callback mode - 4000 cycles, position: True, price: ₹157.55
+14:42:17 [INFO] live.trader: [HEARTBEAT] Callback mode - 4100 cycles, position: True, price: ₹157.60
+14:42:29 [INFO] live.trader: [HEARTBEAT] Callback mode - 4200 cycles, position: True, price: ₹157.30
+14:42:33 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #700 received, price: ₹157.7
+14:42:33 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #700
+14:42:33 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #700, price: ₹157.7, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:42:42 [INFO] live.trader: [HEARTBEAT] Callback mode - 4300 cycles, position: True, price: ₹157.15
+14:42:54 [INFO] live.trader: [HEARTBEAT] Callback mode - 4400 cycles, position: True, price: ₹157.95
+14:43:05 [INFO] live.trader: [HEARTBEAT] Callback mode - 4500 cycles, position: True, price: ₹160.55
+14:43:15 [INFO] live.trader: [HEARTBEAT] Callback mode - 4600 cycles, position: True, price: ₹160.55
+14:43:25 [INFO] live.trader: [HEARTBEAT] Callback mode - 4700 cycles, position: True, price: ₹159.80
+14:43:35 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #800 received, price: ₹160.2
+14:43:35 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #800
+14:43:35 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #800, price: ₹160.2, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:43:36 [INFO] live.trader: [HEARTBEAT] Callback mode - 4800 cycles, position: True, price: ₹160.20
+14:43:46 [INFO] live.trader: [HEARTBEAT] Callback mode - 4900 cycles, position: True, price: ₹163.65
+14:43:53 [INFO] core.position_manager: Trailing stop activated for 8d0b13e3 at 160.5
+14:43:56 [INFO] live.trader: [HEARTBEAT] Callback mode - 5000 cycles, position: True, price: ₹166.85
+14:44:06 [INFO] live.trader: [HEARTBEAT] Callback mode - 5100 cycles, position: True, price: ₹165.55
+14:44:16 [INFO] live.trader: [HEARTBEAT] Callback mode - 5200 cycles, position: True, price: ₹162.65
+14:44:26 [INFO] live.trader: [HEARTBEAT] Callback mode - 5300 cycles, position: True, price: ₹163.05
+14:44:36 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #900 received, price: ₹163.7
+14:44:36 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #900
+14:44:36 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #900, price: ₹163.7, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:44:36 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #900
+14:44:36 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #900, tick keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:44:36 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+14:44:37 [INFO] live.trader: [HEARTBEAT] Callback mode - 5400 cycles, position: True, price: ₹163.70
+14:44:47 [INFO] live.trader: [HEARTBEAT] Callback mode - 5500 cycles, position: True, price: ₹162.60
+14:44:57 [INFO] live.trader: [HEARTBEAT] Callback mode - 5600 cycles, position: True, price: ₹162.95
+14:45:07 [INFO] live.trader: [HEARTBEAT] Callback mode - 5700 cycles, position: True, price: ₹162.10
+14:45:18 [INFO] live.trader: [HEARTBEAT] Callback mode - 5800 cycles, position: True, price: ₹161.95
+14:45:28 [INFO] live.trader: [HEARTBEAT] Callback mode - 5900 cycles, position: True, price: ₹162.70
+14:45:38 [INFO] live.trader: [HEARTBEAT] Callback mode - 6000 cycles, position: True, price: ₹162.20
+14:45:38 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #1000 received, price: ₹162.15
+14:45:38 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #1000
+14:45:38 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1000, price: ₹162.15, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:45:48 [INFO] live.trader: [HEARTBEAT] Callback mode - 6100 cycles, position: True, price: ₹163.20
+14:45:58 [INFO] live.trader: [HEARTBEAT] Callback mode - 6200 cycles, position: True, price: ₹163.05
+14:46:08 [INFO] live.trader: [HEARTBEAT] Callback mode - 6300 cycles, position: True, price: ₹163.40
+14:46:14 [INFO] core.position_manager: Fully closed position 8d0b13e3
+14:46:14 [INFO] core.position_manager: Closed position 8d0b13e3
+14:46:14 [INFO] core.position_manager: Lots closed: 8 (600 units)
+14:46:14 [INFO] core.position_manager: Exit price: â‚¹160.45 per unit
+14:46:14 [INFO] core.position_manager: P&L: â‚¹-1081.56 (Trailing Stop)
+14:46:14 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+14:46:19 [INFO] live.trader: [HEARTBEAT] Callback mode - 6400 cycles, position: False, price: ₹158.85
+14:46:29 [INFO] live.trader: [HEARTBEAT] Callback mode - 6500 cycles, position: False, price: ₹157.15
+14:46:39 [INFO] live.trader: [HEARTBEAT] Callback mode - 6600 cycles, position: False, price: ₹157.70
+14:46:41 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #1100 received, price: ₹157.5
+14:46:41 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #1100
+14:46:41 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1100, price: ₹157.5, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:46:49 [INFO] live.trader: [HEARTBEAT] Callback mode - 6700 cycles, position: False, price: ₹156.75
+14:46:59 [INFO] live.trader: [HEARTBEAT] Callback mode - 6800 cycles, position: False, price: ₹157.35
+14:47:09 [INFO] live.trader: [HEARTBEAT] Callback mode - 6900 cycles, position: False, price: ₹157.80
+14:47:16 [INFO] core.liveStrategy: 📊 ENTRY EVALUATION @ ₹157.45: Enabled checks: EMA Crossover
+14:47:16 [INFO] core.liveStrategy:    ❌ Entry REJECTED - Failed: EMA: fast(157.37) ≤ slow(157.49)
+14:47:19 [INFO] live.trader: [HEARTBEAT] Callback mode - 7000 cycles, position: False, price: ₹157.55
+14:47:20 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#300): Need 5 green ticks, have 1, NIFTY20OCT2525300CE @ ₹157.7
+14:47:29 [INFO] live.trader: [HEARTBEAT] Callback mode - 7100 cycles, position: False, price: ₹156.70
+14:47:40 [INFO] live.trader: [HEARTBEAT] Callback mode - 7200 cycles, position: False, price: ₹157.40
+14:47:42 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #1200 received, price: ₹157.3
+14:47:42 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #1200
+14:47:42 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1200, price: ₹157.3, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:47:42 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #1200
+14:47:42 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #1200, tick keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:47:42 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+14:47:50 [INFO] live.trader: [HEARTBEAT] Callback mode - 7300 cycles, position: False, price: ₹157.05
+14:48:00 [INFO] live.trader: [HEARTBEAT] Callback mode - 7400 cycles, position: False, price: ₹156.50
+14:48:10 [INFO] live.trader: [HEARTBEAT] Callback mode - 7500 cycles, position: False, price: ₹154.45
+14:48:20 [INFO] live.trader: [HEARTBEAT] Callback mode - 7600 cycles, position: False, price: ₹153.10
+14:48:30 [INFO] live.trader: [HEARTBEAT] Callback mode - 7700 cycles, position: False, price: ₹151.05
+14:48:40 [INFO] live.trader: [HEARTBEAT] Callback mode - 7800 cycles, position: False, price: ₹149.00
+14:48:43 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #1300 received, price: ₹149.2
+14:48:43 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #1300
+14:48:43 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1300, price: ₹149.2, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:48:50 [INFO] live.trader: [HEARTBEAT] Callback mode - 7900 cycles, position: False, price: ₹148.05
+14:49:00 [INFO] live.trader: [HEARTBEAT] Callback mode - 8000 cycles, position: False, price: ₹144.85
+14:49:03 [INFO] core.liveStrategy: 📊 ENTRY EVALUATION @ ₹145.75: Enabled checks: EMA Crossover
+14:49:03 [INFO] core.liveStrategy:    ❌ Entry REJECTED - Failed: EMA: fast(145.60) ≤ slow(146.25)
+14:49:10 [INFO] live.trader: [HEARTBEAT] Callback mode - 8100 cycles, position: False, price: ₹145.45
+14:49:20 [INFO] live.trader: [HEARTBEAT] Callback mode - 8200 cycles, position: False, price: ₹144.50
+14:49:30 [INFO] live.trader: [HEARTBEAT] Callback mode - 8300 cycles, position: False, price: ₹145.50
+14:49:40 [INFO] live.trader: [HEARTBEAT] Callback mode - 8400 cycles, position: False, price: ₹145.40
+14:49:44 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #1400 received, price: ₹147.5
+14:49:44 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #1400
+14:49:44 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1400, price: ₹147.5, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:49:50 [INFO] live.trader: [HEARTBEAT] Callback mode - 8500 cycles, position: False, price: ₹146.95
+14:49:53 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹147.7: All checks passed (EMA Crossover)
+14:49:53 [INFO] core.position_manager: Opened position e9a75bc6
+14:49:53 [INFO] core.position_manager: Lots: 8 (600 total units)
+14:49:53 [INFO] core.position_manager: Entry price: â‚¹147.70 per unit
+14:49:53 [INFO] core.position_manager: Stop loss: â‚¹137.70
+14:49:53 [INFO] core.position_manager: Take profit levels: ['â‚¹157.70', 'â‚¹172.70', 'â‚¹197.70', 'â‚¹247.70']
+14:49:53 [INFO] core.position_manager: Position value: ₹88,620.00
+14:49:53 [INFO] core.liveStrategy: TRADE BUY: 75 @ 147.70 - Strategy signal
+14:49:53 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹147.70 (600 contracts) - Strategy entry signal
+14:50:00 [INFO] live.trader: [HEARTBEAT] Callback mode - 8600 cycles, position: True, price: ₹149.00
+14:50:10 [INFO] live.trader: [HEARTBEAT] Callback mode - 8700 cycles, position: True, price: ₹148.05
+14:50:21 [INFO] live.trader: [HEARTBEAT] Callback mode - 8800 cycles, position: True, price: ₹147.65
+14:50:31 [INFO] live.trader: [HEARTBEAT] Callback mode - 8900 cycles, position: True, price: ₹146.30
+14:50:41 [INFO] live.trader: [HEARTBEAT] Callback mode - 9000 cycles, position: True, price: ₹145.95
+14:50:46 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #1500 received, price: ₹147.8
+14:50:46 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #1500
+14:50:46 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1500, price: ₹147.8, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:50:46 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #1500
+14:50:46 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #1500, tick keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:50:46 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+14:50:51 [INFO] live.trader: [HEARTBEAT] Callback mode - 9100 cycles, position: True, price: ₹148.30
+14:51:04 [INFO] live.trader: [HEARTBEAT] Callback mode - 9200 cycles, position: True, price: ₹146.35
+14:51:14 [INFO] live.trader: [HEARTBEAT] Callback mode - 9300 cycles, position: True, price: ₹145.40
+14:51:25 [INFO] live.trader: [HEARTBEAT] Callback mode - 9400 cycles, position: True, price: ₹148.00
+14:51:35 [INFO] live.trader: [HEARTBEAT] Callback mode - 9500 cycles, position: True, price: ₹147.80
+14:51:45 [INFO] live.trader: [HEARTBEAT] Callback mode - 9600 cycles, position: True, price: ₹145.05
+14:51:51 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #1600 received, price: ₹143.45
+14:51:51 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #1600
+14:51:51 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1600, price: ₹143.45, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:51:55 [INFO] live.trader: [HEARTBEAT] Callback mode - 9700 cycles, position: True, price: ₹141.50
+14:52:05 [INFO] live.trader: [HEARTBEAT] Callback mode - 9800 cycles, position: True, price: ₹142.10
+14:52:16 [INFO] live.trader: [HEARTBEAT] Callback mode - 9900 cycles, position: True, price: ₹142.20
+14:52:26 [INFO] live.trader: [HEARTBEAT] Callback mode - 10000 cycles, position: True, price: ₹142.35
+14:52:37 [INFO] live.trader: [HEARTBEAT] Callback mode - 10100 cycles, position: True, price: ₹145.00
+14:52:47 [INFO] live.trader: [HEARTBEAT] Callback mode - 10200 cycles, position: True, price: ₹148.55
+14:52:52 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #1700 received, price: ₹149.4
+14:52:52 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #1700
+14:52:52 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1700, price: ₹149.4, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:52:57 [INFO] live.trader: [HEARTBEAT] Callback mode - 10300 cycles, position: True, price: ₹149.55
+14:53:08 [INFO] live.trader: [HEARTBEAT] Callback mode - 10400 cycles, position: True, price: ₹149.00
+14:53:18 [INFO] live.trader: [HEARTBEAT] Callback mode - 10500 cycles, position: True, price: ₹150.25
+14:53:29 [INFO] live.trader: [HEARTBEAT] Callback mode - 10600 cycles, position: True, price: ₹150.70
+14:53:42 [INFO] live.trader: [HEARTBEAT] Callback mode - 10700 cycles, position: True, price: ₹150.30
+14:53:53 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #1800 received, price: ₹149.75
+14:53:54 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #1800
+14:53:54 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1800, price: ₹149.75, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:53:54 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #1800
+14:53:54 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #1800, tick keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:53:54 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+14:53:55 [INFO] live.trader: [HEARTBEAT] Callback mode - 10800 cycles, position: True, price: ₹150.15
+14:54:05 [INFO] live.trader: [HEARTBEAT] Callback mode - 10900 cycles, position: True, price: ₹150.40
+14:54:15 [INFO] live.trader: [HEARTBEAT] Callback mode - 11000 cycles, position: True, price: ₹149.10
+14:54:25 [INFO] live.trader: [HEARTBEAT] Callback mode - 11100 cycles, position: True, price: ₹149.30
+14:54:39 [INFO] live.trader: [HEARTBEAT] Callback mode - 11200 cycles, position: True, price: ₹148.80
+14:54:52 [INFO] live.trader: [HEARTBEAT] Callback mode - 11300 cycles, position: True, price: ₹149.40
+14:54:56 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #1900 received, price: ₹149.8
+14:54:56 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #1900
+14:54:56 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1900, price: ₹149.8, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:55:02 [INFO] live.trader: [HEARTBEAT] Callback mode - 11400 cycles, position: True, price: ₹146.00
+14:55:14 [INFO] live.trader: [HEARTBEAT] Callback mode - 11500 cycles, position: True, price: ₹148.05
+14:55:25 [INFO] live.trader: [HEARTBEAT] Callback mode - 11600 cycles, position: True, price: ₹147.40
+14:55:36 [INFO] live.trader: [HEARTBEAT] Callback mode - 11700 cycles, position: True, price: ₹148.45
+14:55:46 [INFO] live.trader: [HEARTBEAT] Callback mode - 11800 cycles, position: True, price: ₹149.75
+14:55:56 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #2000 received, price: ₹149.6
+14:55:56 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #2000
+14:55:56 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2000, price: ₹149.6, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:55:57 [INFO] live.trader: [HEARTBEAT] Callback mode - 11900 cycles, position: True, price: ₹149.60
+14:56:07 [INFO] live.trader: [HEARTBEAT] Callback mode - 12000 cycles, position: True, price: ₹149.60
+14:56:17 [INFO] live.trader: [HEARTBEAT] Callback mode - 12100 cycles, position: True, price: ₹149.25
+14:56:27 [INFO] live.trader: [HEARTBEAT] Callback mode - 12200 cycles, position: True, price: ₹147.55
+14:56:37 [INFO] live.trader: [HEARTBEAT] Callback mode - 12300 cycles, position: True, price: ₹148.75
+14:56:48 [INFO] live.trader: [HEARTBEAT] Callback mode - 12400 cycles, position: True, price: ₹149.30
+14:56:58 [INFO] live.trader: [HEARTBEAT] Callback mode - 12500 cycles, position: True, price: ₹148.60
+14:56:58 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #2100 received, price: ₹148.45
+14:56:58 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #2100
+14:56:58 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2100, price: ₹148.45, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:56:58 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #2100
+14:56:58 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #2100, tick keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:56:58 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+14:57:08 [INFO] live.trader: [HEARTBEAT] Callback mode - 12600 cycles, position: True, price: ₹148.60
+14:57:18 [INFO] live.trader: [HEARTBEAT] Callback mode - 12700 cycles, position: True, price: ₹149.75
+14:57:28 [INFO] live.trader: [HEARTBEAT] Callback mode - 12800 cycles, position: True, price: ₹150.95
+14:57:38 [INFO] live.trader: [HEARTBEAT] Callback mode - 12900 cycles, position: True, price: ₹150.10
+14:57:49 [INFO] live.trader: [HEARTBEAT] Callback mode - 13000 cycles, position: True, price: ₹149.05
+14:57:59 [INFO] live.trader: [HEARTBEAT] Callback mode - 13100 cycles, position: True, price: ₹148.95
+14:57:59 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #2200 received, price: ₹149.05
+14:57:59 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #2200
+14:57:59 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2200, price: ₹149.05, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:58:09 [INFO] live.trader: [HEARTBEAT] Callback mode - 13200 cycles, position: True, price: ₹149.60
+14:58:19 [INFO] live.trader: [HEARTBEAT] Callback mode - 13300 cycles, position: True, price: ₹148.95
+14:58:30 [INFO] live.trader: [HEARTBEAT] Callback mode - 13400 cycles, position: True, price: ₹148.95
+14:58:40 [INFO] live.trader: [HEARTBEAT] Callback mode - 13500 cycles, position: True, price: ₹149.00
+14:58:50 [INFO] live.trader: [HEARTBEAT] Callback mode - 13600 cycles, position: True, price: ₹148.85
+14:59:00 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #2300 received, price: ₹149.1
+14:59:00 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #2300
+14:59:00 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2300, price: ₹149.1, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+14:59:01 [INFO] live.trader: [HEARTBEAT] Callback mode - 13700 cycles, position: True, price: ₹149.10
+14:59:11 [INFO] live.trader: [HEARTBEAT] Callback mode - 13800 cycles, position: True, price: ₹149.00
+14:59:21 [INFO] live.trader: [HEARTBEAT] Callback mode - 13900 cycles, position: True, price: ₹148.85
+14:59:31 [INFO] live.trader: [HEARTBEAT] Callback mode - 14000 cycles, position: True, price: ₹146.55
+14:59:41 [INFO] live.trader: [HEARTBEAT] Callback mode - 14100 cycles, position: True, price: ₹148.90
+14:59:51 [INFO] live.trader: [HEARTBEAT] Callback mode - 14200 cycles, position: True, price: ₹149.00
+15:00:02 [INFO] live.trader: [HEARTBEAT] Callback mode - 14300 cycles, position: True, price: ₹147.55
+15:00:03 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #2400 received, price: ₹145.3
+15:00:03 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #2400
+15:00:03 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2400, price: ₹145.3, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:00:03 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #2400
+15:00:03 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #2400, tick keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:00:03 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+15:00:12 [INFO] live.trader: [HEARTBEAT] Callback mode - 14400 cycles, position: True, price: ₹147.40
+15:00:22 [INFO] live.trader: [HEARTBEAT] Callback mode - 14500 cycles, position: True, price: ₹145.80
+15:00:32 [INFO] live.trader: [HEARTBEAT] Callback mode - 14600 cycles, position: True, price: ₹147.55
+15:00:43 [INFO] live.trader: [HEARTBEAT] Callback mode - 14700 cycles, position: True, price: ₹145.50
+15:00:53 [INFO] live.trader: [HEARTBEAT] Callback mode - 14800 cycles, position: True, price: ₹144.30
+15:01:03 [INFO] live.trader: [HEARTBEAT] Callback mode - 14900 cycles, position: True, price: ₹143.90
+15:01:04 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #2500 received, price: ₹143.9
+15:01:04 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #2500
+15:01:04 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2500, price: ₹143.9, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:01:13 [INFO] live.trader: [HEARTBEAT] Callback mode - 15000 cycles, position: True, price: ₹142.50
+15:01:24 [INFO] live.trader: [HEARTBEAT] Callback mode - 15100 cycles, position: True, price: ₹140.90
+15:01:34 [INFO] live.trader: [HEARTBEAT] Callback mode - 15200 cycles, position: True, price: ₹143.05
+15:01:44 [INFO] live.trader: [HEARTBEAT] Callback mode - 15300 cycles, position: True, price: ₹143.60
+15:01:54 [INFO] live.trader: [HEARTBEAT] Callback mode - 15400 cycles, position: True, price: ₹142.70
+15:02:05 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #2600 received, price: ₹141.85
+15:02:05 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #2600
+15:02:05 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2600, price: ₹141.85, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:02:06 [INFO] live.trader: [HEARTBEAT] Callback mode - 15500 cycles, position: True, price: ₹141.85
+15:02:17 [INFO] live.trader: [HEARTBEAT] Callback mode - 15600 cycles, position: True, price: ₹141.60
+15:02:27 [INFO] live.trader: [HEARTBEAT] Callback mode - 15700 cycles, position: True, price: ₹141.15
+15:02:37 [INFO] live.trader: [HEARTBEAT] Callback mode - 15800 cycles, position: True, price: ₹141.30
+15:02:47 [INFO] live.trader: [HEARTBEAT] Callback mode - 15900 cycles, position: True, price: ₹140.60
+15:02:57 [INFO] live.trader: [HEARTBEAT] Callback mode - 16000 cycles, position: True, price: ₹141.80
+15:03:06 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #2700 received, price: ₹141.4
+15:03:06 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #2700
+15:03:07 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2700, price: ₹141.4, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:03:07 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #2700
+15:03:07 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #2700, tick keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:03:07 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+15:03:08 [INFO] live.trader: [HEARTBEAT] Callback mode - 16100 cycles, position: True, price: ₹141.75
+15:03:18 [INFO] live.trader: [HEARTBEAT] Callback mode - 16200 cycles, position: True, price: ₹141.90
+15:03:28 [INFO] live.trader: [HEARTBEAT] Callback mode - 16300 cycles, position: True, price: ₹143.15
+15:03:38 [INFO] live.trader: [HEARTBEAT] Callback mode - 16400 cycles, position: True, price: ₹143.65
+15:03:48 [INFO] live.trader: [HEARTBEAT] Callback mode - 16500 cycles, position: True, price: ₹144.85
+15:03:59 [INFO] live.trader: [HEARTBEAT] Callback mode - 16600 cycles, position: True, price: ₹145.45
+15:04:08 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #2800 received, price: ₹146.65
+15:04:09 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #2800
+15:04:09 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2800, price: ₹146.65, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:04:14 [INFO] live.trader: [HEARTBEAT] Callback mode - 16700 cycles, position: True, price: ₹146.80
+15:04:26 [INFO] live.trader: [HEARTBEAT] Callback mode - 16800 cycles, position: True, price: ₹143.85
+15:04:36 [INFO] live.trader: [HEARTBEAT] Callback mode - 16900 cycles, position: True, price: ₹143.60
+15:04:46 [INFO] live.trader: [HEARTBEAT] Callback mode - 17000 cycles, position: True, price: ₹142.55
+15:04:56 [INFO] live.trader: [HEARTBEAT] Callback mode - 17100 cycles, position: True, price: ₹143.90
+15:05:06 [INFO] live.trader: [HEARTBEAT] Callback mode - 17200 cycles, position: True, price: ₹143.30
+15:05:09 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #2900 received, price: ₹143.4
+15:05:09 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #2900
+15:05:09 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2900, price: ₹143.4, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:05:16 [INFO] live.trader: [HEARTBEAT] Callback mode - 17300 cycles, position: True, price: ₹143.40
+15:05:26 [INFO] live.trader: [HEARTBEAT] Callback mode - 17400 cycles, position: True, price: ₹143.65
+15:05:36 [INFO] live.trader: [HEARTBEAT] Callback mode - 17500 cycles, position: True, price: ₹143.90
+15:05:47 [INFO] live.trader: [HEARTBEAT] Callback mode - 17600 cycles, position: True, price: ₹144.00
+15:05:57 [INFO] live.trader: [HEARTBEAT] Callback mode - 17700 cycles, position: True, price: ₹143.65
+15:06:07 [INFO] live.trader: [HEARTBEAT] Callback mode - 17800 cycles, position: True, price: ₹144.10
+15:06:11 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #3000 received, price: ₹145.2
+15:06:11 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #3000
+15:06:11 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3000, price: ₹145.2, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:06:11 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #3000
+15:06:11 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #3000, tick keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:06:11 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+15:06:17 [INFO] live.trader: [HEARTBEAT] Callback mode - 17900 cycles, position: True, price: ₹147.20
+15:06:27 [INFO] live.trader: [HEARTBEAT] Callback mode - 18000 cycles, position: True, price: ₹146.85
+15:06:37 [INFO] live.trader: [HEARTBEAT] Callback mode - 18100 cycles, position: True, price: ₹146.65
+15:06:47 [INFO] live.trader: [HEARTBEAT] Callback mode - 18200 cycles, position: True, price: ₹147.55
+15:06:57 [INFO] live.trader: [HEARTBEAT] Callback mode - 18300 cycles, position: True, price: ₹147.40
+15:07:07 [INFO] live.trader: [HEARTBEAT] Callback mode - 18400 cycles, position: True, price: ₹146.85
+15:07:13 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #3100 received, price: ₹147.35
+15:07:13 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #3100
+15:07:13 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3100, price: ₹147.35, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:07:17 [INFO] live.trader: [HEARTBEAT] Callback mode - 18500 cycles, position: True, price: ₹146.65
+15:07:27 [INFO] live.trader: [HEARTBEAT] Callback mode - 18600 cycles, position: True, price: ₹145.05
+15:07:38 [INFO] live.trader: [HEARTBEAT] Callback mode - 18700 cycles, position: True, price: ₹145.00
+15:07:48 [INFO] live.trader: [HEARTBEAT] Callback mode - 18800 cycles, position: True, price: ₹144.65
+15:07:58 [INFO] live.trader: [HEARTBEAT] Callback mode - 18900 cycles, position: True, price: ₹145.40
+15:08:08 [INFO] live.trader: [HEARTBEAT] Callback mode - 19000 cycles, position: True, price: ₹146.80
+15:08:15 [INFO] live.broker_adapter: 🌐 [BROKER] WebSocket tick #3200 received, price: ₹147.45
+15:08:15 [INFO] live.broker_adapter: 🔗 [BROKER] Calling on_tick_callback for tick #3200
+15:08:15 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3200, price: ₹147.45, keys: ['timestamp', 'price', 'volume', 'symbol', 'exchange', 'raw']
+15:08:18 [INFO] live.trader: [HEARTBEAT] Callback mode - 19100 cycles, position: True, price: ₹147.45
+15:08:28 [INFO] live.trader: [HEARTBEAT] Callback mode - 19200 cycles, position: True, price: ₹147.55
+15:08:38 [INFO] live.trader: [HEARTBEAT] Callback mode - 19300 cycles, position: True, price: ₹148.60
+15:08:48 [INFO] live.trader: [HEARTBEAT] Callback mode - 19400 cycles, position: True, price: ₹148.10
+15:08:58 [INFO] live.trader: [HEARTBEAT] Callback mode - 19500 cycles, position: True, price: ₹148.30

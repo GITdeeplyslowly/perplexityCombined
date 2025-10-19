@@ -166,9 +166,9 @@ class BacktestRunner:
             # Prepare data
             self._prepare_data()
             
-            # Create strategy and position manager
+            # Create strategy and position manager with callback
             self.strategy = ModularIntradayStrategy(self.config)
-            self.position_manager = PositionManager(self.config)
+            self.position_manager = PositionManager(self.config, strategy_callback=self.strategy.on_position_exit)
             
             # Run backtest logic and get trades/performance
             trades_df, performance = self._run_backtest_logic()
@@ -191,8 +191,9 @@ class BacktestRunner:
             # --- END FIX ---
 
             # Now export results as before
-            # self.results.export_to_csv(output_dir="results")
-            self.results.export_to_excel(output_dir="results")
+            results_dir = self.config['backtest']['results_dir']
+            # self.results.export_to_csv(output_dir=results_dir)
+            self.results.export_to_excel(output_dir=results_dir)
             self.perf_logger.session_end("Backtest completed successfully")
             return self.results
         except Exception:
@@ -262,7 +263,7 @@ class BacktestRunner:
         if missing_sections:
             logger.warning(f"âŒ MISSING config sections: {missing_sections}")
      
-        # Initialize PositionManager with nested config
+        # Initialize PositionManager with nested config (strategy callback not needed for this use case)
         position_manager = PositionManager(config)
         
         # Skip data loading if df_normalized is provided

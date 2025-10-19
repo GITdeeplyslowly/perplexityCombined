@@ -75,21 +75,31 @@ class DashboardStyleManager:
 class DashboardLayoutManager:
     """Manages worksheet layout and positioning."""
     
-    def __init__(self, worksheet, max_columns: int = 10, section_buffer: int = 2):
+    def __init__(self, worksheet, max_columns: int = 10, section_buffer: int = 2, scale_factor: float = 1.0):
         if not OPENPYXL_AVAILABLE:
             raise ImportError("openpyxl is required for dashboard components")
             
         self.ws = worksheet
         self.max_columns = max_columns
         self.section_buffer = section_buffer
+        self.scale_factor = scale_factor
         self.current_row = 1
         self.current_col = 2  # Start at column B
         self._setup_page_layout()
     
     def _setup_page_layout(self):
-        """Configure page margins and column widths."""
+        """Configure page margins and column widths with scaling."""
         self.ws.page_margins = PageMargins(left=1.0, right=0.7, top=0.75, bottom=0.75)
         self.ws.column_dimensions['A'].width = 2  # Left margin buffer
+        
+        # Set default widths for content columns (B through end of usable range)
+        # Base width per column, scaled by font size
+        base_column_width = 12
+        scaled_width = base_column_width * self.scale_factor
+        
+        for col_idx in range(self.current_col, self.current_col + self.max_columns):
+            column_letter = get_column_letter(col_idx)
+            self.ws.column_dimensions[column_letter].width = scaled_width
     
     def get_usable_range(self) -> Tuple[int, int]:
         """Return start and end column indices for content."""
@@ -203,9 +213,15 @@ class DashboardTableBuilder:
             row_metrics = metrics_data[i:i + metrics_per_row]
             
             for j, (label, value) in enumerate(row_metrics):
-                # Calculate column positions
-                label_col = start_col + (j * col_width)
-                value_col = label_col + col_width // 2
+                # Fixed column positions for better visibility (per user requirements)
+                # Left side: Label in C(3), Value in D(4)  
+                # Right side: Label in H(8), Value in I(9)
+                if j == 0:  # Left side metrics
+                    label_col = 3  # Column C
+                    value_col = 4  # Column D
+                else:  # Right side metrics  
+                    label_col = 8  # Column H (moved from I)
+                    value_col = 9  # Column I (moved from L)
                 
                 # Metric label
                 label_cell = self.layout.ws.cell(row=self.layout.current_row, column=label_col, value=label)
@@ -334,13 +350,17 @@ class DashboardTableBuilder:
         self.layout.advance_row(1, add_section_spacing=True)
     
     def _set_trades_column_widths(self, start_col: int, num_columns: int):
-        """Set appropriate column widths for trades table."""
-        # Default column widths for common trade table columns (updated for 11 columns)
+        """Set appropriate column widths for trades table, scaled for font size."""
+        # Base column widths for common trade table columns (updated for 11 columns)
         # [#, Entry Time, Exit Time, Entry Price, Exit Price, Qty, Gross PnL, Commission, Net PnL, Exit Reason, Duration (min)]
-        default_widths = [4, 18, 18, 12, 12, 8, 13, 12, 11, 15, 12]
+        base_widths = [4, 18, 18, 12, 12, 8, 13, 12, 11, 15, 12]
+        
+        # Scale widths based on font scale factor
+        scale_factor = self.style.scale_factor
         
         for i in range(num_columns):
             col_idx = start_col + i
-            width = default_widths[i] if i < len(default_widths) else 12
+            base_width = base_widths[i] if i < len(base_widths) else 12
+            scaled_width = base_width * scale_factor
             column_letter = get_column_letter(col_idx)
-            self.layout.ws.column_dimensions[column_letter].width = width
+            self.layout.ws.column_dimensions[column_letter].width = scaled_width

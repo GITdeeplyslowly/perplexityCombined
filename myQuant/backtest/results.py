@@ -275,31 +275,34 @@ class TableBuilder:
         self.layout.ws.row_dimensions[self.layout.current_row].height = 45
         self.layout.advance_row(1)
         
-        # Write metrics in rows
-        available_cols = end_col - start_col + 1
-        pairs_per_row = available_cols // 2  # Each pair needs 2 columns (label, value)
+        # Write metrics in two-column pairs with fixed positioning for better visibility
+        pairs_per_row = 2  # Fixed: Left and Right pairs
         
         for i in range(0, len(metrics_data), pairs_per_row):
             row_pairs = metrics_data[i:i + pairs_per_row]
             
-            col_idx = start_col
-            for label, value in row_pairs:
-                if col_idx + 1 > end_col:
-                    break
+            for j, (label, value) in enumerate(row_pairs):
+                # Fixed column positions for better visibility (per user requirements)
+                # Left side: Label in C(3), Value in D(4)  
+                # Right side: Label in H(8), Value in I(9)
+                if j == 0:  # Left side metrics
+                    label_col = 3  # Column C 
+                    value_col = 4  # Column D
+                else:  # Right side metrics
+                    label_col = 8  # Column H (moved from I)
+                    value_col = 9  # Column I (moved from L)
                 
                 # Label
-                label_cell = self.layout.ws.cell(row=self.layout.current_row, column=col_idx, value=label)
+                label_cell = self.layout.ws.cell(row=self.layout.current_row, column=label_col, value=label)
                 label_cell.font = self.style.fonts['metric_label']
                 label_cell.border = self.style.border
                 label_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
                 
                 # Value
-                value_cell = self.layout.ws.cell(row=self.layout.current_row, column=col_idx + 1, value=value)
+                value_cell = self.layout.ws.cell(row=self.layout.current_row, column=value_col, value=value)
                 value_cell.font = self.style.fonts['metric_value']
                 value_cell.border = self.style.border
                 value_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-                
-                col_idx += 2
             
             self.layout.ws.row_dimensions[self.layout.current_row].height = 45  # Increased height
             self.layout.advance_row(1)

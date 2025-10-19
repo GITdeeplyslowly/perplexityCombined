@@ -171,10 +171,11 @@ class Trade:
             self.lots_traded = self.quantity
 
 class PositionManager:
-    def __init__(self, config: Dict[str, Any], **kwargs):
+    def __init__(self, config: Dict[str, Any], strategy_callback=None, **kwargs):
         # Existing initialization...
         self.config = config
         self.config_accessor = ConfigAccessor(config)
+        self.strategy_callback = strategy_callback
         try:
             self.initial_capital = self.config_accessor.get_capital_param('initial_capital')
             self.current_capital = self.initial_capital
@@ -388,6 +389,21 @@ class PositionManager:
         logger.info("Lots closed: %s (%s units)", lots_closed, quantity_to_close)
         logger.info("Exit price: â‚¹%.2f per unit", exit_price)
         logger.info("P&L: â‚¹%.2f (%s)", net_pnl, exit_reason)
+        
+        # Call strategy callback with standardized exit info
+        if self.strategy_callback:
+            # Map exit reasons to standardized format
+            standardized_reason = self._standardize_exit_reason(exit_reason)
+            exit_info = {
+                'position_id': position_id,
+                'exit_reason': standardized_reason,
+                'exit_price': exit_price,
+                'quantity': quantity_to_close,
+                'pnl': net_pnl,
+                'timestamp': timestamp
+            }
+            self.strategy_callback(exit_info)
+        
         return True
 
     def close_position_full(self, position_id: str, exit_price: float,
@@ -396,6 +412,32 @@ class PositionManager:
             return False
         position = self.positions[position_id]
         return self.close_position_partial(position_id, exit_price, position.current_quantity, timestamp, exit_reason)
+
+    def _standardize_exit_reason(self, exit_reason: str) -> str:
+        """
+        Standardize exit reasons for strategy callbacks.
+        Maps various exit reason strings to standardized format for Control Base SL logic.
+        """
+        reason_lower = exit_reason.lower()
+        
+        # Map base stop loss variations (including just "stop loss" or "stop")
+        if ('stop' in reason_lower and 'loss' in reason_lower) or reason_lower == 'stop loss':
+            return 'base_sl'
+        
+        # Map take profit variations  
+        if 'take profit' in reason_lower or 'target' in reason_lower:
+            return 'target_profit'
+            
+        # Map trailing stop variations
+        if 'trailing' in reason_lower:
+            return 'trailing_stop'
+            
+        # Map session end
+        if 'session' in reason_lower:
+            return 'session_end'
+            
+        # Return original for unmapped reasons
+        return exit_reason.lower()
 
     def check_exit_conditions(self, position_id: str, current_price: float, timestamp: datetime) -> List[Tuple[int, str]]:
         if position_id not in self.positions:

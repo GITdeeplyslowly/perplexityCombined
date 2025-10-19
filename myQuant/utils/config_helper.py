@@ -266,3 +266,6 @@ def validate_instrument_consistency(cfg: Dict[str, Any]) -> Dict[str, Any]:
         errors.append(f"Error validating instrument configuration: {str(e)}")
     
     return {"valid": len(errors) == 0, "errors": errors}
+
+
+

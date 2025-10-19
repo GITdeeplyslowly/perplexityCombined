@@ -171,6 +171,17 @@ class ModularIntradayStrategy:
         except KeyError as e:
             raise
         
+        # --- Control Base SL feature for dynamic green tick requirements ---
+        try:
+            self.control_base_sl_enabled = self.config_accessor.get_strategy_param('control_base_sl_enabled')
+            self.base_sl_green_ticks = self.config_accessor.get_strategy_param('control_base_sl_green_ticks')
+            self.last_exit_was_base_sl = False
+            # Use existing consecutive_green_bars_required as normal threshold
+            self.current_green_tick_threshold = self.consecutive_green_bars_required
+        except KeyError as e:
+            logger.error(f"Missing Control Base SL parameters: {e}")
+            raise ValueError(f"Missing required Control Base SL parameter: {e}")
+        
         # Set name and version
         self.name = "Modular Intraday Long-Only Strategy"
         self.version = "3.0"
@@ -323,6 +334,30 @@ class ModularIntradayStrategy:
             except Exception:
                 pass  # Continue trading even if logging fails
 
+    def on_position_exit(self, exit_info: Dict):
+        """
+        Callback for position exits to handle Control Base SL logic.
+        
+        Args:
+            exit_info: Dictionary containing exit details including exit_reason
+        """
+        if not self.control_base_sl_enabled:
+            return
+            
+        exit_reason = exit_info.get('exit_reason', '').lower()
+        
+        if 'base_sl' in exit_reason:
+            self.last_exit_was_base_sl = True
+            logger.info(
+                f"Base SL exit detected—next entry requires {self.base_sl_green_ticks} green ticks."
+            )
+        # Reset threshold on any profitable exit (TP or trailing stop)
+        elif exit_reason in ('target_profit', 'trailing_stop'):
+            self.last_exit_was_base_sl = False
+            logger.info(
+                f"Profitable exit detected—threshold reset to {self.consecutive_green_bars_required} green ticks."
+            )
+
     def process_historical_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Process historical data maintaining incremental state.
@@ -353,53 +388,135 @@ class ModularIntradayStrategy:
         Returns:
             True if entry signal is present, False otherwise
         """
+        # Track which indicators are checked and their results
+        checks_performed = []
+        failed_checks = []
+        
         # --- EMA CROSS ---
         pass_ema = True
         if self.use_ema_crossover:
+            checks_performed.append("EMA Crossover")
             # STRICT: Fail immediately if indicator data missing
             pass_ema = (
                 'fast_ema' in row and 'slow_ema' in row and
                 row['fast_ema'] is not None and row['slow_ema'] is not None and
                 row['fast_ema'] > row['slow_ema']
             )
+            if not pass_ema:
+                if 'fast_ema' not in row or row['fast_ema'] is None:
+                    failed_checks.append("EMA: fast_ema not available")
+                elif 'slow_ema' not in row or row['slow_ema'] is None:
+                    failed_checks.append("EMA: slow_ema not available")
+                else:
+                    failed_checks.append(f"EMA: fast({row['fast_ema']:.2f}) ≤ slow({row['slow_ema']:.2f})")
+        
         # --- VWAP ---
         pass_vwap = True
         if self.use_vwap:
+            checks_performed.append("VWAP")
             # STRICT: Fail if vwap not calculated
             pass_vwap = ('vwap' in row and row['vwap'] is not None and 
                         'close' in row and row['close'] is not None and
                         row['close'] > row['vwap'])
+            if not pass_vwap:
+                if 'vwap' not in row or row['vwap'] is None:
+                    failed_checks.append("VWAP: not calculated yet")
+                elif 'close' not in row or row['close'] is None:
+                    failed_checks.append("VWAP: price not available")
+                else:
+                    failed_checks.append(f"VWAP: price({row['close']:.2f}) ≤ vwap({row['vwap']:.2f})")
+        
         # --- MACD ---
         pass_macd = True
         if self.use_macd:
+            checks_performed.append("MACD")
             # STRICT: Both signals must exist
             pass_macd = (row['macd_bullish'] and row['macd_histogram_positive'])
+            if not pass_macd:
+                if not row.get('macd_bullish', False):
+                    failed_checks.append("MACD: not bullish")
+                if not row.get('macd_histogram_positive', False):
+                    failed_checks.append("MACD: histogram not positive")
+        
         # --- HTF TREND ---
         pass_htf = True
         if self.use_htf_trend:
+            checks_performed.append("HTF Trend")
             # STRICT: HTF EMA must be calculated
             pass_htf = ('htf_ema' in row and row['htf_ema'] is not None and 
                        'close' in row and row['close'] is not None and
                        row['close'] > row['htf_ema'])
+            if not pass_htf:
+                if 'htf_ema' not in row or row['htf_ema'] is None:
+                    failed_checks.append("HTF: not calculated yet")
+                elif 'close' not in row or row['close'] is None:
+                    failed_checks.append("HTF: price not available")
+                else:
+                    failed_checks.append(f"HTF: price({row['close']:.2f}) ≤ htf_ema({row['htf_ema']:.2f})")
+        
         # --- RSI ---
         pass_rsi = True
         if self.use_rsi_filter:
+            checks_performed.append("RSI Filter")
             # STRICT: RSI must be calculated
+            rsi_oversold = self.config_accessor.get_strategy_param('rsi_oversold')
+            rsi_overbought = self.config_accessor.get_strategy_param('rsi_overbought')
             pass_rsi = ('rsi' in row and row['rsi'] is not None and
-                       self.config_accessor.get_strategy_param('rsi_oversold') < 
-                       row['rsi'] < 
-                       self.config_accessor.get_strategy_param('rsi_overbought'))
+                       rsi_oversold < row['rsi'] < rsi_overbought)
+            if not pass_rsi:
+                if 'rsi' not in row or row['rsi'] is None:
+                    failed_checks.append("RSI: not calculated yet")
+                else:
+                    failed_checks.append(f"RSI: {row['rsi']:.2f} outside range ({rsi_oversold}-{rsi_overbought})")
+        
         # --- Bollinger Bands ---
         pass_bb = True
         if self.use_bollinger_bands:
+            checks_performed.append("Bollinger Bands")
             # STRICT: Both BB levels must exist
             pass_bb = ('bb_lower' in row and 'bb_upper' in row and
                       row['bb_lower'] is not None and row['bb_upper'] is not None and
                       'close' in row and row['close'] is not None and
                       row['bb_lower'] < row['close'] < row['bb_upper'])
+            if not pass_bb:
+                if 'bb_lower' not in row or row['bb_lower'] is None or 'bb_upper' not in row or row['bb_upper'] is None:
+                    failed_checks.append("BB: not calculated yet")
+                elif 'close' not in row or row['close'] is None:
+                    failed_checks.append("BB: price not available")
+                else:
+                    failed_checks.append(f"BB: price({row['close']:.2f}) outside bands ({row['bb_lower']:.2f}-{row['bb_upper']:.2f})")
+        
         # --- Construct final pass signal (all enabled must be True) ---
         logic_checks = [pass_ema, pass_vwap, pass_macd, pass_htf, pass_rsi, pass_bb]
-        return all(logic_checks)
+        entry_allowed = all(logic_checks)
+        
+        # Log entry evaluation (only log periodically to avoid spam)
+        if not hasattr(self, '_last_signal_log_time'):
+            self._last_signal_log_time = None
+            self._signal_log_counter = 0
+        
+        self._signal_log_counter += 1
+        current_time = datetime.now()
+        
+        # Log every 300 ticks (~30 seconds at 10 ticks/sec) or when signal changes
+        should_log = (
+            self._signal_log_counter % 300 == 0 or
+            self._last_signal_log_time is None or
+            (current_time - self._last_signal_log_time).total_seconds() > 30
+        )
+        
+        if should_log and not entry_allowed:
+            self._last_signal_log_time = current_time
+            price = row.get('close', row.get('price', 'N/A'))
+            logger.info(f"📊 ENTRY EVALUATION @ ₹{price}: Enabled checks: {', '.join(checks_performed)}")
+            logger.info(f"   ❌ Entry REJECTED - Failed: {'; '.join(failed_checks)}")
+        elif entry_allowed:
+            # Always log when entry is allowed (rare event) - include green tick info
+            price = row.get('close', row.get('price', 'N/A'))
+            green_tick_info = f"Green ticks: {self.green_bars_count}/{self.current_green_tick_threshold}"
+            logger.info(f"✅ ENTRY SIGNAL @ ₹{price}: All checks passed ({', '.join(checks_performed)}) - {green_tick_info}")
+        
+        return entry_allowed
 
     def open_long(self, row: pd.Series, now: datetime, position_manager) -> Optional[str]:
         # For robust trade management, always use live/production-driven position config
@@ -463,6 +580,22 @@ class ModularIntradayStrategy:
             TradingSignal if action should be taken, None otherwise
         """
         try:
+            # Update threshold dynamically based on last exit type
+            self.current_green_tick_threshold = (
+                self.base_sl_green_ticks if (self.control_base_sl_enabled and self.last_exit_was_base_sl)
+                else self.consecutive_green_bars_required
+            )
+            
+            # DEBUG: Log FIRST tick and every 300 ticks to verify on_tick is being called
+            if not hasattr(self, '_ontick_call_count'):
+                self._ontick_call_count = 0
+                logger.info("🔧 [STRATEGY] Initialized _ontick_call_count counter")
+            
+            self._ontick_call_count += 1
+            
+            if self._ontick_call_count == 1 or self._ontick_call_count % 300 == 0:
+                logger.info(f"📊 [STRATEGY] on_tick called #{self._ontick_call_count}, tick keys: {list(tick.keys())}")
+            
             # Convert tick dict to Series for compatibility with existing logic
             tick_series = pd.Series(tick)
             
@@ -471,6 +604,7 @@ class ModularIntradayStrategy:
             
             # GRACEFUL: Check for timestamp - return None if missing (live trading safe)
             if 'timestamp' not in tick:
+                logger.warning(f"⚠️ [STRATEGY] Tick missing timestamp, skipping. Tick keys: {list(tick.keys())}")
                 return None
             timestamp = tick['timestamp']
             
@@ -479,6 +613,7 @@ class ModularIntradayStrategy:
             
         except Exception as e:
             # Enhanced error handling - critical path gets HIGH severity
+            logger.error(f"🔥 [STRATEGY] Exception in on_tick: {type(e).__name__}: {e}", exc_info=True)
             return self.error_handler.handle_error(
                 error=e,
                 context="tick_processing_main",
@@ -506,6 +641,13 @@ class ModularIntradayStrategy:
                         price = updated_tick['price']
                     
                     if price is not None:
+                        # Reset Control Base SL threshold on successful entry
+                        if self.control_base_sl_enabled:
+                            self.last_exit_was_base_sl = False
+                            logger.info(
+                                f"Entry taken; threshold reset to {self.consecutive_green_bars_required} green ticks."
+                            )
+                        
                         return TradingSignal(
                             action="BUY",
                             timestamp=timestamp,
@@ -766,8 +908,8 @@ class ModularIntradayStrategy:
             )
 
     def _check_consecutive_green_ticks(self) -> bool:
-        """Check if we have enough consecutive green ticks for entry."""
-        return self.green_bars_count >= self.consecutive_green_bars_required
+        """Check if we have enough consecutive green ticks for entry using dynamic threshold."""
+        return self.green_bars_count >= self.current_green_tick_threshold
 
     def _validate_all_required_parameters(self):
         """

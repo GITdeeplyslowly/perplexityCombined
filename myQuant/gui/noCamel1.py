@@ -213,6 +213,10 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_rsi_overbought = tk.StringVar(value=str(strategy_config['rsi_overbought']))
         self.bt_htf_period = tk.StringVar(value=str(strategy_config['htf_period']))
         self.bt_consecutive_green_bars = tk.StringVar(value=str(strategy_config['consecutive_green_bars']))
+        
+        # Control Base SL parameters
+        self.bt_control_base_sl_enabled = tk.BooleanVar(value=strategy_config['control_base_sl_enabled'])
+        self.bt_control_base_sl_green_ticks = tk.StringVar(value=str(strategy_config['control_base_sl_green_ticks']))
 
         # Risk placeholders (required — no fallbacks)
         self.bt_base_sl_points = tk.StringVar(value=str(risk_config['base_sl_points']))
@@ -255,7 +259,6 @@ class UnifiedTradingGUI(tk.Tk):
         self.logger_levels = {}
         for logger_name in ["core.indicators", "core.researchStrategy", "backtest.backtest_runner", "utils.simple_loader"]:
             self.logger_levels[logger_name] = tk.StringVar(value="DEFAULT")
-        self.logger_tick_interval = tk.StringVar(value=str(logging_config['tick_log_interval']))
 
         # Noise filter placeholders (strategy section)
         self.bt_noise_filter_enabled = tk.BooleanVar(value=strategy_config['noise_filter_enabled'])
@@ -284,6 +287,10 @@ class UnifiedTradingGUI(tk.Tk):
         self.ft_rsi_overbought = tk.StringVar(value=str(strategy_config['rsi_overbought']))
         self.ft_htf_period = tk.StringVar(value=str(strategy_config['htf_period']))
         self.ft_consecutive_green_bars = tk.StringVar(value=str(strategy_config['consecutive_green_bars']))
+        
+        # Forward Test Control Base SL parameters
+        self.ft_control_base_sl_enabled = tk.BooleanVar(value=strategy_config['control_base_sl_enabled'])
+        self.ft_control_base_sl_green_ticks = tk.StringVar(value=str(strategy_config['control_base_sl_green_ticks']))
 
         # Forward Test Risk management (from defaults.py)
         self.ft_use_stop_loss = tk.BooleanVar(value=True)  # Always enabled for live trading
@@ -311,6 +318,9 @@ class UnifiedTradingGUI(tk.Tk):
         # Forward Test Data Simulation (Optional)
         self.ft_use_file_simulation = tk.BooleanVar(value=False)  # Disabled by default - live trading is primary
         self.ft_data_file_path = tk.StringVar(value="")  # No file selected by default
+
+        # Forward Test Performance Settings (Consumption Mode)
+        self.ft_use_direct_callbacks = tk.BooleanVar(value=True)  # Default to callback mode (Wind-style, faster)
 
         # Forward Test Capital management (from defaults.py)
         self.ft_initial_capital = tk.StringVar(value=str(capital_config['initial_capital']))
@@ -383,6 +393,9 @@ class UnifiedTradingGUI(tk.Tk):
 
         # 7. Initialize instrument selection (after GUI widgets are created)
         self._initialize_instrument_selection()
+
+        # 8. Register window close handler to prevent accidental closures
+        self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
         logger.info("GUI initialized successfully with runtime config")
 
@@ -527,6 +540,10 @@ class UnifiedTradingGUI(tk.Tk):
         config['strategy']['macd_signal'] = int(self.bt_macd_signal.get())
         # Consecutive Green Bars
         config['strategy']['consecutive_green_bars'] = int(self.bt_consecutive_green_bars.get())
+        
+        # Control Base SL settings
+        config['strategy']['control_base_sl_enabled'] = self.bt_control_base_sl_enabled.get()
+        config['strategy']['control_base_sl_green_ticks'] = int(self.bt_control_base_sl_green_ticks.get())
 
         # Add noise filter settings (no hardcoded defaults)
         config['strategy']['noise_filter_enabled'] = self.bt_noise_filter_enabled.get()
@@ -605,12 +622,8 @@ class UnifiedTradingGUI(tk.Tk):
                     log_level_overrides[logger_name] = level
  
         config['logging']['log_level_overrides'] = log_level_overrides
-        # Include the tick logging interval from GUI (SSOT entry) - STRICT CONFIG ACCESS
-        try:
-            config['logging']['tick_log_interval'] = int(self.logger_tick_interval.get())
-        except Exception:
-            # STRICT: Use defaults without fallbacks - fail fast if defaults malformed
-            config['logging']['tick_log_interval'] = DEFAULT_CONFIG['logging']['tick_log_interval']
+        # Tick logging disabled - using default value only
+        config['logging']['tick_log_interval'] = DEFAULT_CONFIG['logging']['tick_log_interval']
  
         # FINAL: authoritative validation + freeze (GUI SSOT)
         try:
@@ -626,7 +639,6 @@ class UnifiedTradingGUI(tk.Tk):
                                  "Please fix configuration issues:\n\n" + "\n".join(errs))
             return None
 
-        # Freeze config to make it immutable for the run
         try:
             frozen = freeze_config(config)
         except Exception as e:
@@ -924,6 +936,18 @@ class UnifiedTradingGUI(tk.Tk):
         # Consecutive Green Bars (moved to next row for better spacing)
         ttk.Label(params_frame, text="Green Bars Req:").grid(row=4, column=0, sticky="e", padx=2)
         ttk.Entry(params_frame, textvariable=self.ft_consecutive_green_bars, width=8).grid(row=4, column=1, padx=2)
+        
+        # Control Base SL Parameters
+        ttk.Label(params_frame, text="Base SL Green Ticks:").grid(row=4, column=2, sticky="e", padx=2)
+        ttk.Entry(params_frame, textvariable=self.ft_control_base_sl_green_ticks, width=8).grid(row=4, column=3, padx=2)
+        
+        # Control Base SL Enable checkbox
+        ttk.Checkbutton(params_frame, text="Enable Control Base SL", 
+                       variable=self.ft_control_base_sl_enabled).grid(row=4, column=4, columnspan=2, sticky="w", padx=2)
+        
+        # Info label explaining the feature
+        ttk.Label(params_frame, text="(Normal uses 'Green Bars Req' above, Base SL uses higher value)", 
+                 foreground='grey').grid(row=5, column=0, columnspan=6, sticky="w", padx=2, pady=(2,0))
         row += 1
 
         # Add separator between Strategy Configuration and Risk Management
@@ -1030,7 +1054,42 @@ class UnifiedTradingGUI(tk.Tk):
         help_label.grid(row=1, column=0, columnspan=4, sticky="w", padx=5, pady=(0,5))
         row += 1
 
-        # Add separator between Data Simulation and Capital Management
+        # Add separator
+        self._add_grid_separator(parent, row)
+        row += 1
+
+        # === PERFORMANCE SETTINGS SECTION ===
+        ttk.Label(parent, text="⚡ Performance Settings", style='SectionHeader.TLabel').grid(row=row, column=0, columnspan=2, sticky="w", pady=(25,5))
+        row += 1
+
+        perf_frame = ttk.LabelFrame(parent, text="Tick Consumption Mode")
+        perf_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        perf_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(perf_frame, text="Consumption Mode:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
+        mode_combo = ttk.Combobox(perf_frame, 
+                                 values=["⚡ Callback Mode (Fast - Default)", "📊 Polling Mode (Safe)"], 
+                                 state="readonly", width=30)
+        mode_combo.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        
+        # Set initial value based on ft_use_direct_callbacks
+        mode_combo.set("⚡ Callback Mode (Fast - Default)" if self.ft_use_direct_callbacks.get() else "📊 Polling Mode (Safe)")
+        
+        # Bind combo change to update the boolean variable
+        def on_mode_change(event):
+            selected = mode_combo.get()
+            self.ft_use_direct_callbacks.set("Callback" in selected)
+        mode_combo.bind("<<ComboboxSelected>>", on_mode_change)
+
+        # Help text explaining the modes
+        perf_help = ttk.Label(perf_frame, 
+                             text="⚡ Callback Mode: Wind-style direct processing (~50ms latency, 29% faster)\n"
+                                  "📊 Polling Mode: Queue-based processing (~70ms latency, proven stable)", 
+                             font=('TkDefaultFont', 8), foreground='gray', justify='left')
+        perf_help.grid(row=1, column=0, columnspan=2, sticky="w", padx=5, pady=(0,5))
+        row += 1
+
+        # Add separator between Performance and Capital Management
         self._add_grid_separator(parent, row)
         row += 1
 
@@ -1398,6 +1457,33 @@ class UnifiedTradingGUI(tk.Tk):
         
         # Store section reference for collapsing
         self.consecutive_green_section = green_section
+
+        # Control Base SL Settings
+        row += 1
+        control_sl_section = CollapsibleFrame(parent, "Control Base SL", collapsed=not self.bt_control_base_sl_enabled.get())
+        control_sl_section.grid(row=row, column=0, columnspan=6, sticky='ew', padx=5, pady=5)
+        control_sl_frame = control_sl_section.get_content_frame()
+        control_sl_frame.columnconfigure((1,3), weight=1)
+        
+        # Connect CollapsibleFrame toggle to feature enable/disable
+        control_sl_section.toggle_btn.configure(command=lambda: self._sync_collapsible_with_indicator('control_base_sl', control_sl_section))
+        
+        # Control Base SL Parameters - use enabled style if initially checked
+        initial_style = 'Enabled.TLabel' if self.bt_control_base_sl_enabled.get() else 'Parameter.TLabel'
+        ttk.Label(control_sl_frame, text="Green Ticks After Base SL:", style=initial_style).grid(row=0, column=0, sticky='e', padx=(0,5))
+        self.control_sl_green_ticks_entry = ttk.Entry(control_sl_frame, textvariable=self.bt_control_base_sl_green_ticks, width=6, style='Standard.TEntry')
+        self.control_sl_green_ticks_entry.grid(row=0, column=1, sticky='w', padx=(0,15))
+        
+        # Info label explaining the feature
+        ttk.Label(control_sl_frame, text="(Normal uses 'Green Bars Req' above)", 
+                 style='Parameter.TLabel', foreground='grey').grid(row=0, column=2, columnspan=2, sticky='w', padx=(10,0))
+        
+        # Enable checkbox in second row
+        ttk.Checkbutton(control_sl_frame, text="Enable Control Base SL", 
+                       variable=self.bt_control_base_sl_enabled).grid(row=1, column=0, columnspan=4, sticky='w', pady=(5,0))
+        
+        # Store section reference for collapsing
+        self.control_base_sl_section = control_sl_section
 
     def _build_optional_indicators_group(self, parent):
         """Optional indicators with toggle functionality: HTF, RSI, Bollinger Bands, Stochastic, ATR"""
@@ -1828,6 +1914,8 @@ class UnifiedTradingGUI(tk.Tk):
         # Get the appropriate variable name
         if group_name == 'consecutive_green':
             var_name = 'bt_use_consecutive_green'
+        elif group_name == 'control_base_sl':
+            var_name = 'bt_control_base_sl_enabled'
         elif group_name in ['stop_loss', 'take_profit']:
             var_name = f'bt_use_{group_name}'
         elif group_name == 'trail_stop':
@@ -2095,6 +2183,16 @@ class UnifiedTradingGUI(tk.Tk):
         except Exception as e:
             logger.error(f"Failed to clear logs: {e}")
 
+    def _get_gui_log_text(self):
+        """Get all log text from the GUI Logs tab for Excel export"""
+        try:
+            # Get all text from the log widget
+            log_text = self.log_text.get("1.0", "end-1c").strip()
+            return log_text
+        except Exception as e:
+            logger.error(f"Failed to get GUI log text: {e}")
+            return f"Error retrieving log text: {e}"
+
     def _ft_refresh_cache(self):
         """Refresh symbol cache for forward testing"""
         try:
@@ -2311,6 +2409,10 @@ class UnifiedTradingGUI(tk.Tk):
         config_dict['strategy']['htf_period'] = int(self.ft_htf_period.get())
         config_dict['strategy']['consecutive_green_bars'] = int(self.ft_consecutive_green_bars.get())
         
+        # Control Base SL parameters from forward test GUI
+        config_dict['strategy']['control_base_sl_enabled'] = self.ft_control_base_sl_enabled.get()
+        config_dict['strategy']['control_base_sl_green_ticks'] = int(self.ft_control_base_sl_green_ticks.get())
+        
         # Update risk management from forward test GUI
         config_dict['risk']['base_sl_points'] = float(self.ft_base_sl_points.get()) if self.ft_use_stop_loss.get() else 0.0
         config_dict['risk']['use_trail_stop'] = self.ft_use_trail_stop.get()
@@ -2474,6 +2576,16 @@ class UnifiedTradingGUI(tk.Tk):
                 data_detail_msg = f"Live market feed: {self.ft_feed_type.get()}"
                 warning_msg = "\n⚠️ This will connect to LIVE market data streams!"
             
+            # Build configuration text BEFORE showing dialog (we'll need it for Excel export)
+            config_text = self._build_config_summary(ft_frozen_config, data_source_msg, data_detail_msg, warning_msg)
+            
+            # 🔍 DEBUG: Log config_text generation
+            logger.info(f"🔍 GUI generated config_text - type: {type(config_text)}, length: {len(config_text) if config_text else 0}")
+            if config_text:
+                logger.info(f"✅ config_text generated successfully - first 100 chars: {config_text[:100]}")
+            else:
+                logger.error(f"❌ config_text is empty or None: {repr(config_text)}")
+            
             # Show comprehensive configuration review dialog
             confirmed = self._show_config_review_dialog(ft_frozen_config, data_source_msg, data_detail_msg, warning_msg)
             
@@ -2489,20 +2601,22 @@ class UnifiedTradingGUI(tk.Tk):
             setup_from_config(ft_frozen_config)
             logger.info("✅ Logging reconfigured with fresh user configuration")
             
-            # Create LiveTrader with frozen config
+            # Create LiveTrader with frozen config and dialog text
             try:
-                trader = LiveTrader(frozen_config=ft_frozen_config)
+                trader = LiveTrader(frozen_config=ft_frozen_config, dialog_text=config_text)
+                # Set consumption mode from GUI toggle
+                trader.use_direct_callbacks = self.ft_use_direct_callbacks.get()
+                logger.info(f"🎯 Consumption mode set: {'⚡ Callback (Fast)' if trader.use_direct_callbacks else '📊 Polling (Safe)'}")
             except Exception as e:
                 logger.error(f"Failed to create LiveTrader: {e}")
                 messagebox.showerror("LiveTrader Error", f"Could not create LiveTrader: {e}")
                 return
             
-            # Create ForwardTestResults instance
-            self.forward_test_results = ForwardTestResults(
-                config=dict(ft_frozen_config),  # Convert MappingProxyType to dict
-                position_manager=trader.position_manager,
-                start_time=datetime.now()
-            )
+            # Use trader's ForwardTestResults (already created with dialog_text)
+            self.forward_test_results = trader.results_exporter
+            
+            # Give ForwardTestResults access to GUI log data for automatic export
+            trader.results_exporter.gui_instance = self
             
             # Start forward test in background thread to avoid blocking GUI
             import threading
@@ -2542,24 +2656,6 @@ class UnifiedTradingGUI(tk.Tk):
             self.active_trader = trader
             self.active_thread = threading.Thread(target=run_forward_test, daemon=True)
             self.active_thread.start()
-            
-            # Determine data source mode for prominent display
-            if self.ft_use_file_simulation.get():
-                data_source = "📁 FILE DATA SIMULATION"
-                data_details = f"File: {self.ft_data_file_path.get()}"
-                mode_warning = "\n⚠️  Using historical file data - NOT live market data"
-            else:
-                data_source = "🌐 LIVE WEBSTREAM TRADING"
-                data_details = f"Feed: {self.ft_feed_type.get()}"
-                mode_warning = "\n⚠️  Using LIVE market data - real-time trading"
-            
-            # Update GUI with prominent data source indication
-            messagebox.showinfo("Forward Test Started", 
-                               f"Forward test started for {self.ft_symbol.get()}\n\n"
-                               f"DATA SOURCE: {data_source}\n"
-                               f"{data_details}\n"
-                               f"Mode: Paper Trading{mode_warning}\n\n"
-                               f"Monitor progress in the results section below.")
             
             logger.info(f"Forward test initiated for {self.ft_symbol.get()} with frozen MappingProxyType config")
             
@@ -2919,6 +3015,13 @@ class UnifiedTradingGUI(tk.Tk):
         lines.append(f"{warning_msg}")
         lines.append("")
         
+        # Consumption Mode (Performance Setting)
+        consumption_mode = "⚡ Callback Mode (Fast)" if self.ft_use_direct_callbacks.get() else "📊 Polling Mode (Safe)"
+        consumption_latency = "~50ms latency, Wind-style" if self.ft_use_direct_callbacks.get() else "~70ms latency, Queue-based"
+        lines.append(f"CONSUMPTION MODE: {consumption_mode}")
+        lines.append(f"Expected Performance: {consumption_latency}")
+        lines.append("")
+        
         # Instrument & Session
         lines.append("INSTRUMENT & SESSION")
         lines.append("-" * 40)
@@ -2956,6 +3059,15 @@ class UnifiedTradingGUI(tk.Tk):
         strategy_cfg = config['strategy']
         lines.append(f"Strategy Version:    {strategy_cfg['strategy_version']}")
         lines.append(f"Green Bars Required: {strategy_cfg['consecutive_green_bars']}")
+        
+        # Control Base SL Configuration
+        if strategy_cfg.get('control_base_sl_enabled', False):
+            lines.append(f"Control Base SL:     ENABLED")
+            lines.append(f"  Normal Green Ticks: {strategy_cfg['consecutive_green_bars']}")
+            lines.append(f"  After Base SL:      {strategy_cfg['control_base_sl_green_ticks']} green ticks")
+        else:
+            lines.append(f"Control Base SL:     DISABLED")
+        
         lines.append("")
         lines.append("Enabled Indicators:")
         
@@ -3163,6 +3275,57 @@ class UnifiedTradingGUI(tk.Tk):
         except Exception as e:
             logger.exception(f"Demo updates failed: {e}")
             self._update_ft_result_box(f"❌ Demo error: {e}\n", "live")
+
+    def _on_closing(self):
+        """
+        Handle window close event with confirmation dialog.
+        
+        Warns user if forward test is running and confirms intention to close.
+        Stops active trader if user confirms closure.
+        """
+        # Check if forward test is running
+        is_running = hasattr(self, 'active_trader') and self.active_trader is not None
+        
+        if is_running:
+            # Show warning with details about running bot
+            response = messagebox.askyesno(
+                "Confirm Close",
+                "⚠️ WARNING: Forward test is currently running!\n\n"
+                "Closing the GUI will:\n"
+                "• Stop the trading bot immediately\n"
+                "• Close all active positions\n"
+                "• Export current results\n\n"
+                "Do you wish to close and stop the bot?",
+                icon='warning'
+            )
+            
+            if response:
+                # User confirmed - stop the bot first
+                logger.info("User confirmed GUI closure - stopping active trader")
+                try:
+                    self._ft_stop_forward_test()
+                except Exception as e:
+                    logger.error(f"Error stopping forward test during closure: {e}")
+                # Proceed with closing
+                self.destroy()
+            else:
+                # User cancelled - do nothing
+                logger.info("User cancelled GUI closure - keeping bot running")
+                return
+        else:
+            # No active trading - confirm close without warning
+            response = messagebox.askyesno(
+                "Confirm Close",
+                "Are you sure you want to close the application?",
+                icon='question'
+            )
+            
+            if response:
+                logger.info("User confirmed GUI closure - no active trading")
+                self.destroy()
+            else:
+                logger.info("User cancelled GUI closure")
+                return
 
     def destroy(self):
         """Override destroy to clean up GUI log handler"""
