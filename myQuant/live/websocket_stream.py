@@ -30,7 +30,7 @@ except ImportError:
     SmartWebSocketV2 = None  # Install with pip install smartapi-python
 
 # Import Angel One exchange type mapper
-from exchange_mapper import map_to_angel_exchange_type
+from ..utils.exchange_mapper import map_to_angel_exchange_type
 
 logger = logging.getLogger(__name__)
 

@@ -1,3 +1,0 @@
-#,Entry Time,Exit Time,Entry Price,Exit Price,Qty,Gross PnL,Commission,Net PnL,Exit Reason,Duration (min)
-1,2025-10-12 11:16:04,2025-10-12 11:16:06,23450.75,23390.25,375,-22687.5,53.36,-22740.86,Stop Loss,2.0
-2,2025-10-12 11:16:04,2025-10-12 11:16:06,0.0,23390.25,375,0.0,53.36,0.0,Stop Loss,2.0
