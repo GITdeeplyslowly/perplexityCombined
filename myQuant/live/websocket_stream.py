@@ -171,9 +171,13 @@ class WebSocketTickStreamer:
 
     def stop_stream(self):
         if self.ws is not None:
-            self.ws.close()
-            self.running = False
-            logger.info("WebSocket stream stopped.")
+            try:
+                self.ws.close_connection()  # Correct method for SmartWebSocketV2
+                self.running = False
+                logger.info("WebSocket stream stopped.")
+            except Exception as e:
+                logger.warning(f"Error during WebSocket close: {e}")
+                self.running = False
 
 # Example usage for integration testing (not run in production as-is)
 if __name__ == "__main__":

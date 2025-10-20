@@ -142,8 +142,12 @@ class ForwardTestResults:
         
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-        filename = os.path.join(results_dir, f"ft-{timestamp}-{detected_mode}.xlsx")
+        
+        # Get symbol name for filename
+        symbol = self.config.get('instrument', {}).get('symbol', 'UNKNOWN')
+        symbol_clean = symbol.replace('/', '_').replace('\\', '_')  # Clean symbol for filename
+        
+        filename = os.path.join(results_dir, f"ft-{symbol_clean}-{timestamp}-{detected_mode}.xlsx")
 
         
 

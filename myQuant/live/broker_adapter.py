@@ -147,10 +147,11 @@ class BrokerAdapter:
                 logger.info("📁 File simulation mode: tick logging disabled (source file already exists)")
                 return
             
-            # Generate session-based filename using session end time
+            # Generate session-based filename with symbol and session end time
             date = datetime.now().strftime("%Y%m%d")
             eh, em = config['session']['end_hour'], config['session']['end_min']
-            fname = f"livePrice_{date}_{eh:02d}{em:02d}.csv"
+            symbol_clean = self.symbol.replace('/', '_').replace('\\', '_')  # Clean symbol for filename
+            fname = f"livePrice_{symbol_clean}_{date}_{eh:02d}{em:02d}.csv"
             
             # Open file with buffered I/O for performance
             tick_log_path = TICK_LOG_DIR / fname
