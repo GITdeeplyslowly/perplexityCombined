@@ -210,12 +210,12 @@ class BrokerAdapter:
         
         if missing_min or empty_min:
             error_msg = (
-                f"🚨 CRITICAL ERROR: Missing essential trading credentials!\n"
-                f"❌ Missing credentials: {missing_min}\n" 
-                f"❌ Empty credentials: {empty_min}\n"
-                f"💡 MINIMUM REQUIRED: api_key, client_code\n"
-                f"🔄 OPTIONAL: pin, totp_secret (for direct auth mode)\n"
-                f"⚠️  TRADING SYSTEM CANNOT OPERATE WITHOUT VALID CREDENTIALS"
+                f"[CRITICAL ERROR] Missing essential trading credentials!\n"
+                f"Missing credentials: {missing_min}\n" 
+                f"Empty credentials: {empty_min}\n"
+                f"MINIMUM REQUIRED: api_key, client_code\n"
+                f"OPTIONAL: pin, totp_secret (for direct auth mode)\n"
+                f"TRADING SYSTEM CANNOT OPERATE WITHOUT VALID CREDENTIALS"
             )
             logger.error(error_msg)
             self.stream_status = "error"
@@ -263,12 +263,12 @@ class BrokerAdapter:
                 logger.error(f"Error processing WebSocket tick buffer: {e}")
                 return None
         
-        # PURE WebSocket Mode - NO POLLING when WebSocket is active
+        # POLLING DISABLED - WebSocket only mode
         if not self.connection:
             logger.error("No SmartAPI connection available")
             return None
         
-        # If we reach here, WebSocket is disabled - no data available
+        # If we reach here, WebSocket is disabled and polling is disabled - no data available
         logger.warning("WebSocket inactive and polling disabled - no data available")
         return None
 
@@ -438,10 +438,9 @@ class BrokerAdapter:
         2. Queue-based polling (backwards compatible)
         """
         try:
-            # DEBUG: Track tick reception - initialize counter at broker level
+            # Track tick reception - initialize counter at broker level
             if not hasattr(self, '_broker_tick_count'):
                 self._broker_tick_count = 0
-                logger.info("🔧 [BROKER] Initialized _broker_tick_count counter")
             
             self._broker_tick_count += 1
             

@@ -52,12 +52,20 @@ class SmartAPISessionManager:
         try:
             # Generate fresh TOTP token using the secret
             fresh_totp = pyotp.TOTP(self.totp_secret).now()
-            logging.info(f"Generated fresh TOTP for authentication")
-            
+            logging.info("Generated fresh TOTP for authentication")
+
+            # Perform authentication exchange
             res = smartapi.generateSession(self.client_code, self.pin, fresh_totp)
             jwt_token = res["data"]["jwtToken"]
             feed_token = smartapi.getfeedToken()
-            profile = smartapi.getProfile(self.client_code)["data"]
+            # Attempt to fetch profile (may raise if token invalid)
+            try:
+                profile = smartapi.getProfile(self.client_code)["data"]
+            except Exception:
+                profile = {}
+
+            # Persist complete session information to external SESSION_FILE so
+            # other processes can reuse tokens without hardcoding credentials.
             self.session_info = {
                 "jwt_token": jwt_token,
                 "feed_token": feed_token,
@@ -65,9 +73,14 @@ class SmartAPISessionManager:
                 "refresh_time": datetime.now().isoformat(),
                 "profile": profile,
             }
-            with open(SESSION_FILE, "w", encoding="utf-8") as f:
-                json.dump({"data": {"auth_token": jwt_token, "client_id": self.client_code}}, f)
-            logging.info(f"SmartAPI login successful for {self.client_code}. Session token saved.")
+
+            try:
+                with open(SESSION_FILE, "w", encoding="utf-8") as f:
+                    json.dump(self.session_info, f, ensure_ascii=False)
+            except Exception as e:
+                logging.warning(f"Failed to write session file {SESSION_FILE}: {e}")
+
+            logging.info(f"SmartAPI login successful for {self.client_code}. Session token saved to {SESSION_FILE}.")
             self.session = smartapi
             return self.session_info
         except Exception as e:
@@ -83,28 +96,50 @@ class SmartAPISessionManager:
             return None
         with open(SESSION_FILE, "r", encoding="utf-8") as f:
             token_data = json.load(f)
-            if "data" in token_data:
-                # Convert Wind format to myQuant format
+
+            # Support legacy Wind-style payloads as well as the new full session format.
+            if isinstance(token_data, dict) and "data" in token_data and "auth_token" in token_data["data"]:
+                # Legacy layout: {"data": {"auth_token": ..., "client_id": ...}}
                 self.session_info = {
-                    "jwt_token": token_data["data"]["auth_token"],
-                    "feed_token": None,
-                    "client_code": token_data["data"]["client_id"]
+                    "jwt_token": token_data["data"].get("auth_token"),
+                    "feed_token": token_data["data"].get("feed_token"),
+                    "client_code": token_data["data"].get("client_id")
                 }
-            else:
+            elif isinstance(token_data, dict) and "jwt_token" in token_data:
+                # New full-session layout we write: {"jwt_token": ..., "feed_token": ..., ...}
                 self.session_info = token_data
+            else:
+                # Unknown layout - return raw contents under session_info for best-effort
+                self.session_info = token_data
+
         logging.info(f"Loaded SmartAPI session from file (client {self.session_info.get('client_code')}).")
         return self.session_info
 
     def is_session_valid(self) -> bool:
         """Simple Wind-style token validation with API test."""
+        # If we don't have a token, session is invalid
         if not self.session_info or not self.session_info.get("jwt_token"):
             return False
-            
+
+        # Prefer a lightweight validation: avoid network calls when possible.
+        # If a refresh_time is available and within a short window (e.g. 6 hours), assume valid.
+        try:
+            refresh = self.session_info.get("refresh_time")
+            if refresh:
+                rt = datetime.fromisoformat(refresh)
+                age_hours = (datetime.now() - rt).total_seconds() / 3600.0
+                if age_hours < 6:
+                    return True
+        except Exception:
+            # Fall back to network validation below if parsing fails
+            pass
+
+        # As last resort, validate via a single API call. Keep this as fallback only.
         try:
             import requests
             test_url = "https://apiconnect.angelone.in/rest/secure/angelbroking/user/v1/getProfile"
             headers = {"Authorization": f"Bearer {self.session_info['jwt_token']}"}
-            response = requests.get(test_url, headers=headers)
+            response = requests.get(test_url, headers=headers, timeout=5)
             return response.status_code == 200
         except Exception:
             return False

@@ -2304,7 +2304,7 @@ class UnifiedTradingGUI(tk.Tk):
 
     def _ft_build_config_from_gui(self):
         """Build forward test specific configuration from GUI state - FRESH BUILD EVERY TIME"""
-        logger.info("🔄 Building fresh configuration from current GUI state...")
+        logger.info("Building fresh configuration from current GUI state...")
         
         # 🚀 FRESH BUILD: Start with clean defaults, no caching
         from config.defaults import DEFAULT_CONFIG
@@ -2482,8 +2482,8 @@ class UnifiedTradingGUI(tk.Tk):
         credentials = load_live_trading_credentials()
         config_dict['live'].update(credentials)
         
-        logger.info(f"🔐 Credentials loaded: api_key={'✅' if credentials.get('api_key') else '❌'}, "
-                   f"client_code={'✅' if credentials.get('client_code') else '❌'}")
+        logger.info(f"Credentials loaded: api_key={'LOADED' if credentials.get('api_key') else 'EMPTY'}, "
+                   f"client_code={'LOADED' if credentials.get('client_code') else 'EMPTY'}")
         
         # Validate and freeze the forward test configuration
         try:
@@ -2518,8 +2518,14 @@ class UnifiedTradingGUI(tk.Tk):
                     return
             
             # 🚀 BUILD FRESH CONFIG: Always build from current GUI state
-            logger.info("🔄 Building fresh forward test configuration...")
-            ft_frozen_config = self._ft_build_config_from_gui()
+            logger.info("Building fresh forward test configuration...")
+            try:
+                ft_frozen_config = self._ft_build_config_from_gui()
+            except Exception as e:
+                logger.error(f"Configuration build failed: {e}")
+                import traceback
+                logger.debug(f"Traceback: {traceback.format_exc()}")
+                raise e
             if ft_frozen_config is None:
                 logger.warning("❌ Forward test aborted: configuration validation failed")
                 return

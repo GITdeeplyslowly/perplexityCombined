@@ -12,34 +12,56 @@ from typing import Dict, Any
 # This ensures data simulation users don't see unnecessary dotenv warnings
 
 def load_live_trading_credentials():
-    """Load credentials for live trading authentication - called only when needed"""
+    """Load credentials for live trading authentication - called only when needed
+    
+    Uses direct file reading as primary method since python-dotenv is not available 
+    in GUI environments. Falls back to environment variables if file is not available.
+    """
     credentials = {}
     
-    try:
-        from dotenv import load_dotenv
-        
-        # Primary: Load from angelalgo .env.trading file (if available)
-        angelalgo_env_path = r"C:\Users\user\projects\angelalgo\.env.trading"
-        if os.path.exists(angelalgo_env_path):
-            load_dotenv(angelalgo_env_path)
-            print(f"✅ Environment variables loaded from angelalgo: {angelalgo_env_path}")
-        else:
-            # Fallback: Load from local .env file
+    # Primary: Direct file reading from external credentials file
+    angelalgo_env_path = r"C:\Users\user\projects\angelalgo\.env.trading"
+    
+    if os.path.exists(angelalgo_env_path):
+        try:
+            print(f"[SUCCESS] Loading credentials from: {angelalgo_env_path}")
+            with open(angelalgo_env_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        key = key.strip()
+                        value = value.strip()
+                        if key == 'API_KEY':
+                            credentials["api_key"] = value
+                        elif key == 'CLIENT_ID':
+                            credentials["client_code"] = value
+                        elif key == 'PASSWORD':
+                            credentials["pin"] = value
+                        elif key == 'SMARTAPI_TOTP_SECRET':
+                            credentials["totp_secret"] = value
+        except Exception as e:
+            print(f"[ERROR] Failed to read credentials file: {e}")
+            # Fall back to environment variables
+            credentials["api_key"] = os.getenv("API_KEY", "")
+            credentials["client_code"] = os.getenv("CLIENT_ID", "")
+            credentials["pin"] = os.getenv("PASSWORD", "")
+            credentials["totp_secret"] = os.getenv("SMARTAPI_TOTP_SECRET", "")
+    else:
+        # Fallback: Try environment variables and local .env file
+        try:
+            from dotenv import load_dotenv
             local_env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
             if os.path.exists(local_env_path):
-                load_dotenv(local_env_path)
-                print(f"✅ Environment variables loaded from local: {local_env_path}")
-            else:
-                print(f"ℹ️ No .env file found at either location")
-                
-    except ImportError:
-        print("ℹ️ python-dotenv not available, using system environment variables only")
-    
-    # Load the actual credential values
-    credentials["api_key"] = os.getenv("API_KEY", "")
-    credentials["client_code"] = os.getenv("CLIENT_ID", "")
-    credentials["pin"] = os.getenv("PASSWORD", "")
-    credentials["totp_secret"] = os.getenv("SMARTAPI_TOTP_SECRET", "")
+                load_dotenv(local_env_path, override=True)
+                print(f"[SUCCESS] Environment variables loaded from local: {local_env_path}")
+        except ImportError:
+            print("[INFO] python-dotenv not available, using system environment variables only")
+        
+        credentials["api_key"] = os.getenv("API_KEY", "")
+        credentials["client_code"] = os.getenv("CLIENT_ID", "")
+        credentials["pin"] = os.getenv("PASSWORD", "")
+        credentials["totp_secret"] = os.getenv("SMARTAPI_TOTP_SECRET", "")
     
     return credentials
 

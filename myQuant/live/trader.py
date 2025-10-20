@@ -46,6 +46,12 @@ class LiveTrader:
             if not isinstance(frozen_config, MappingProxyType):
                 raise TypeError(f"frozen_config must be MappingProxyType, got {type(frozen_config)}")
             config = frozen_config
+            
+            # Verify credentials are loaded for live trading
+            live_params = config.get("live", {})
+            logger.info(f"LiveTrader initialized with credentials: "
+                       f"api_key={'LOADED' if live_params.get('api_key') else 'EMPTY'}, "
+                       f"client_code={'LOADED' if live_params.get('client_code') else 'EMPTY'}")
         elif config_dict is not None:
             # Legacy path - validate and freeze raw dict
             validation = validate_config(config_dict)

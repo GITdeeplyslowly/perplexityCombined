@@ -30,7 +30,7 @@ except ImportError:
     SmartWebSocketV2 = None  # Install with pip install smartapi-python
 
 # Import Angel One exchange type mapper
-from ..utils.exchange_mapper import map_to_angel_exchange_type
+from utils.exchange_mapper import map_to_angel_exchange_type
 
 logger = logging.getLogger(__name__)
 
@@ -179,13 +179,19 @@ class WebSocketTickStreamer:
 if __name__ == "__main__":
     import os
     import time
-    # Load session info from smartapi/session_token.json or config
-    session_path = "smartapi/session_token.json"
+    # Load session info from external auth token file
+    session_path = r"C:\Users\user\projects\angelalgo\auth_token.json"
     if not os.path.exists(session_path):
-        print("Session JSON missingâ€”run smartapi login first.")
+        print("External auth token file missing—run smartapi login first.")
         exit(1)
     with open(session_path, "r") as f:
-        session = json.load(f)
+        token_data = json.load(f)
+        # Convert external format to internal format for test
+        session = {
+            "jwt_token": token_data["data"]["auth_token"],
+            "client_code": token_data["data"]["client_id"],
+            "feed_token": None  # Will need to be set properly in real usage
+        }
     api_key = session["profile"]["api_key"]
     client_code = session["client_code"]
     feed_token = session["feed_token"]
