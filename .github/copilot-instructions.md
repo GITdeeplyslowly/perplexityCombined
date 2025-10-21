@@ -215,6 +215,61 @@ d. **Easy modification** of strategies/parameters/indicators
 - Incremental indicators
 - Live WebSocket primary, file simulation secondary
 
+### 11. Performance Optimization Philosophy
+
+**Evidence-Driven Development - Measure First, Optimize What's Proven**
+
+**CRITICAL**: All performance optimizations must be backed by measurement data. Never optimize based on assumptions.
+
+**Core Principles**:
+- **Measure before optimize** - Phase 1 baseline gates ALL performance changes
+- **Identify what to add AND what to keep conditional** - Not all "optimizations" are necessary
+- **Evidence-driven, not assumption-driven** - Prove bottlenecks exist before fixing them
+- **Fail-first for proven issues** - Known failures get immediate fixes, no delay
+- **Lean architecture** - Skip unnecessary complexity, implement only proven bottlenecks
+
+**Implementation Pattern**:
+```python
+# Phase 1: Measure & Baseline (ALWAYS FIRST)
+baseline_results = measure_all_hot_paths()
+
+# Conditional Implementation Based on Evidence
+if baseline_results['logging_latency_pct'] > 40:
+    implement_async_logging()  # Proven bottleneck
+else:
+    skip_optimization()  # Not the problem, keep code simple
+
+# WRONG - Assumption-driven
+implement_async_logging()  # Because it's "commonly slow" - NO!
+```
+
+**Decision Matrix**:
+- **PROVEN Issues** (evidence exists) → Implement immediately
+- **SUSPECTED Issues** (logical reasoning) → Measure first, then decide
+- **ASSUMED Issues** (no evidence) → Lightweight check only, defer unless proven
+
+**Examples**:
+```python
+# PROVEN: Trade #4 catastrophic gap (₹14.75→₹0.10 missed ₹27.50)
+✅ implement_price_crossing_gap_handler()  # Known failure, fix immediately
+
+# SUSPECTED: Logging overhead (code shows logger.info on every tick)
+⚠️ if measure_logging_latency() > 40%:  # Measure first
+    implement_async_logging()  # Then optimize
+else:
+    reduce_log_verbosity()  # Lighter fix
+
+# ASSUMED: GC pauses might cause 10-50ms spikes
+❌ Don't add full GC monitoring without evidence
+✅ lightweight_gc_correlation_check()  # Check IF it's a problem first
+```
+
+**Outcome**:
+- Faster delivery (skip unnecessary work)
+- Lower complexity (don't add features that don't help)
+- Better ROI (focus effort on proven problems)
+- Maintainable codebase (no premature optimizations)
+
 ---
 
 ## Code Patterns & Standards
@@ -474,7 +529,11 @@ If a change is large or unwieldy:
 8. **Clear errors** - Explain what and how to fix
 9. **No emojis** - Clean, professional code
 10. **WebSocket sacred** - Keep primary path pristine
+11. **Measure before optimize** - Phase 1 gates all performance changes
+12. **Evidence-driven** - Prove bottlenecks exist before fixing them
+13. **Conditional optimization** - Identify what to add AND what to skip
+14. **Lean architecture** - Skip unnecessary complexity, focus on proven issues
 
 ---
 
-**When in doubt**: Check defaults.py, fail-first, keep it simple, prioritize live performance.
+**When in doubt**: Check defaults.py, fail-first, measure before optimizing, keep it simple, prioritize live performance.
