@@ -18,7 +18,7 @@ def test_config_dialog():
     config = create_config_from_defaults()
     
     # Enable Control Base SL
-    config['strategy']['control_base_sl_enabled'] = True
+    config['strategy']['Enable_control_base_sl_green_ticks'] = True
     config['strategy']['control_base_sl_green_ticks'] = 8
     
     validation = validate_config(config)
@@ -61,7 +61,7 @@ def test_config_dialog():
             lines.append(f"Green Bars Required: {strategy_cfg['consecutive_green_bars']}")
             
             # Control Base SL Configuration
-            if strategy_cfg.get('control_base_sl_enabled', False):
+            if strategy_cfg.get('Enable_control_base_sl_green_ticks', False):
                 lines.append(f"Control Base SL:     ENABLED")
                 lines.append(f"  Normal Green Ticks: {strategy_cfg['consecutive_green_bars']}")
                 lines.append(f"  After Base SL:      {strategy_cfg['control_base_sl_green_ticks']} green ticks")
@@ -111,7 +111,7 @@ def test_config_dialog():
         return False
     
     # Test with disabled Control Base SL
-    config['strategy']['control_base_sl_enabled'] = False
+    config['strategy']['Enable_control_base_sl_green_ticks'] = False
     frozen_config_disabled = freeze_config(config)
     
     dialog_text_disabled = gui._build_config_summary(

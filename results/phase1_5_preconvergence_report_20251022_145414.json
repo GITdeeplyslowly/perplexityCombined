@@ -1,0 +1,88 @@
+{
+  "phase": "1.5",
+  "description": "Pre-Convergence Latency Analysis",
+  "measurement_window": 1000,
+  "latency": {
+    "avg_ms": 0.097,
+    "min_ms": 0.054,
+    "max_ms": 19.328,
+    "target_ms": 1.0,
+    "meets_target": true
+  },
+  "component_breakdown": {
+    "websocket_json_parse": {
+      "avg_ms": 0.021,
+      "min_ms": 0.013,
+      "max_ms": 1.93,
+      "percent": 21.2
+    },
+    "websocket_dict_creation": {
+      "avg_ms": 0.014,
+      "min_ms": 0.008,
+      "max_ms": 2.652,
+      "percent": 14.3
+    },
+    "websocket_total": {
+      "avg_ms": 0.039,
+      "min_ms": 0.026,
+      "max_ms": 2.706,
+      "percent": 40.4
+    },
+    "broker_timestamp_ops": {
+      "avg_ms": 0.041,
+      "min_ms": 0.016,
+      "max_ms": 19.197,
+      "percent": 42.4
+    },
+    "broker_csv_logging": {
+      "avg_ms": 0.002,
+      "min_ms": 0.001,
+      "max_ms": 1.053,
+      "percent": 1.9
+    },
+    "broker_queue_ops": {
+      "avg_ms": 0.006,
+      "min_ms": 0.004,
+      "max_ms": 0.343,
+      "percent": 5.8
+    },
+    "broker_total": {
+      "avg_ms": 0.054,
+      "min_ms": 0.026,
+      "max_ms": 19.231,
+      "percent": 55.7
+    },
+    "trader_session_check": {
+      "avg_ms": 0.002,
+      "min_ms": 0.001,
+      "max_ms": 0.744,
+      "percent": 1.6
+    },
+    "trader_total": {
+      "avg_ms": 0.004,
+      "min_ms": 0.002,
+      "max_ms": 0.754,
+      "percent": 3.9
+    },
+    "total_pre_convergence": {
+      "avg_ms": 0.097,
+      "min_ms": 0.054,
+      "max_ms": 19.328,
+      "percent": 100.0
+    }
+  },
+  "memory": {
+    "avg_mb": 68.77,
+    "peak_mb": 69.27
+  },
+  "timestamp": "2025-10-22T14:54:14.141236",
+  "recommendations": [
+    {
+      "priority": "MEDIUM",
+      "component": "Timestamp Operations",
+      "current_pct": 42.4,
+      "recommendation": "Eliminate duplicate timestamp calls",
+      "implement": true
+    }
+  ]
+}

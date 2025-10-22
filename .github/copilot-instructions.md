@@ -4,6 +4,8 @@
 
 **myQuant** is a production-grade algorithmic trading system designed for real-world deployment with actual capital. The system processes market data tick-by-tick, executes long-only intraday strategies, and is currency-agnostic.
 
+**Development Environment**: Python 3.11.9
+
 ---
 
 ## Core Vision & Principles

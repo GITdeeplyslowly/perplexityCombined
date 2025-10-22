@@ -26,12 +26,14 @@ logger = logging.getLogger(__name__)
 
 def compute_number_of_lots(cfg_accessor: ConfigAccessor, current_capital: float, price: float) -> int:
     """
-    Compute number of lots (integer) using only current capital and instrument.lot_size (exchange fixed).
+    Compute number of lots (integer) using max_position_value_percent and instrument.lot_size.
+    
     Formula:
-        lots = floor( current_capital / (lot_size * price) )
+        allocatable_capital = current_capital * (max_position_value_percent / 100)
+        lots = floor( allocatable_capital / (lot_size * price) )
 
     - cfg_accessor: strict accessor (GUI-validated, frozen config)
-    - current_capital: cash available to deploy (float)
+    - current_capital: total cash available (float)
     - price: current price / LTP (float)
 
     Returns int >= 0.
@@ -49,6 +51,10 @@ def compute_number_of_lots(cfg_accessor: ConfigAccessor, current_capital: float,
             logger.warning(f"Rejecting trade: price ₹{price:,.2f} appears to be incorrect for options trading")
             return 0
 
+        # Phase 0: Apply max_position_value_percent (default 30%)
+        max_position_percent = cfg_accessor.get_risk_param('max_position_value_percent')
+        allocatable_capital = current_capital * (max_position_percent / 100.0)
+
         # instrument_mappings.lot_size is the single SSOT for contract size
         units_per_lot = cfg_accessor.get_current_instrument_param('lot_size')
         units_per_lot = int(units_per_lot)
@@ -57,7 +63,7 @@ def compute_number_of_lots(cfg_accessor: ConfigAccessor, current_capital: float,
         if units_value_per_lot <= 0:
             return 0
 
-        lots = int(current_capital // units_value_per_lot)
+        lots = int(allocatable_capital // units_value_per_lot)
         if lots < 0:
             return 0
         return lots
@@ -444,13 +450,22 @@ class PositionManager:
             return []
         position = self.positions[position_id]
         exits = []
+        
+        # Update trailing stop
         position.update_trailing_stop(current_price)
+        
+        # Check Stop Loss (simple comparison)
         if current_price <= position.stop_loss_price:
             exits.append((position.current_quantity, ExitReason.STOP_LOSS.value))
             return exits
-        if (position.trailing_activated and position.trailing_stop_price and current_price <= position.trailing_stop_price):
+        
+        # Check Trailing Stop (simple comparison)
+        if (position.trailing_activated and position.trailing_stop_price and 
+            current_price <= position.trailing_stop_price):
             exits.append((position.current_quantity, ExitReason.TRAILING_STOP.value))
             return exits
+        
+        # Check Take Profit levels (simple comparison)
         for i, (tp_level, tp_percentage, tp_executed) in enumerate(zip(position.tp_levels, position.tp_percentages, position.tp_executed)):
             if not tp_executed and current_price >= tp_level:
                 position.tp_executed[i] = True
@@ -466,7 +481,7 @@ class PositionManager:
                     exit_quantity = position.current_quantity  # Last TP: exit all remaining
                 # Logging for verification
                 exit_lots = exit_quantity // position.lot_size if position.lot_size > 0 else exit_quantity
-                logger.info(f"ðŸŽ¯ TP{i+1} Exit: {exit_lots} lots ({exit_quantity} units)")
+                logger.info(f"🎯 TP{i+1} Exit: {exit_lots} lots ({exit_quantity} units)")
                 # --- END FIX ---
                 if exit_quantity > 0:
                     reason = f"Take Profit {i+1}"

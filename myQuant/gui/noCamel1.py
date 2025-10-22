@@ -215,7 +215,7 @@ class UnifiedTradingGUI(tk.Tk):
         self.bt_consecutive_green_bars = tk.StringVar(value=str(strategy_config['consecutive_green_bars']))
         
         # Control Base SL parameters
-        self.bt_control_base_sl_enabled = tk.BooleanVar(value=strategy_config['control_base_sl_enabled'])
+        self.bt_control_base_sl_enabled = tk.BooleanVar(value=strategy_config['Enable_control_base_sl_green_ticks'])
         self.bt_control_base_sl_green_ticks = tk.StringVar(value=str(strategy_config['control_base_sl_green_ticks']))
 
         # Risk placeholders (required — no fallbacks)
@@ -289,7 +289,7 @@ class UnifiedTradingGUI(tk.Tk):
         self.ft_consecutive_green_bars = tk.StringVar(value=str(strategy_config['consecutive_green_bars']))
         
         # Forward Test Control Base SL parameters
-        self.ft_control_base_sl_enabled = tk.BooleanVar(value=strategy_config['control_base_sl_enabled'])
+        self.ft_control_base_sl_enabled = tk.BooleanVar(value=strategy_config['Enable_control_base_sl_green_ticks'])
         self.ft_control_base_sl_green_ticks = tk.StringVar(value=str(strategy_config['control_base_sl_green_ticks']))
 
         # Forward Test Risk management (from defaults.py)
@@ -542,7 +542,7 @@ class UnifiedTradingGUI(tk.Tk):
         config['strategy']['consecutive_green_bars'] = int(self.bt_consecutive_green_bars.get())
         
         # Control Base SL settings
-        config['strategy']['control_base_sl_enabled'] = self.bt_control_base_sl_enabled.get()
+        config['strategy']['Enable_control_base_sl_green_ticks'] = self.bt_control_base_sl_enabled.get()
         config['strategy']['control_base_sl_green_ticks'] = int(self.bt_control_base_sl_green_ticks.get())
 
         # Add noise filter settings (no hardcoded defaults)

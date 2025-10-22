@@ -26,6 +26,7 @@ from utils.enhanced_error_handler import (
     create_error_handler_from_config, ErrorSeverity, 
     safe_tick_processing, safe_indicator_calculation
 )
+from utils.performance_metrics import PerformanceInstrumentor
 from dataclasses import dataclass
 
 @dataclass
@@ -173,7 +174,7 @@ class ModularIntradayStrategy:
         
         # --- Control Base SL feature for dynamic green tick requirements ---
         try:
-            self.control_base_sl_enabled = self.config_accessor.get_strategy_param('control_base_sl_enabled')
+            self.control_base_sl_enabled = self.config_accessor.get_strategy_param('Enable_control_base_sl_green_ticks')
             self.base_sl_green_ticks = self.config_accessor.get_strategy_param('control_base_sl_green_ticks')
             self.last_exit_was_base_sl = False
             # Use existing consecutive_green_bars_required as normal threshold
@@ -185,6 +186,15 @@ class ModularIntradayStrategy:
         # Set name and version
         self.name = "Modular Intraday Long-Only Strategy"
         self.version = "3.0"
+        
+        # Phase 0: Indicator warm-up period
+        self.tick_count = 0
+        self.min_warmup_ticks = self.config_accessor.get_strategy_param('min_warmup_ticks')
+        self.warmup_complete = False
+        
+        # Phase 1: Performance instrumentation
+        self.instrumentor = PerformanceInstrumentor(window_size=1000)
+        self.instrumentation_enabled = False  # Control flag (enabled for Phase 1 baseline)
         
         # Initialize enhanced error handler
         self.error_handler = create_error_handler_from_config(config, "live_strategy")
@@ -580,6 +590,13 @@ class ModularIntradayStrategy:
             TradingSignal if action should be taken, None otherwise
         """
         try:
+            # Phase 1: Start tick measurement
+            if self.instrumentation_enabled:
+                self.instrumentor.start_tick()
+            
+            # Phase 0: Track tick count and warm-up
+            self.tick_count += 1
+            
             # Update threshold dynamically based on last exit type
             self.current_green_tick_threshold = (
                 self.base_sl_green_ticks if (self.control_base_sl_enabled and self.last_exit_was_base_sl)
@@ -599,17 +616,40 @@ class ModularIntradayStrategy:
             # Convert tick dict to Series for compatibility with existing logic
             tick_series = pd.Series(tick)
             
-            # Update indicators incrementally
-            updated_tick = self.process_tick_or_bar(tick_series)
+            # Phase 1: Measure indicator updates
+            if self.instrumentation_enabled:
+                with self.instrumentor.measure('indicator_update'):
+                    updated_tick = self.process_tick_or_bar(tick_series)
+            else:
+                updated_tick = self.process_tick_or_bar(tick_series)
+            
+            # Phase 0: Check warm-up completion
+            if not self.warmup_complete:
+                if self.tick_count >= self.min_warmup_ticks:
+                    self.warmup_complete = True
+                    logger.info(f"✅ Indicator warm-up complete after {self.tick_count} ticks")
+                else:
+                    # Still warming up - skip trading
+                    if self.instrumentation_enabled:
+                        self.instrumentor.end_tick()
+                    return None
             
             # GRACEFUL: Check for timestamp - return None if missing (live trading safe)
             if 'timestamp' not in tick:
                 logger.warning(f"⚠️ [STRATEGY] Tick missing timestamp, skipping. Tick keys: {list(tick.keys())}")
+                if self.instrumentation_enabled:
+                    self.instrumentor.end_tick()
                 return None
             timestamp = tick['timestamp']
             
-            # Generate signal based on current tick
-            return self._generate_signal_from_tick(updated_tick, timestamp)
+            # Phase 1: Measure signal evaluation
+            if self.instrumentation_enabled:
+                with self.instrumentor.measure('signal_eval'):
+                    signal = self._generate_signal_from_tick(updated_tick, timestamp)
+            else:
+                signal = self._generate_signal_from_tick(updated_tick, timestamp)
+            
+            return signal
             
         except Exception as e:
             # Enhanced error handling - critical path gets HIGH severity
@@ -620,6 +660,10 @@ class ModularIntradayStrategy:
                 severity=ErrorSeverity.HIGH,  # Tick processing is critical for trading
                 default_return=None
             )
+        finally:
+            # Phase 1: End tick measurement
+            if self.instrumentation_enabled:
+                self.instrumentor.end_tick()
 
     def _generate_signal_from_tick(self, updated_tick: pd.Series, timestamp: datetime) -> Optional[TradingSignal]:
         """

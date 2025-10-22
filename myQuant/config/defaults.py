@@ -132,6 +132,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "consecutive_green_bars": 3,
         "atr_len": 14,
         "indicator_update_mode": "tick",
+        "min_warmup_ticks": 50,  # Minimum ticks before trading starts (Phase 0)
         # Add noise filter parameters
         "noise_filter_enabled": False,  # DISABLED - Count all price movements as green/red ticks
         "noise_filter_percentage": 0.0001,  # 0.01% threshold
@@ -140,7 +141,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "nan_streak_threshold": 7,
         "nan_recovery_threshold": 3,
         # Control Base SL feature - dynamic green tick requirements after base SL exits
-        "control_base_sl_enabled": True,      # Enable dynamic entry control after base SL
+        "Enable_control_base_sl_green_ticks": True,      # Enable dynamic entry control after base SL
         "control_base_sl_green_ticks": 4      # Required green ticks after base SL (normal uses consecutive_green_bars)
     },
     "risk": {
@@ -156,7 +157,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "commission_per_trade": 0.0,
         "tick_size": 0.05,
         # PositionManager runtime expectations (single-source defaults)
-        "max_position_value_percent": 100.0,
+        "max_position_value_percent": 30.0,  # 30% of capital for risk management (Phase 0 fix)
         "stt_percent": 0.025,
         "exchange_charges_percent": 0.003,
         "gst_percent": 18.0,
@@ -164,6 +165,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "capital": {
         "initial_capital": 100000.0
+    },
+    "performance": {
+        "instrumentation_enabled": False,  # Enable for Phase 1 baseline measurement
+        "instrumentation_window_size": 1000,  # Number of ticks to track
+        "baseline_measurement_ticks": 1000,  # Ticks for baseline measurement
     },
     "instrument": {
         "symbol": "NIFTY",  # Default to Nifty options - lot_size now comes from instrument_mappings (SSOT)

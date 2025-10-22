@@ -23,7 +23,11 @@ import time
 import logging
 from datetime import datetime
 from typing import Dict, Optional
-from utils.time_utils import now_ist
+
+try:
+    from utils.time_utils import now_ist
+except ImportError:
+    from myQuant.utils.time_utils import now_ist
 
 logger = logging.getLogger(__name__)
 
