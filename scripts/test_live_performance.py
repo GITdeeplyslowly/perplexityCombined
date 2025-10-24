@@ -26,9 +26,10 @@ from pathlib import Path
 from datetime import datetime
 from copy import deepcopy
 
-# Add project root to path
+# Add project root and myQuant to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / "myQuant"))
 
 # Import instrumentation
 from myQuant.utils.performance_metrics import PreConvergenceInstrumentor, PerformanceInstrumentor
@@ -166,8 +167,25 @@ def test_live_performance(ticks_to_process: int = 1000, symbol: str = "NIFTY"):
             if tick_count >= ticks_to_process:
                 live_trader.stop()
         
+        # DEBUG: Use file simulation to test instrumentation
+        print("🔧 DEBUG: Using file simulation to test instrumentation...")
+        
+        # Enable file simulation mode
+        config['live']['data_source'] = 'file'
+        config['live']['data_file'] = str(project_root / 'aTest.csv')
+        config['live']['simulation_speed'] = 1.0  # 1x speed
+        
+        # Create new frozen config
+        frozen_config = freeze_config(config)
+        
+        # Create new LiveTrader with file simulation
+        live_trader = trader.LiveTrader(frozen_config=frozen_config)
+        live_trader.use_direct_callbacks = True
+        
+        print("✓ File simulation mode enabled")
+        
         # Start trading (will run until stopped)
-        live_trader.run(
+        live_trader.start(
             performance_callback=performance_callback,
             run_once=True  # Stop after one session
         )

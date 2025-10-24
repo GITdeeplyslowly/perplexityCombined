@@ -24,6 +24,7 @@ from datetime import datetime
 
 # Import timezone from SSOT
 from utils.time_utils import IST
+
 try:
     from SmartApi.smartWebSocketV2 import SmartWebSocketV2  # Capital 'A' - correct package name
 except ImportError:
@@ -33,6 +34,30 @@ except ImportError:
 from utils.exchange_mapper import map_to_angel_exchange_type
 
 logger = logging.getLogger(__name__)
+
+# Suppress known SmartAPI WebSocket callback signature mismatch
+class SmartAPIWebSocketFilter(logging.Filter):
+    """Filter out known SmartAPI library bugs that don't affect functionality."""
+    def filter(self, record):
+        # Suppress: SmartWebSocketV2._on_close() takes 2 positional arguments but 4 were given
+        if "SmartWebSocketV2._on_close()" in record.getMessage() and "positional arguments" in record.getMessage():
+            return False
+        return True
+
+# Apply filter to websocket logger
+logging.getLogger('websocket').addFilter(SmartAPIWebSocketFilter())
+
+# Phase 1.5: Pre-convergence instrumentation
+_pre_convergence_instrumentor = None
+
+def set_pre_convergence_instrumentor(instrumentor):
+    """Set the Phase 1.5 instrumentor for pre-convergence measurements."""
+    global _pre_convergence_instrumentor
+    import sys
+    _pre_convergence_instrumentor = instrumentor
+    logger.info(f"🔬 [WEBSOCKET_STREAM] Instrumentor SET: {instrumentor is not None}, Type: {type(instrumentor).__name__ if instrumentor else 'None'}")
+    logger.info(f"🔬 [WEBSOCKET_STREAM] Module ID when SET: {id(sys.modules[__name__])}")
+    logger.info(f"🔬 [WEBSOCKET_STREAM] Variable ID when SET: {id(_pre_convergence_instrumentor)}")
 
 class WebSocketTickStreamer:
     def __init__(self, api_key, client_code, feed_token, symbol_tokens, feed_type="Quote", on_tick=None, auth_token=None):
@@ -57,6 +82,8 @@ class WebSocketTickStreamer:
         self.ws = None
         self.running = False
         self.thread = None
+        # Robustness priority: Always allow auto-reconnection
+        # User must explicitly confirm stop via GUI dialog
 
     def _on_open(self, ws):
         logger.info("WebSocket connection OPEN")
@@ -101,16 +128,50 @@ class WebSocketTickStreamer:
             logger.error("No valid exchange mappings found - WebSocket subscription failed")
 
     def _on_data(self, ws, message):
+        # Robustness priority: Process all ticks, always allow reconnection
+        # Stop only when user explicitly confirms via GUI dialog
         try:
+            # Phase 1.5: Start pre-convergence measurement
+            global _pre_convergence_instrumentor
+            
+            # DEBUG: Check instrumentor state with detailed info
+            if not hasattr(self, '_instrumentor_debug_logged'):
+                import sys
+                logger.info(f"🔬 [DEBUG] Module ID: {id(sys.modules[__name__])}")
+                logger.info(f"🔬 [DEBUG] Instrumentor variable ID: {id(_pre_convergence_instrumentor)}")
+                logger.info(f"🔬 [DEBUG] Instrumentor value: {_pre_convergence_instrumentor}")
+                logger.info(f"🔬 [DEBUG] Instrumentor is None: {_pre_convergence_instrumentor is None}")
+                self._instrumentor_debug_logged = True
+            
+            if _pre_convergence_instrumentor:
+                _pre_convergence_instrumentor.start_websocket_tick()
+            else:
+                # Debug: Log when instrumentor is None during tick processing
+                if not hasattr(self, '_instrumentor_warning_logged'):
+                    logger.warning("🔬 [WEBSOCKET_STREAM._on_data] Instrumentor is NONE during tick processing")
+                    self._instrumentor_warning_logged = True
+            
             # Handle both JSON string and dict object from SmartAPI
             if isinstance(message, str):
-                data = json.loads(message)
+                # Phase 1.5: Measure JSON parsing
+                if _pre_convergence_instrumentor:
+                    with _pre_convergence_instrumentor.measure_websocket('json_parse'):
+                        data = json.loads(message)
+                else:
+                    data = json.loads(message)
             else:
                 data = message  # Already a dictionary
-                
-            # Use timezone-aware timestamp for consistency with strategy
-            # Create timestamp if needed
-            ts = datetime.now(IST)
+            
+            # Phase 1.5: Measure dict creation/processing
+            if _pre_convergence_instrumentor:
+                with _pre_convergence_instrumentor.measure_websocket('dict_creation'):
+                    # Use timezone-aware timestamp for consistency with strategy
+                    # Create timestamp if needed
+                    ts = datetime.now(IST)
+            else:
+                # Use timezone-aware timestamp for consistency with strategy
+                # Create timestamp if needed
+                ts = datetime.now(IST)
             # Extract price with better error handling and logging
             raw_price = data.get("ltp", data.get("last_traded_price", 0))
             if raw_price == 0:
@@ -138,21 +199,41 @@ class WebSocketTickStreamer:
                 logger.warning(f"🚨 Unusually low option price: {tick['symbol']} @ ₹{tick['price']} - Raw data: {data}")
             
             if self.on_tick:
+                # Phase 1.5: End websocket measurement before callback
+                if _pre_convergence_instrumentor:
+                    _pre_convergence_instrumentor.end_websocket_tick()
+                
                 self.on_tick(tick, tick['symbol'])
+            else:
+                # End measurement even if no callback
+                if _pre_convergence_instrumentor:
+                    _pre_convergence_instrumentor.end_websocket_tick()
+                    
         except Exception as e:
             logger.error(f"Error in streamed tick: {e}")
+            # End measurement on error too
+            if _pre_convergence_instrumentor:
+                _pre_convergence_instrumentor.end_websocket_tick()
 
     def _on_error(self, ws, error):
         logger.error(f"WebSocket error: {error}")
 
     def _on_close(self, ws, close_status_code=None, close_msg=None):
+        """Handle WebSocket closure - always allows auto-reconnection for robustness."""
+        was_running = self.running
         self.running = False
-        logger.warning("WebSocket connection CLOSED")
+        
+        if was_running:
+            # Connection lost - SmartAPI will auto-reconnect (robustness priority)
+            logger.warning(f"WebSocket connection LOST (code: {close_status_code}, msg: {close_msg}) - auto-reconnect ENABLED")
+        else:
+            logger.info(f"WebSocket connection closed (code: {close_status_code})")
 
     def start_stream(self):
         if self.running:
             logger.info("WebSocket stream already running.")
             return
+        
         self.running = True
         self.ws = SmartWebSocketV2(
             auth_token=self.auth_token,
@@ -170,14 +251,15 @@ class WebSocketTickStreamer:
         logger.info("WebSocket thread started.")
 
     def stop_stream(self):
+        """Stop WebSocket stream - user must confirm via GUI dialog before calling."""
+        self.running = False
+        
         if self.ws is not None:
             try:
                 self.ws.close_connection()  # Correct method for SmartWebSocketV2
-                self.running = False
-                logger.info("WebSocket stream stopped.")
+                logger.warning("⚠️ WebSocket stream stopped (user-confirmed) - will auto-reconnect if connection restored")
             except Exception as e:
                 logger.warning(f"Error during WebSocket close: {e}")
-                self.running = False
 
 # Example usage for integration testing (not run in production as-is)
 if __name__ == "__main__":

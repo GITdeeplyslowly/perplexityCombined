@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Import timezone from SSOT (defaults.py)
 from config.defaults import DEFAULT_CONFIG
+
 IST = pytz.timezone(DEFAULT_CONFIG['session']['timezone'])
 
 # Market session defaults

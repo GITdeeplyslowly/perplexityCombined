@@ -22,6 +22,15 @@ from utils.config_helper import validate_config, freeze_config, create_config_fr
 # Module-level logger
 logger = logging.getLogger(__name__)
 
+# Phase 1.5: Pre-convergence instrumentation
+_pre_convergence_instrumentor = None
+
+def set_pre_convergence_instrumentor(instrumentor):
+    """Set the Phase 1.5 instrumentor for pre-convergence measurements."""
+    global _pre_convergence_instrumentor
+    _pre_convergence_instrumentor = instrumentor
+    logger.info(f"🔬 [TRADER] Instrumentor SET: {instrumentor is not None}, Type: {type(instrumentor).__name__ if instrumentor else 'None'}")
+
 def get_strategy(config):
     """Get strategy instance with frozen MappingProxyType config - strict validation"""
     if not isinstance(config, MappingProxyType):
@@ -185,7 +194,11 @@ class LiveTrader:
                         # Debug: Log every 200 empty tick cycles but throttle to max once per 30 seconds
                         if tick_count % 200 == 0:
                             current_time = time.time()
-                            if not hasattr(self, '_last_no_tick_log') or (current_time - self._last_no_tick_log) >= 30:
+                            # Initialize _last_no_tick_log if not present
+                            if not hasattr(self, '_last_no_tick_log'):
+                                self._last_no_tick_log = current_time
+                            # Log if enough time has passed since last log
+                            if (current_time - self._last_no_tick_log) >= 30:
                                 logger.info(f"[DEBUG] WebSocket active but no ticks received (cycle {tick_count})")
                                 self._last_no_tick_log = current_time
                     else:
@@ -214,9 +227,11 @@ class LiveTrader:
                 
                 # STEP 2: Session end enforcement (before processing)
                 if hasattr(self.strategy, "should_exit_for_session"):
-                    if self.strategy.should_exit_for_session(now):
+                    should_exit, exit_reason = self.strategy.should_exit_for_session(now)
+                    if should_exit:
                         self.close_position("Session End")
-                        logger.info("Session end: all positions flattened.")
+                        logger.info(f"🛑 Session ended - stopping trading: {exit_reason}")
+                        logger.info("All positions flattened (if any).")
                         break
                 
                 # STEP 3: TRUE TICK-BY-TICK PROCESSING - Use on_tick() directly
@@ -360,9 +375,11 @@ class LiveTrader:
                 
                 # Check for session end
                 if hasattr(self.strategy, "should_exit_for_session"):
-                    if self.strategy.should_exit_for_session(now_ist()):
+                    should_exit, exit_reason = self.strategy.should_exit_for_session(now_ist())
+                    if should_exit:
                         self.close_position("Session End")
-                        logger.info("Session end: all positions flattened.")
+                        logger.info(f"🛑 Session ended - stopping trading: {exit_reason}")
+                        logger.info("All positions flattened (if any).")
                         break
                 
                 # Check for single-run mode
@@ -466,6 +483,11 @@ class LiveTrader:
         logger = logging.getLogger(__name__)
         
         try:
+            # Phase 1.5: Start trader measurement
+            global _pre_convergence_instrumentor
+            if _pre_convergence_instrumentor:
+                _pre_convergence_instrumentor.start_trader_tick()
+            
             # Track actual tick count (separate from heartbeat)
             if not hasattr(self, '_callback_tick_count'):
                 self._callback_tick_count = 0
@@ -485,19 +507,47 @@ class LiveTrader:
             # Update last price for heartbeat logging
             self.last_price = tick.get('price', tick.get('ltp', None))
             
-            # Session end check
-            if hasattr(self.strategy, "should_exit_for_session"):
-                if self.strategy.should_exit_for_session(now):
-                    self.close_position("Session End")
-                    return
+            # Phase 1.5: Measure session checks
+            if _pre_convergence_instrumentor:
+                with _pre_convergence_instrumentor.measure_trader('session_check'):
+                    # Session end check
+                    if hasattr(self.strategy, "should_exit_for_session"):
+                        should_exit, exit_reason = self.strategy.should_exit_for_session(now)
+                        if should_exit:
+                            self.close_position("Session End")
+                            logger.info(f"🛑 Session ended - stopping trading: {exit_reason}")
+                            logger.info("All positions flattened (if any).")
+                            _pre_convergence_instrumentor.end_trader_tick()
+                            return
+            else:
+                # Session end check
+                if hasattr(self.strategy, "should_exit_for_session"):
+                    should_exit, exit_reason = self.strategy.should_exit_for_session(now)
+                    if should_exit:
+                        self.close_position("Session End")
+                        logger.info(f"🛑 Session ended - stopping trading: {exit_reason}")
+                        logger.info("All positions flattened (if any).")
+                        return
             
-            # Process tick through strategy
-            try:
-                # Log FIRST strategy call and every 300 ticks to verify strategy is being called
+            # Phase 1.5: Measure signal handling preparation
+            if _pre_convergence_instrumentor:
+                with _pre_convergence_instrumentor.measure_trader('signal_prep'):
+                    # Log strategy call
+                    if self._callback_tick_count == 1 or self._callback_tick_count % 300 == 0:
+                        logger.info(f"📊 [CALLBACK] Calling strategy.on_tick() for tick #{self._callback_tick_count}")
+            else:
+                # Log strategy call
                 if self._callback_tick_count == 1 or self._callback_tick_count % 300 == 0:
                     logger.info(f"📊 [CALLBACK] Calling strategy.on_tick() for tick #{self._callback_tick_count}")
-                
-                signal = self.strategy.on_tick(tick)
+            
+            # Process tick through strategy (KEEP MEASURING - this is part of pre-convergence)
+            try:
+                # Phase 1.5: Measure strategy call overhead (NOT strategy internals)
+                if _pre_convergence_instrumentor:
+                    with _pre_convergence_instrumentor.measure_trader('strategy_call'):
+                        signal = self.strategy.on_tick(tick)
+                else:
+                    signal = self.strategy.on_tick(tick)
                 
                 # Log signal result for FIRST tick and occasionally
                 if self._callback_tick_count == 1 or self._callback_tick_count % 300 == 0:
@@ -520,41 +570,93 @@ class LiveTrader:
                     logger.error(f"NaN streak threshold ({self.nan_threshold}) exceeded. Stopping trading.")
                     self.close_position("NaN Threshold Exceeded")
                     self.is_running = False
+                
+                # Phase 1.5: End trader measurement on error
+                if _pre_convergence_instrumentor:
+                    _pre_convergence_instrumentor.end_trader_tick()
                 return
             
-            # Handle signal immediately
-            if signal:
-                current_price = tick.get('price', tick.get('ltp', 0))
-                self.last_price = current_price  # Update for heartbeat logging
-                
-                if signal.action == 'BUY' and not self.active_position_id:
-                    tick_row = self._create_tick_row(tick, signal.price, now)
-                    self.active_position_id = self.strategy.open_long(tick_row, now, self.position_manager)
+            # Phase 1.5: Measure signal processing
+            if _pre_convergence_instrumentor:
+                with _pre_convergence_instrumentor.measure_trader('signal_handling'):
+                    # Handle signal immediately
+                    if signal:
+                        current_price = tick.get('price', tick.get('ltp', 0))
+                        self.last_price = current_price
+                        
+                        if signal.action == 'BUY' and not self.active_position_id:
+                            tick_row = self._create_tick_row(tick, signal.price, now)
+                            self.active_position_id = self.strategy.open_long(tick_row, now, self.position_manager)
+                            
+                            if self.active_position_id:
+                                qty = self.position_manager.positions[self.active_position_id].current_quantity
+                                logger.info(f"[DIRECT] ENTERED LONG at ₹{signal.price:.2f} ({qty} contracts) - {signal.reason}")
+                                self._update_result_box(self.result_box, f"Direct BUY: {qty} @ {signal.price:.2f} ({signal.reason})")
+                        
+                        elif signal.action == 'CLOSE' and self.active_position_id:
+                            self.close_position(f"Strategy Signal: {signal.reason}")
+                            self._update_result_box(self.result_box, f"Direct CLOSE: @ {signal.price:.2f} ({signal.reason})")
+            else:
+                # Handle signal immediately (no instrumentation)
+                if signal:
+                    current_price = tick.get('price', tick.get('ltp', 0))
+                    self.last_price = current_price
                     
-                    if self.active_position_id:
-                        qty = self.position_manager.positions[self.active_position_id].current_quantity
-                        logger.info(f"[DIRECT] ENTERED LONG at ₹{signal.price:.2f} ({qty} contracts) - {signal.reason}")
-                        self._update_result_box(self.result_box, f"Direct BUY: {qty} @ {signal.price:.2f} ({signal.reason})")
-                
-                elif signal.action == 'CLOSE' and self.active_position_id:
-                    self.close_position(f"Strategy Signal: {signal.reason}")
-                    self._update_result_box(self.result_box, f"Direct CLOSE: @ {signal.price:.2f} ({signal.reason})")
+                    if signal.action == 'BUY' and not self.active_position_id:
+                        tick_row = self._create_tick_row(tick, signal.price, now)
+                        self.active_position_id = self.strategy.open_long(tick_row, now, self.position_manager)
+                        
+                        if self.active_position_id:
+                            qty = self.position_manager.positions[self.active_position_id].current_quantity
+                            logger.info(f"[DIRECT] ENTERED LONG at ₹{signal.price:.2f} ({qty} contracts) - {signal.reason}")
+                            self._update_result_box(self.result_box, f"Direct BUY: {qty} @ {signal.price:.2f} ({signal.reason})")
+                    
+                    elif signal.action == 'CLOSE' and self.active_position_id:
+                        self.close_position(f"Strategy Signal: {signal.reason}")
+                        self._update_result_box(self.result_box, f"Direct CLOSE: @ {signal.price:.2f} ({signal.reason})")
             
-            # Position management (TP/SL/trailing)
-            if self.active_position_id:
-                current_price = tick.get('price', tick.get('ltp', 0))
-                self.last_price = current_price  # Update for heartbeat logging
-                current_tick_row = self._create_tick_row(tick, current_price, now)
-                
-                try:
-                    self.position_manager.process_positions(current_tick_row, now)
-                except Exception as e:
-                    logger.error(f"Error in position_manager.process_positions: {e}")
-                
-                # Check if position was closed by risk management
-                if self.active_position_id not in self.position_manager.positions:
-                    logger.info("Position closed by risk management (TP/SL/trailing) [Direct Callback]")
-                    self._update_result_box(self.result_box, f"Risk CLOSE: @ {current_price:.2f}")
+            # Phase 1.5: Measure position management
+            if _pre_convergence_instrumentor:
+                with _pre_convergence_instrumentor.measure_trader('position_mgmt'):
+                    # Position management (TP/SL/trailing)
+                    if self.active_position_id:
+                        current_price = tick.get('price', tick.get('ltp', 0))
+                        self.last_price = current_price
+                        current_tick_row = self._create_tick_row(tick, current_price, now)
+                        
+                        try:
+                            self.position_manager.process_positions(current_tick_row, now)
+                        except Exception as e:
+                            logger.error(f"Error in position_manager.process_positions: {e}")
+                        
+                        # Check if position was closed by risk management
+                        if self.active_position_id not in self.position_manager.positions:
+                            logger.info("Position closed by risk management (TP/SL/trailing) [Direct Callback]")
+                            self._update_result_box(self.result_box, f"Risk CLOSE: @ {current_price:.2f}")
+                            
+                            # Notify strategy
+                            try:
+                                self.strategy.on_position_closed(self.active_position_id, "Risk Management")
+                            except Exception as e:
+                                logger.warning(f"Strategy notification failed: {e}")
+                            
+                            self.active_position_id = None
+            else:
+                # Position management (TP/SL/trailing) - no instrumentation
+                if self.active_position_id:
+                    current_price = tick.get('price', tick.get('ltp', 0))
+                    self.last_price = current_price
+                    current_tick_row = self._create_tick_row(tick, current_price, now)
+                    
+                    try:
+                        self.position_manager.process_positions(current_tick_row, now)
+                    except Exception as e:
+                        logger.error(f"Error in position_manager.process_positions: {e}")
+                    
+                    # Check if position was closed by risk management
+                    if self.active_position_id not in self.position_manager.positions:
+                        logger.info("Position closed by risk management (TP/SL/trailing) [Direct Callback]")
+                        self._update_result_box(self.result_box, f"Risk CLOSE: @ {current_price:.2f}")
                     
                     try:
                         self.strategy.on_position_closed(self.active_position_id, "Risk Management")
@@ -562,10 +664,18 @@ class LiveTrader:
                         logger.warning(f"Strategy notification failed: {e}")
                     
                     self.active_position_id = None
+            
+            # Phase 1.5: End trader measurement (normal completion)
+            if _pre_convergence_instrumentor:
+                _pre_convergence_instrumentor.end_trader_tick()
                     
         except Exception as e:
             logger.error(f"Error in direct callback handler: {e}")
             logger.exception("Direct callback exception details:")
+            
+            # End trader measurement on exception too
+            if _pre_convergence_instrumentor:
+                _pre_convergence_instrumentor.end_trader_tick()
 
     def close_position(self, reason: str = "Manual"):
         if self.active_position_id and self.active_position_id in self.position_manager.positions:

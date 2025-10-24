@@ -267,20 +267,23 @@ class ModularIntradayStrategy:
             self.session_end, self.end_buffer_minutes, is_start=False)
         return effective_start, effective_end
 
-    def should_exit_for_session(self, now: datetime) -> bool:
+    def should_exit_for_session(self, now: datetime) -> Tuple[bool, str]:
         """
         Check if positions should be exited based on user-defined session end and buffer
+        
+        Returns:
+            Tuple[bool, str]: (should_exit, reason) - True if session ended with explanation
         """
         if not self.is_trading_session(now):
-            return True
+            return True, f"Outside trading session (current: {now.time().strftime('%H:%M:%S')}, session: {self.session_start.strftime('%H:%M')}-{self.session_end.strftime('%H:%M')})"
         
         # Get effective end time with buffer
         _, buffer_end = self.get_effective_session_times()
         
         if now.time() >= buffer_end:
-            return True
+            return True, f"Session end buffer reached (current: {now.time().strftime('%H:%M:%S')}, buffer end: {buffer_end.strftime('%H:%M')}, market close: {self.session_end.strftime('%H:%M')}, buffer: {self.end_buffer_minutes}min)"
         
-        return False
+        return False, ""
 
     def is_market_closed(self, current_time: datetime) -> bool:
         """Check if market is completely closed (after end time)"""
@@ -613,15 +616,15 @@ class ModularIntradayStrategy:
             if self._ontick_call_count == 1 or self._ontick_call_count % 300 == 0:
                 logger.info(f"📊 [STRATEGY] on_tick called #{self._ontick_call_count}, tick keys: {list(tick.keys())}")
             
-            # Convert tick dict to Series for compatibility with existing logic
-            tick_series = pd.Series(tick)
+            # Phase A optimization: Pass tick dict directly (no pandas conversion)
+            # This eliminates expensive pd.Series() construction on every tick
             
             # Phase 1: Measure indicator updates
             if self.instrumentation_enabled:
                 with self.instrumentor.measure('indicator_update'):
-                    updated_tick = self.process_tick_or_bar(tick_series)
+                    updated_tick = self.process_tick_or_bar(tick)
             else:
-                updated_tick = self.process_tick_or_bar(tick_series)
+                updated_tick = self.process_tick_or_bar(tick)
             
             # Phase 0: Check warm-up completion
             if not self.warmup_complete:
@@ -790,13 +793,25 @@ class ModularIntradayStrategy:
 
 
 
-    def process_tick_or_bar(self, row: pd.Series):
+    def process_tick_or_bar(self, row):
+        """
+        Process tick data and update indicators.
+        
+        Phase A optimization: Accepts dict input (not pandas Series) to avoid
+        expensive object construction on every tick. Returns dict with indicator values.
+        
+        Args:
+            row: Dict or Series-like object with tick data
+        
+        Returns:
+            Dict with original tick data plus calculated indicator values
+        """
         # Tick counter and hot-path perf logging
         increment_tick_counter()
         if self.perf_logger:
             # STRICT: Use actual values or skip logging if missing
-            close_val = row['close'] if 'close' in row else 0
-            volume_val = row['volume'] if 'volume' in row else None
+            close_val = row.get('close', 0) if hasattr(row, 'get') else (row['close'] if 'close' in row else 0)
+            volume_val = row.get('volume') if hasattr(row, 'get') else (row['volume'] if 'volume' in row else None)
             self.perf_logger.tick_debug(
                 format_tick_message,
                 get_tick_counter(), 
@@ -804,34 +819,27 @@ class ModularIntradayStrategy:
                 volume_val
             )
         try:
-            # Accept Series or single-row DataFrame
+            # Phase A: Support both dict and pandas inputs (backward compatibility)
+            # New code passes dicts, old code may still pass Series
             if isinstance(row, pd.DataFrame):
                 if len(row) == 1:
                     row = row.iloc[0]
                 else:
                     return row
+            
+            # Convert pandas Series to dict for uniform processing
+            if isinstance(row, pd.Series):
+                row = row.to_dict()
 
             # GRACEFUL: Extract required price - return safely if missing (live trading resilient)
-            def safe_extract(key, default=None):
-                """Extract value gracefully - return default if missing or invalid (live trading safe)"""
-                if key not in row:
-                    return default
-                val = row[key]
-                if isinstance(val, pd.Series):
-                    if len(val) == 0:
-                        return default
-                    return val.iloc[0]
-                return val
-
             # Extract close price (required) - graceful fallback approach
-            close_price = safe_extract('close')
+            close_price = row.get('close')
             if close_price is None:
-                close_price = safe_extract('price')
+                close_price = row.get('price')
                 if close_price is None:
                     # No valid price found - return original row without processing
                     return row
-            if close_price is None:
-                return row
+            
             try:
                 close_price = float(close_price)
             except Exception:
@@ -840,57 +848,97 @@ class ModularIntradayStrategy:
                 return row
 
             # Extract optional fields with sensible defaults for OHLCV
-            volume = row['volume'] if 'volume' in row else 0
+            volume = row.get('volume', 0)
             try:
                 volume = int(volume) if volume is not None else 0
             except Exception:
                 volume = 0
                 
             # Extract OHLC with fallback to close price
-            high_price = float(row['high'] if 'high' in row and row['high'] is not None else close_price)
-            low_price = float(row['low'] if 'low' in row and row['low'] is not None else close_price)
-            open_price = float(row['open'] if 'open' in row and row['open'] is not None else close_price)
+            high_price = float(row.get('high', close_price) if row.get('high') is not None else close_price)
+            low_price = float(row.get('low', close_price) if row.get('low') is not None else close_price)
+            open_price = float(row.get('open', close_price) if row.get('open') is not None else close_price)
 
-            updated = row.copy()
+            # Phase A: Build result dict directly (no .copy())
+            # Start with original tick data
+            updated = dict(row)
             # Add the close price to the updated row for downstream processing
             updated['close'] = close_price
 
             # EMA
             if self.use_ema_crossover:
-                fast_ema_val = self.ema_fast_tracker.update(close_price)
-                slow_ema_val = self.ema_slow_tracker.update(close_price)
-                updated['fast_ema'] = fast_ema_val
-                updated['slow_ema'] = slow_ema_val
-                updated['ema_bullish'] = False if pd.isna(fast_ema_val) or pd.isna(slow_ema_val) else (fast_ema_val > slow_ema_val)
+                if self.instrumentation_enabled:
+                    with self.instrumentor.measure('indicator_ema'):
+                        fast_ema_val = self.ema_fast_tracker.update(close_price)
+                        slow_ema_val = self.ema_slow_tracker.update(close_price)
+                        updated['fast_ema'] = fast_ema_val
+                        updated['slow_ema'] = slow_ema_val
+                        updated['ema_bullish'] = False if pd.isna(fast_ema_val) or pd.isna(slow_ema_val) else (fast_ema_val > slow_ema_val)
+                else:
+                    fast_ema_val = self.ema_fast_tracker.update(close_price)
+                    slow_ema_val = self.ema_slow_tracker.update(close_price)
+                    updated['fast_ema'] = fast_ema_val
+                    updated['slow_ema'] = slow_ema_val
+                    updated['ema_bullish'] = False if pd.isna(fast_ema_val) or pd.isna(slow_ema_val) else (fast_ema_val > slow_ema_val)
 
             # MACD
             if self.use_macd:
-                macd_val, macd_signal_val, macd_hist_val = self.macd_tracker.update(close_price)
-                updated['macd'] = macd_val
-                updated['macd_signal'] = macd_signal_val
-                updated['macd_histogram'] = macd_hist_val
-                updated['macd_bullish'] = False if pd.isna(macd_val) or pd.isna(macd_signal_val) else (macd_val > macd_signal_val)
-                updated['macd_histogram_positive'] = False if pd.isna(macd_hist_val) else (macd_hist_val > 0)
+                if self.instrumentation_enabled:
+                    with self.instrumentor.measure('indicator_macd'):
+                        macd_val, macd_signal_val, macd_hist_val = self.macd_tracker.update(close_price)
+                        updated['macd'] = macd_val
+                        updated['macd_signal'] = macd_signal_val
+                        updated['macd_histogram'] = macd_hist_val
+                        updated['macd_bullish'] = False if pd.isna(macd_val) or pd.isna(macd_signal_val) else (macd_val > macd_signal_val)
+                        updated['macd_histogram_positive'] = False if pd.isna(macd_hist_val) else (macd_hist_val > 0)
+                else:
+                    macd_val, macd_signal_val, macd_hist_val = self.macd_tracker.update(close_price)
+                    updated['macd'] = macd_val
+                    updated['macd_signal'] = macd_signal_val
+                    updated['macd_histogram'] = macd_hist_val
+                    updated['macd_bullish'] = False if pd.isna(macd_val) or pd.isna(macd_signal_val) else (macd_val > macd_signal_val)
+                    updated['macd_histogram_positive'] = False if pd.isna(macd_hist_val) else (macd_hist_val > 0)
 
             # VWAP
             if self.use_vwap:
-                vwap_val = self.vwap_tracker.update(price=close_price, volume=volume, high=high_price, low=low_price, close=close_price)
-                updated['vwap'] = vwap_val
-                updated['vwap_bullish'] = False if pd.isna(vwap_val) else (close_price > vwap_val)
+                if self.instrumentation_enabled:
+                    with self.instrumentor.measure('indicator_vwap'):
+                        vwap_val = self.vwap_tracker.update(price=close_price, volume=volume, high=high_price, low=low_price, close=close_price)
+                        updated['vwap'] = vwap_val
+                        updated['vwap_bullish'] = False if pd.isna(vwap_val) else (close_price > vwap_val)
+                else:
+                    vwap_val = self.vwap_tracker.update(price=close_price, volume=volume, high=high_price, low=low_price, close=close_price)
+                    updated['vwap'] = vwap_val
+                    updated['vwap_bullish'] = False if pd.isna(vwap_val) else (close_price > vwap_val)
 
             # HTF EMA processing
             if self.use_htf_trend:
-                htf_ema_val = self.htf_ema_tracker.update(close_price)
-                updated['htf_ema'] = htf_ema_val
-                updated['htf_bullish'] = False if pd.isna(htf_ema_val) else (close_price > htf_ema_val)
+                if self.instrumentation_enabled:
+                    with self.instrumentor.measure('indicator_htf_ema'):
+                        htf_ema_val = self.htf_ema_tracker.update(close_price)
+                        updated['htf_ema'] = htf_ema_val
+                        updated['htf_bullish'] = False if pd.isna(htf_ema_val) else (close_price > htf_ema_val)
+                else:
+                    htf_ema_val = self.htf_ema_tracker.update(close_price)
+                    updated['htf_ema'] = htf_ema_val
+                    updated['htf_bullish'] = False if pd.isna(htf_ema_val) else (close_price > htf_ema_val)
 
             # ATR
             if self.use_atr:
-                atr_val = self.atr_tracker.update(high=high_price, low=low_price, close=close_price)
-                updated['atr'] = atr_val
+                if self.instrumentation_enabled:
+                    with self.instrumentor.measure('indicator_atr'):
+                        atr_val = self.atr_tracker.update(high=high_price, low=low_price, close=close_price)
+                        updated['atr'] = atr_val
+                else:
+                    atr_val = self.atr_tracker.update(high=high_price, low=low_price, close=close_price)
+                    updated['atr'] = atr_val
 
             # Update green tick count and return
-            self._update_green_tick_count(close_price)
+            if self.instrumentation_enabled:
+                with self.instrumentor.measure('green_tick_update'):
+                    self._update_green_tick_count(close_price)
+            else:
+                self._update_green_tick_count(close_price)
             return updated
         except Exception as e:
             # Config/indicator errors should propagate (fail-fast)

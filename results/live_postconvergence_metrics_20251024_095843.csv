@@ -1,0 +1,1 @@
+tick_id,timestamp,total_ms,api_receive_ms,indicator_update_ms,signal_eval_ms,position_mgmt_ms,logging_ms,csv_write_ms,dataframe_ops_ms,queue_ops_ms,memory_mb,cpu_percent

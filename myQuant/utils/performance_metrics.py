@@ -8,8 +8,16 @@ from typing import Dict, Optional, List
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime
-import psutil
 import os
+
+# Optional psutil for memory tracking (graceful degradation if not installed)
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("psutil not installed - memory tracking disabled. Install with: pip install psutil")
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +88,8 @@ class PerformanceInstrumentor:
         self.current_tick_metrics: Optional[TickMetrics] = None
         self.tick_counter = 0
         
-        # Process info for resource monitoring
-        self.process = psutil.Process(os.getpid())
+        # Process info for resource monitoring (optional)
+        self.process = psutil.Process(os.getpid()) if PSUTIL_AVAILABLE else None
         
         # Context tracking
         self._tick_start_time = None
@@ -104,9 +112,10 @@ class PerformanceInstrumentor:
         total_time = (time.perf_counter() - self._tick_start_time) * 1000
         self.current_tick_metrics.total_ms = total_time
         
-        # Capture resource usage
-        self.current_tick_metrics.memory_mb = self.process.memory_info().rss / 1024 / 1024
-        self.current_tick_metrics.cpu_percent = self.process.cpu_percent()
+        # Capture resource usage (if psutil available)
+        if self.process:
+            self.current_tick_metrics.memory_mb = self.process.memory_info().rss / 1024 / 1024
+            self.current_tick_metrics.cpu_percent = self.process.cpu_percent()
         
         # Store metrics
         self.tick_metrics.append(self.current_tick_metrics)
@@ -363,13 +372,20 @@ class PreConvergenceMetrics:
     websocket_dict_creation_ms: float = 0.0
     websocket_total_ms: float = 0.0
     
+    broker_tick_counting_ms: float = 0.0  # NEW: Counter init and logging check
     broker_timestamp_ops_ms: float = 0.0
     broker_csv_logging_ms: float = 0.0
     broker_queue_ops_ms: float = 0.0
+    broker_callback_check_ms: float = 0.0  # NEW: Callback existence check
+    broker_logging_ms: float = 0.0  # NEW: Actual logging operations
     broker_callback_invoke_ms: float = 0.0
     broker_total_ms: float = 0.0
     
     trader_session_check_ms: float = 0.0
+    trader_signal_prep_ms: float = 0.0  # NEW: Logging prep before strategy
+    trader_strategy_call_ms: float = 0.0  # NEW: strategy.on_tick() call overhead
+    trader_signal_handling_ms: float = 0.0  # NEW: Signal processing (BUY/CLOSE)
+    trader_position_mgmt_ms: float = 0.0  # NEW: Position management (TP/SL)
     trader_callback_invoke_ms: float = 0.0
     trader_total_ms: float = 0.0
     
@@ -412,7 +428,7 @@ class PreConvergenceInstrumentor:
         self.current_metrics: Optional[PreConvergenceMetrics] = None
         self.tick_counter = 0
         
-        self.process = psutil.Process(os.getpid())
+        self.process = psutil.Process(os.getpid()) if PSUTIL_AVAILABLE else None
         
         # Timing trackers
         self._websocket_start = None
@@ -468,6 +484,9 @@ class PreConvergenceInstrumentor:
             ) * 1000
             
             # Store individual measurements
+            self.current_metrics.broker_tick_counting_ms = (
+                self._broker_measurements.get('tick_counting', 0)
+            )
             self.current_metrics.broker_timestamp_ops_ms = (
                 self._broker_measurements.get('timestamp_ops', 0)
             )
@@ -476,6 +495,12 @@ class PreConvergenceInstrumentor:
             )
             self.current_metrics.broker_queue_ops_ms = (
                 self._broker_measurements.get('queue_ops', 0)
+            )
+            self.current_metrics.broker_callback_check_ms = (
+                self._broker_measurements.get('callback_check', 0)
+            )
+            self.current_metrics.broker_logging_ms = (
+                self._broker_measurements.get('logging', 0)
             )
             self.current_metrics.broker_callback_invoke_ms = (
                 self._broker_measurements.get('callback_invoke', 0)
@@ -501,6 +526,18 @@ class PreConvergenceInstrumentor:
             self.current_metrics.trader_session_check_ms = (
                 self._trader_measurements.get('session_check', 0)
             )
+            self.current_metrics.trader_signal_prep_ms = (
+                self._trader_measurements.get('signal_prep', 0)
+            )
+            self.current_metrics.trader_strategy_call_ms = (
+                self._trader_measurements.get('strategy_call', 0)
+            )
+            self.current_metrics.trader_signal_handling_ms = (
+                self._trader_measurements.get('signal_handling', 0)
+            )
+            self.current_metrics.trader_position_mgmt_ms = (
+                self._trader_measurements.get('position_mgmt', 0)
+            )
             self.current_metrics.trader_callback_invoke_ms = (
                 self._trader_measurements.get('callback_invoke', 0)
             )
@@ -512,8 +549,9 @@ class PreConvergenceInstrumentor:
             self.current_metrics.trader_total_ms
         )
         
-        # Capture memory snapshot
-        self.current_metrics.memory_mb = self.process.memory_info().rss / 1024 / 1024
+        # Capture memory snapshot (if psutil available)
+        if self.process:
+            self.current_metrics.memory_mb = self.process.memory_info().rss / 1024 / 1024
         
         # Store metrics
         self.metrics.append(self.current_metrics)
@@ -529,12 +567,19 @@ class PreConvergenceInstrumentor:
             'websocket_json_parse': m.websocket_json_parse_ms,
             'websocket_dict_creation': m.websocket_dict_creation_ms,
             'websocket_total': m.websocket_total_ms,
+            'broker_tick_counting': m.broker_tick_counting_ms,
             'broker_timestamp_ops': m.broker_timestamp_ops_ms,
             'broker_csv_logging': m.broker_csv_logging_ms,
             'broker_queue_ops': m.broker_queue_ops_ms,
+            'broker_callback_check': m.broker_callback_check_ms,
+            'broker_logging': m.broker_logging_ms,
             'broker_callback_invoke': m.broker_callback_invoke_ms,
             'broker_total': m.broker_total_ms,
             'trader_session_check': m.trader_session_check_ms,
+            'trader_signal_prep': m.trader_signal_prep_ms,
+            'trader_strategy_call': m.trader_strategy_call_ms,
+            'trader_signal_handling': m.trader_signal_handling_ms,
+            'trader_position_mgmt': m.trader_position_mgmt_ms,
             'trader_callback_invoke': m.trader_callback_invoke_ms,
             'trader_total': m.trader_total_ms,
             'total_pre_convergence': m.total_pre_convergence_ms,
@@ -672,9 +717,11 @@ class PreConvergenceInstrumentor:
             writer.writerow([
                 'tick_id', 'timestamp', 'total_pre_convergence_ms',
                 'websocket_json_parse_ms', 'websocket_dict_creation_ms', 'websocket_total_ms',
-                'broker_timestamp_ops_ms', 'broker_csv_logging_ms', 'broker_queue_ops_ms',
+                'broker_tick_counting_ms', 'broker_timestamp_ops_ms', 'broker_csv_logging_ms', 
+                'broker_queue_ops_ms', 'broker_callback_check_ms', 'broker_logging_ms',
                 'broker_callback_invoke_ms', 'broker_total_ms',
-                'trader_session_check_ms', 'trader_callback_invoke_ms', 'trader_total_ms',
+                'trader_session_check_ms', 'trader_signal_prep_ms', 'trader_strategy_call_ms',
+                'trader_signal_handling_ms', 'trader_position_mgmt_ms', 'trader_callback_invoke_ms', 'trader_total_ms',
                 'memory_mb'
             ])
             
@@ -682,9 +729,11 @@ class PreConvergenceInstrumentor:
                 writer.writerow([
                     m.tick_id, m.timestamp.isoformat(), m.total_pre_convergence_ms,
                     m.websocket_json_parse_ms, m.websocket_dict_creation_ms, m.websocket_total_ms,
-                    m.broker_timestamp_ops_ms, m.broker_csv_logging_ms, m.broker_queue_ops_ms,
+                    m.broker_tick_counting_ms, m.broker_timestamp_ops_ms, m.broker_csv_logging_ms, 
+                    m.broker_queue_ops_ms, m.broker_callback_check_ms, m.broker_logging_ms,
                     m.broker_callback_invoke_ms, m.broker_total_ms,
-                    m.trader_session_check_ms, m.trader_callback_invoke_ms, m.trader_total_ms,
+                    m.trader_session_check_ms, m.trader_signal_prep_ms, m.trader_strategy_call_ms,
+                    m.trader_signal_handling_ms, m.trader_position_mgmt_ms, m.trader_callback_invoke_ms, m.trader_total_ms,
                     m.memory_mb
                 ])
                 

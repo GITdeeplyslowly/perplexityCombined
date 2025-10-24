@@ -2624,6 +2624,21 @@ class UnifiedTradingGUI(tk.Tk):
             # Give ForwardTestResults access to GUI log data for automatic export
             trader.results_exporter.gui_instance = self
             
+            # Check for performance testing hook and inject if enabled
+            try:
+                from myQuant.utils.performance_test_hook import get_performance_hook
+                perf_hook = get_performance_hook()
+                if perf_hook.enabled:
+                    logger.info("🔬 Performance testing mode detected - FORCING WebSocket callback mode")
+                    # CRITICAL: Force WebSocket callback mode for performance testing
+                    trader.use_direct_callbacks = True
+                    logger.info("⚡ Callback mode FORCED ON - WebSocket direct callbacks (no polling)")
+                    perf_hook.inject_into_trader(trader)
+            except ImportError:
+                pass  # Performance testing module not available
+            except Exception as e:
+                logger.warning(f"⚠️ Could not inject performance testing: {e}")
+            
             # Start forward test in background thread to avoid blocking GUI
             import threading
             def run_forward_test():
@@ -2846,10 +2861,26 @@ class UnifiedTradingGUI(tk.Tk):
         return "\n".join(lines)
     
     def _ft_stop_forward_test(self):
-        """Stop running forward test with proper thread cleanup"""
+        """Stop running forward test with proper thread cleanup - requires user confirmation"""
         try:
             if hasattr(self, 'active_trader') and self.active_trader:
-                logger.info("🛑 Stopping forward test...")
+                # CRITICAL: Ask for user confirmation before stopping
+                # Robustness priority - avoid accidental disconnection
+                confirm = messagebox.askyesno(
+                    "⚠️ Confirm Stop",
+                    "Are you sure you want to stop the live data stream?\n\n"
+                    "⚠️ WARNING: This will disconnect from live market data.\n"
+                    "✓ Stream will auto-reconnect if network recovers.\n"
+                    "✓ Position will be force-closed safely.\n\n"
+                    "Stop forward test?",
+                    icon='warning'
+                )
+                
+                if not confirm:
+                    logger.info("❌ Stop cancelled by user - stream continues")
+                    return
+                
+                logger.info("🛑 User confirmed stop - stopping forward test...")
                 
                 # Update status displays
                 self._update_ft_status(

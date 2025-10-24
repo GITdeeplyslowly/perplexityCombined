@@ -34,6 +34,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Callable
 
 from utils.time_utils import now_ist, normalize_datetime_to_ist, IST
+
 from types import MappingProxyType
 
 # Set tick log directory to user's Desktop BotResults folder
@@ -41,6 +42,15 @@ TICK_LOG_DIR = Path(r"C:\Users\user\Desktop\BotResults\LiveTickPrice")
 TICK_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
+
+# Phase 1.5: Pre-convergence instrumentation
+_pre_convergence_instrumentor = None
+
+def set_pre_convergence_instrumentor(instrumentor):
+    """Set the Phase 1.5 instrumentor for pre-convergence measurements."""
+    global _pre_convergence_instrumentor
+    _pre_convergence_instrumentor = instrumentor
+    logger.info(f"🔬 [BROKER_ADAPTER] Instrumentor SET: {instrumentor is not None}, Type: {type(instrumentor).__name__ if instrumentor else 'None'}")
 
 class BrokerAdapter:
     def __init__(self, config: MappingProxyType = None):
@@ -128,13 +138,19 @@ class BrokerAdapter:
             self.SmartConnect = None
             logger.warning("SmartAPI not installed; live data streaming not available.")
             
-        # Try to import WebSocket streamer
+        # Try to import WebSocket streamer - prefer fully-qualified package path
         try:
-            from live.websocket_stream import WebSocketTickStreamer
+            # Prefer the canonical, fully-qualified import to avoid duplicate module instances
+            from myQuant.live.websocket_stream import WebSocketTickStreamer
             self.WebSocketTickStreamer = WebSocketTickStreamer
         except ImportError:
-            self.WebSocketTickStreamer = None
-            logger.info("WebSocket streaming not available; will use polling mode.")
+            try:
+                # Fallback to top-level 'live' package if present in sys.path
+                from live.websocket_stream import WebSocketTickStreamer
+                self.WebSocketTickStreamer = WebSocketTickStreamer
+            except ImportError:
+                self.WebSocketTickStreamer = None
+                logger.warning("⚠️ WebSocket streaming not available - WebSocketTickStreamer could not be imported!")
 
     def _init_tick_logging(self, config):
         """Initialize session-specific CSV tick logging for LIVE data only (no redundancy with historical files)"""
@@ -373,15 +389,34 @@ class BrokerAdapter:
             self.connection = session_manager.session  # Use the SmartConnect object, not session_info dict
             self.session_info = session_info  # Store session info separately for WebSocket
             
-            # Initialize WebSocket streaming if available and token is provided
-            if self.WebSocketTickStreamer and self.instrument.get("token"):
-                self._initialize_websocket_streaming(self.session_info)
-            else:
-                logger.info("📊 WebSocket not available, using polling mode for data collection")
-                self.streaming_mode = False
+            # FAIL-FIRST: WebSocket is MANDATORY - no polling fallback
+            if not self.WebSocketTickStreamer:
+                error_msg = (
+                    "🚨 CRITICAL ERROR: WebSocket streaming is MANDATORY but WebSocketTickStreamer not available!\n"
+                    "💡 SOLUTION: Check that myQuant/live/websocket_stream.py exists and imports correctly\n"
+                    "❌ POLLING MODE IS NOT ALLOWED - MUST USE WEBSOCKET"
+                )
+                logger.error(error_msg)
+                self.stream_status = "error"
+                raise RuntimeError("WebSocket streaming required but not available - no polling fallback allowed")
+            
+            # FAIL-FIRST: Token is MANDATORY for WebSocket streaming
+            if not self.instrument.get("token"):
+                error_msg = (
+                    f"🚨 CRITICAL ERROR: Instrument token is MANDATORY for WebSocket streaming!\n"
+                    f"💡 SOLUTION: Add 'token' field to instrument config for {self.instrument.get('symbol', 'UNKNOWN')}\n"
+                    f"   Example: \"token\": \"99926000\" for NIFTY 50 index\n"
+                    f"❌ CANNOT PROCEED WITHOUT VALID INSTRUMENT TOKEN"
+                )
+                logger.error(error_msg)
+                self.stream_status = "error"
+                raise ValueError(f"Instrument token missing for {self.instrument.get('symbol')} - WebSocket requires valid token")
+            
+            # Initialize WebSocket streaming (MANDATORY path)
+            self._initialize_websocket_streaming(self.session_info)
             
             self.stream_status = "connected"
-            logger.info("🟢 SmartAPI connection established successfully")
+            logger.info("🟢 SmartAPI connection established successfully with WebSocket streaming")
             
         except Exception as e:
             logger.error(f"❌ SmartAPI connection failed: {e}")
@@ -439,57 +474,143 @@ class BrokerAdapter:
         2. Queue-based polling (backwards compatible)
         """
         try:
-            # Track tick reception - initialize counter at broker level
-            if not hasattr(self, '_broker_tick_count'):
-                self._broker_tick_count = 0
+            # Phase 1.5: Start broker measurement
+            global _pre_convergence_instrumentor
+            if _pre_convergence_instrumentor:
+                _pre_convergence_instrumentor.start_broker_tick()
+            else:
+                # Debug: Log when instrumentor is None during tick processing
+                if not hasattr(self, '_instrumentor_warning_logged'):
+                    logger.warning("🔬 [BROKER_ADAPTER._handle_websocket_tick] Instrumentor is NONE during tick processing")
+                    self._instrumentor_warning_logged = True
             
-            self._broker_tick_count += 1
+            # Phase 1.5: Measure counter initialization and logging
+            if _pre_convergence_instrumentor:
+                with _pre_convergence_instrumentor.measure_broker('tick_counting'):
+                    # Track tick reception - initialize counter at broker level
+                    if not hasattr(self, '_broker_tick_count'):
+                        self._broker_tick_count = 0
+                    
+                    self._broker_tick_count += 1
+                    
+                    # PERFORMANCE: Reduced logging frequency - every 1000 ticks instead of 100
+                    # Logging is EXPENSIVE (24ms per call!) - minimize in hot path
+                    should_log = self._broker_tick_count == 1 or self._broker_tick_count % 1000 == 0
+            else:
+                # Track tick reception - initialize counter at broker level
+                if not hasattr(self, '_broker_tick_count'):
+                    self._broker_tick_count = 0
+                
+                self._broker_tick_count += 1
+                
+                # PERFORMANCE: Reduced logging frequency - every 1000 ticks instead of 100
+                should_log = self._broker_tick_count == 1 or self._broker_tick_count % 1000 == 0
             
-            # Log FIRST tick and then every 100 ticks to verify broker is receiving WebSocket data
-            if self._broker_tick_count == 1 or self._broker_tick_count % 100 == 0:
+            # Log outside of measurement to avoid polluting metrics
+            if should_log and not _pre_convergence_instrumentor:
                 logger.info(f"🌐 [BROKER] WebSocket tick #{self._broker_tick_count} received, price: ₹{tick.get('price', 'N/A')}")
             
-            # Add timestamp if not present
-            if 'timestamp' not in tick:
-                tick['timestamp'] = pd.Timestamp.now(tz=IST)
+            # Phase 1.5: Measure timestamp operations
+            if _pre_convergence_instrumentor:
+                with _pre_convergence_instrumentor.measure_broker('timestamp_ops'):
+                    # Add timestamp if not present
+                    if 'timestamp' not in tick:
+                        tick['timestamp'] = pd.Timestamp.now(tz=IST)
+                    
+                    # Update state (no lock needed - simple assignment is atomic)
+                    self.last_price = float(tick.get('price', tick.get('ltp', 0)))
+                    self.last_tick_time = pd.Timestamp.now(tz=IST)
+            else:
+                # Add timestamp if not present
+                if 'timestamp' not in tick:
+                    tick['timestamp'] = pd.Timestamp.now(tz=IST)
+                
+                # Update state (no lock needed - simple assignment is atomic)
+                self.last_price = float(tick.get('price', tick.get('ltp', 0)))
+                self.last_tick_time = pd.Timestamp.now(tz=IST)
             
-            # Update state (no lock needed - simple assignment is atomic)
-            self.last_price = float(tick.get('price', tick.get('ltp', 0)))
-            self.last_tick_time = pd.Timestamp.now(tz=IST)
+            # Phase 1.5: Measure CSV logging
+            if _pre_convergence_instrumentor:
+                with _pre_convergence_instrumentor.measure_broker('csv_logging'):
+                    # Log raw tick to CSV (buffered, minimal performance impact)
+                    self._log_tick_to_csv(tick, symbol)
+            else:
+                # Log raw tick to CSV (buffered, minimal performance impact)
+                self._log_tick_to_csv(tick, symbol)
             
-            # Log raw tick to CSV (buffered, minimal performance impact)
-            self._log_tick_to_csv(tick, symbol)
+            # Phase 1.5: Measure queue operations
+            if _pre_convergence_instrumentor:
+                with _pre_convergence_instrumentor.measure_broker('queue_ops'):
+                    # Option 2: Queue for polling (backwards compatible)
+                    # Always queue tick for backwards compatibility with trader.py
+                    try:
+                        self.tick_buffer.put_nowait(tick)
+                    except queue.Full:
+                        # Queue full, drop oldest tick and retry
+                        try:
+                            self.tick_buffer.get_nowait()  # Drop oldest
+                            self.tick_buffer.put_nowait(tick)  # Add new
+                        except:
+                            pass  # Drop tick if queue operations fail
+            else:
+                # Option 2: Queue for polling (backwards compatible)
+                # Always queue tick for backwards compatibility with trader.py
+                try:
+                    self.tick_buffer.put_nowait(tick)
+                except queue.Full:
+                    # Queue full, drop oldest tick and retry
+                    try:
+                        self.tick_buffer.get_nowait()  # Drop oldest
+                        self.tick_buffer.put_nowait(tick)  # Add new
+                    except:
+                        pass  # Drop tick if queue operations fail
+            
+            # Phase 1.5: Measure callback check and invocation
+            if _pre_convergence_instrumentor:
+                with _pre_convergence_instrumentor.measure_broker('callback_check'):
+                    has_callback = self.on_tick_callback is not None
+                    should_log = self._broker_tick_count == 1 or self._broker_tick_count % 100 == 0
+            else:
+                has_callback = self.on_tick_callback is not None
+                should_log = self._broker_tick_count == 1 or self._broker_tick_count % 100 == 0
             
             # Option 1: Direct callback (Wind-style, highest performance)
-            if self.on_tick_callback:
-                # Log FIRST callback and every 100 ticks
-                if self._broker_tick_count == 1 or self._broker_tick_count % 100 == 0:
+            if has_callback:
+                # PERFORMANCE: Log outside instrumentation + reduced frequency
+                # Logging is EXPENSIVE (24ms per call!) - moved outside measurement
+                if should_log and not _pre_convergence_instrumentor:
                     logger.info(f"🔗 [BROKER] Calling on_tick_callback for tick #{self._broker_tick_count}")
-                try:
-                    self.on_tick_callback(tick, symbol)
-                except Exception as e:
-                    logger.error(f"🔥 [BROKER] Error in tick callback: {type(e).__name__}: {e}", exc_info=True)
+                
+                # Phase 1.5: Measure callback invocation and end broker measurement
+                if _pre_convergence_instrumentor:
+                    with _pre_convergence_instrumentor.measure_broker('callback_invoke'):
+                        _pre_convergence_instrumentor.end_broker_tick()
+                        try:
+                            self.on_tick_callback(tick, symbol)
+                        except Exception as e:
+                            logger.error(f"🔥 [BROKER] Error in tick callback: {type(e).__name__}: {e}", exc_info=True)
+                else:
+                    try:
+                        self.on_tick_callback(tick, symbol)
+                    except Exception as e:
+                        logger.error(f"🔥 [BROKER] Error in tick callback: {type(e).__name__}: {e}", exc_info=True)
             else:
-                # Log FIRST tick and every 100 ticks if callback is None
-                if self._broker_tick_count == 1 or self._broker_tick_count % 100 == 0:
+                # End broker measurement even if no callback
+                if _pre_convergence_instrumentor:
+                    _pre_convergence_instrumentor.end_broker_tick()
+                
+                # PERFORMANCE: Log outside instrumentation + reduced frequency (every 1000 ticks)
+                if should_log and not _pre_convergence_instrumentor:
                     logger.warning(f"⚠️ [BROKER] on_tick_callback is None! Callback not registered! (tick #{self._broker_tick_count})")
-            
-            # Option 2: Queue for polling (backwards compatible)
-            # Always queue tick for backwards compatibility with trader.py
-            try:
-                self.tick_buffer.put_nowait(tick)
-            except queue.Full:
-                # Queue full, drop oldest tick and retry
-                try:
-                    self.tick_buffer.get_nowait()  # Drop oldest
-                    self.tick_buffer.put_nowait(tick)  # Add new
-                except:
-                    pass  # Drop tick if queue operations fail
                 
         except Exception as e:
             logger.error(f"Error processing WebSocket tick: {e}")
             # Log WebSocket connection status on error
             logger.error(f"WebSocket streaming_mode: {self.streaming_mode}, stream_status: {self.stream_status}")
+            
+            # End broker measurement on error too
+            if _pre_convergence_instrumentor:
+                _pre_convergence_instrumentor.end_broker_tick()
 
     def _log_tick_to_csv(self, tick, symbol):
         """Log tick to CSV with minimal performance impact (buffered I/O)"""
