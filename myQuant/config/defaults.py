@@ -157,7 +157,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "commission_per_trade": 0.0,
         "tick_size": 0.05,
         # PositionManager runtime expectations (single-source defaults)
-        "max_position_value_percent": 30.0,  # 30% of capital for risk management (Phase 0 fix)
+        "max_position_value_percent": 80.0,  # 80% of capital for risk management (Phase 0 fix)
         "stt_percent": 0.025,
         "exchange_charges_percent": 0.003,
         "gst_percent": 18.0,

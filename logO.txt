@@ -1,0 +1,2118 @@
+GUI Log initialized at 2025-10-25 08:42:45
+==================================================
+08:42:45 [INFO] __main__: GUI log display is now active
+08:42:45 [INFO] __main__: Instrument changed to NIFTY: lot_size=75, exchange=NFO
+08:42:45 [INFO] __main__: Instrument selection initialized with default NIFTY settings
+08:42:45 [INFO] __main__: GUI initialized successfully with runtime config
+08:42:45 [INFO] __main__: Starting GUI main loop
+08:43:21 [INFO] __main__: Selected simulation data file: C:/Users/user/Desktop/aTest.csv
+08:43:33 [INFO] __main__: Building fresh forward test configuration...
+08:43:33 [INFO] __main__: Building fresh configuration from current GUI state...
+08:43:33 [INFO] __main__: 📋 Fresh GUI Configuration Captured:
+08:43:33 [INFO] __main__:    Max Trades/Day: 100 (from GUI: 100)
+08:43:33 [INFO] __main__:    Symbol: 
+08:43:33 [INFO] __main__:    Capital: 100000.0
+08:43:33 [INFO] __main__:    Data Source: File Simulation (C:/Users/user/Desktop/aTest.csv)
+08:43:33 [INFO] __main__: Credentials loaded: api_key=LOADED, client_code=LOADED
+08:43:33 [INFO] __main__: ✅ Fresh Configuration Ready for Forward Test:
+08:43:33 [INFO] __main__:    📊 Strategy: Max Trades = 100
+08:43:33 [INFO] __main__:    💰 Capital: 100000.0
+08:43:33 [INFO] __main__:    📈 Symbol: DATA_SIMULATION_PLACEHOLDER
+08:43:33 [INFO] __main__:    🏢 Exchange: NFO
+08:43:33 [INFO] __main__: 🔒 Configuration frozen and validated successfully
+08:43:33 [INFO] __main__: 🎯 Forward Test Starting with Fresh Configuration:
+08:43:33 [INFO] __main__:    Max Trades/Day: 100
+08:43:33 [INFO] __main__:    Symbol: DATA_SIMULATION_PLACEHOLDER
+08:43:33 [INFO] __main__:    Capital: $100,000.00
+08:43:33 [INFO] __main__:    Data: File Simulation (C:/Users/user/Desktop/aTest.csv)
+08:43:33 [INFO] __main__: 🔍 GUI generated config_text - type: <class 'str'>, length: 1925
+08:43:33 [INFO] __main__: ✅ config_text generated successfully - first 100 chars: ================================================================================
+                   
+08:43:35 [INFO] __main__: 🔄 Reconfiguring logging with user settings from GUI...
+08:43:35 [INFO] __main__: ✅ Logging reconfigured with fresh user configuration
+08:43:35 [INFO] live.trader: LiveTrader initialized with credentials: api_key=LOADED, client_code=LOADED
+08:43:35 [INFO] core.liveStrategy: SESSION START: Session configured: 06:15 to 15:30 buffers=+5/-20m
+08:43:35 [INFO] core.liveStrategy: SESSION START: Strategy initialized: Modular Intraday Long-Only Strategy v3.0
+08:43:35 [INFO] core.position_manager: PositionManager initialized with capital: 100,000.0
+08:43:35 [INFO] live.broker_adapter: 📁 File simulation mode: tick logging disabled (source file already exists)
+08:43:35 [INFO] live.broker_adapter: File simulation enabled with: C:/Users/user/Desktop/aTest.csv
+08:43:36 [INFO] live.trader: 🔍 LiveTrader creating ForwardTestResults - dialog_text type: <class 'str'>, length: 1925
+08:43:36 [INFO] live.trader: ✅ Passing dialog_text to ForwardTestResults - first 100 chars: ================================================================================
+                   
+08:43:36 [INFO] live.forward_test_results: 🔍 ForwardTestResults.__init__ - dialog_text type: <class 'str'>, length: 1925
+08:43:36 [INFO] live.forward_test_results: ✅ Received dialog_text - first 100 chars: ================================================================================
+                   
+08:43:36 [INFO] __main__: 🎯 Consumption mode set: ⚡ Callback (Fast)
+08:43:36 [INFO] __main__: Forward test initiated for  with frozen MappingProxyType config
+08:43:36 [INFO] __main__: Starting forward test for  with frozen configuration
+08:43:36 [INFO] live.trader: ⚡ Direct callback mode enabled (Wind-style, ~50ms latency)
+08:43:36 [INFO] live.data_simulator: Loading simulation data from: C:/Users/user/Desktop/aTest.csv
+08:43:36 [INFO] live.data_simulator: 📁 Loaded 32,591 data points for simulation
+08:43:36 [INFO] live.data_simulator: ⏱️  Estimated completion time: ~16 seconds
+08:43:36 [INFO] live.broker_adapter: Paper trading mode: using user-selected file simulation.
+08:43:36 [INFO] live.trader: 🟢 Forward testing session started - TRUE TICK-BY-TICK PROCESSING
+08:43:36 [INFO] live.trader: 📁 File simulation detected - using dedicated simulation loop
+08:43:36 [INFO] live.trader: 📁 File simulation callback mode - testing callback logic with file data
+08:43:36 [INFO] live.data_simulator: 📊 Simulation progress: 0% (0/32591)
+08:43:36 [INFO] live.trader: 🔧 [CALLBACK] Initialized _callback_tick_count counter
+08:43:36 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1, price: ₹235.85, keys: ['timestamp', 'price', 'volume']
+08:43:36 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #1
+08:43:36 [INFO] core.liveStrategy: 🔧 [STRATEGY] Initialized _ontick_call_count counter
+08:43:36 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #1, tick keys: ['timestamp', 'price', 'volume']
+08:43:36 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#1): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹235.85
+08:43:36 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:36 [INFO] core.liveStrategy: 📊 ENTRY EVALUATION @ ₹233.3: Enabled checks: EMA Crossover
+08:43:36 [INFO] core.liveStrategy:    ❌ Entry REJECTED - Failed: EMA: fast(231.61) ≤ slow(232.71)
+08:43:37 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #100, price: ₹227.7, keys: ['timestamp', 'price', 'volume']
+08:43:37 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #200, price: ₹218.3, keys: ['timestamp', 'price', 'volume']
+08:43:37 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹226.2: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:43:37 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:43:37 [INFO] core.position_manager: Opened position 55d2f7ff
+08:43:37 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:43:37 [INFO] core.position_manager: Entry price: â‚¹226.20 per unit
+08:43:37 [INFO] core.position_manager: Stop loss: â‚¹211.20
+08:43:37 [INFO] core.position_manager: Take profit levels: ['â‚¹231.20', 'â‚¹238.20', 'â‚¹246.20', 'â‚¹256.20']
+08:43:37 [INFO] core.position_manager: Position value: ₹84,825.00
+08:43:38 [INFO] core.liveStrategy: TRADE BUY: 75 @ 226.20 - Strategy signal
+08:43:38 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹226.20 (375 contracts) - Strategy entry signal
+08:43:38 [INFO] core.position_manager: Trailing stop activated for 55d2f7ff at 226.8
+08:43:38 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:43:38 [INFO] core.position_manager: Partially closed position 55d2f7ff: 150 @ â‚¹231.8
+08:43:38 [INFO] core.position_manager: Closed position 55d2f7ff
+08:43:38 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:43:38 [INFO] core.position_manager: Exit price: â‚¹231.80 per unit
+08:43:38 [INFO] core.position_manager: P&L: â‚¹817.77 (Take Profit 1)
+08:43:38 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:38 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #300, price: ₹229.85, keys: ['timestamp', 'price', 'volume']
+08:43:38 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #300
+08:43:38 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #300, tick keys: ['timestamp', 'price', 'volume']
+08:43:38 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:38 [INFO] core.position_manager: Fully closed position 55d2f7ff
+08:43:38 [INFO] core.position_manager: Closed position 55d2f7ff
+08:43:38 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:43:38 [INFO] core.position_manager: Exit price: â‚¹228.50 per unit
+08:43:38 [INFO] core.position_manager: P&L: â‚¹484.63 (Trailing Stop)
+08:43:38 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:38 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:43:39 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #400, price: ₹223.9, keys: ['timestamp', 'price', 'volume']
+08:43:39 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#300): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹224.15
+08:43:39 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹225.55: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:43:39 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:43:39 [INFO] core.position_manager: Opened position 7fd29ecb
+08:43:39 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:43:39 [INFO] core.position_manager: Entry price: â‚¹225.55 per unit
+08:43:39 [INFO] core.position_manager: Stop loss: â‚¹210.55
+08:43:39 [INFO] core.position_manager: Take profit levels: ['â‚¹230.55', 'â‚¹237.55', 'â‚¹245.55', 'â‚¹255.55']
+08:43:39 [INFO] core.position_manager: Position value: ₹84,581.25
+08:43:39 [INFO] core.liveStrategy: TRADE BUY: 75 @ 225.55 - Strategy signal
+08:43:39 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹225.55 (375 contracts) - Strategy entry signal
+08:43:39 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #500, price: ₹216.75, keys: ['timestamp', 'price', 'volume']
+08:43:40 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #600, price: ₹217.35, keys: ['timestamp', 'price', 'volume']
+08:43:40 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #600
+08:43:40 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #600, tick keys: ['timestamp', 'price', 'volume']
+08:43:40 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:41 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #700, price: ₹225.55, keys: ['timestamp', 'price', 'volume']
+08:43:41 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #800, price: ₹221.4, keys: ['timestamp', 'price', 'volume']
+08:43:42 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #900, price: ₹228.75, keys: ['timestamp', 'price', 'volume']
+08:43:42 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #900
+08:43:42 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #900, tick keys: ['timestamp', 'price', 'volume']
+08:43:42 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:42 [INFO] core.position_manager: Trailing stop activated for 7fd29ecb at 225.65
+08:43:42 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:43:42 [INFO] core.position_manager: Partially closed position 7fd29ecb: 150 @ â‚¹230.65
+08:43:42 [INFO] core.position_manager: Closed position 7fd29ecb
+08:43:42 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:43:42 [INFO] core.position_manager: Exit price: â‚¹230.65 per unit
+08:43:42 [INFO] core.position_manager: P&L: â‚¹742.88 (Take Profit 1)
+08:43:42 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:42 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1000, price: ₹230.9, keys: ['timestamp', 'price', 'volume']
+08:43:42 [INFO] live.trader: [FILE SIM] Processed 1000 ticks, position: True
+08:43:43 [INFO] core.position_manager: Fully closed position 7fd29ecb
+08:43:43 [INFO] core.position_manager: Closed position 7fd29ecb
+08:43:43 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:43:43 [INFO] core.position_manager: Exit price: â‚¹228.70 per unit
+08:43:43 [INFO] core.position_manager: P&L: â‚¹675.85 (Trailing Stop)
+08:43:43 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:43 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:43:43 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1100, price: ₹226.55, keys: ['timestamp', 'price', 'volume']
+08:43:43 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹231.5: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:43:43 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:43:43 [INFO] core.position_manager: Opened position bd3f7bff
+08:43:43 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:43:43 [INFO] core.position_manager: Entry price: â‚¹231.50 per unit
+08:43:43 [INFO] core.position_manager: Stop loss: â‚¹216.50
+08:43:43 [INFO] core.position_manager: Take profit levels: ['â‚¹236.50', 'â‚¹243.50', 'â‚¹251.50', 'â‚¹261.50']
+08:43:43 [INFO] core.position_manager: Position value: ₹86,812.50
+08:43:43 [INFO] core.liveStrategy: TRADE BUY: 75 @ 231.50 - Strategy signal
+08:43:43 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹231.50 (375 contracts) - Strategy entry signal
+08:43:44 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1200, price: ₹231.7, keys: ['timestamp', 'price', 'volume']
+08:43:44 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #1200
+08:43:44 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #1200, tick keys: ['timestamp', 'price', 'volume']
+08:43:44 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:44 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1300, price: ₹233.05, keys: ['timestamp', 'price', 'volume']
+08:43:44 [INFO] core.position_manager: Trailing stop activated for bd3f7bff at 232.0
+08:43:44 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:43:44 [INFO] core.position_manager: Partially closed position bd3f7bff: 150 @ â‚¹237.0
+08:43:44 [INFO] core.position_manager: Closed position bd3f7bff
+08:43:44 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:43:44 [INFO] core.position_manager: Exit price: â‚¹237.00 per unit
+08:43:44 [INFO] core.position_manager: P&L: â‚¹802.27 (Take Profit 1)
+08:43:44 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:45 [INFO] core.position_manager: Fully closed position bd3f7bff
+08:43:45 [INFO] core.position_manager: Closed position bd3f7bff
+08:43:45 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:43:45 [INFO] core.position_manager: Exit price: â‚¹232.30 per unit
+08:43:45 [INFO] core.position_manager: P&L: â‚¹146.58 (Trailing Stop)
+08:43:45 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:45 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:43:45 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1400, price: ₹232.1, keys: ['timestamp', 'price', 'volume']
+08:43:45 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹237.0: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:43:45 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:43:45 [INFO] core.position_manager: Opened position 4e47f4d4
+08:43:45 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:43:45 [INFO] core.position_manager: Entry price: â‚¹237.00 per unit
+08:43:45 [INFO] core.position_manager: Stop loss: â‚¹222.00
+08:43:45 [INFO] core.position_manager: Take profit levels: ['â‚¹242.00', 'â‚¹249.00', 'â‚¹257.00', 'â‚¹267.00']
+08:43:45 [INFO] core.position_manager: Position value: ₹88,875.00
+08:43:45 [INFO] core.liveStrategy: TRADE BUY: 75 @ 237.00 - Strategy signal
+08:43:45 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹237.00 (375 contracts) - Strategy entry signal
+08:43:45 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1500, price: ₹237.2, keys: ['timestamp', 'price', 'volume']
+08:43:45 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #1500
+08:43:45 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #1500, tick keys: ['timestamp', 'price', 'volume']
+08:43:46 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:46 [INFO] core.position_manager: Trailing stop activated for 4e47f4d4 at 237.35
+08:43:46 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:43:46 [INFO] core.position_manager: Partially closed position 4e47f4d4: 150 @ â‚¹242.35
+08:43:46 [INFO] core.position_manager: Closed position 4e47f4d4
+08:43:46 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:43:46 [INFO] core.position_manager: Exit price: â‚¹242.35 per unit
+08:43:46 [INFO] core.position_manager: P&L: â‚¹779.26 (Take Profit 1)
+08:43:46 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:46 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1600, price: ₹241.8, keys: ['timestamp', 'price', 'volume']
+08:43:46 [INFO] core.position_manager: Fully closed position 4e47f4d4
+08:43:46 [INFO] core.position_manager: Closed position 4e47f4d4
+08:43:46 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:43:46 [INFO] core.position_manager: Exit price: â‚¹238.10 per unit
+08:43:46 [INFO] core.position_manager: P&L: â‚¹213.25 (Trailing Stop)
+08:43:46 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:46 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:43:47 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1700, price: ₹238.5, keys: ['timestamp', 'price', 'volume']
+08:43:47 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1800, price: ₹242.0, keys: ['timestamp', 'price', 'volume']
+08:43:47 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #1800
+08:43:47 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #1800, tick keys: ['timestamp', 'price', 'volume']
+08:43:47 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:48 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#600): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹241.45
+08:43:48 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹242.7: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:43:48 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:43:48 [INFO] core.position_manager: Opened position fa6724ad
+08:43:48 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:43:48 [INFO] core.position_manager: Entry price: â‚¹242.70 per unit
+08:43:48 [INFO] core.position_manager: Stop loss: â‚¹227.70
+08:43:48 [INFO] core.position_manager: Take profit levels: ['â‚¹247.70', 'â‚¹254.70', 'â‚¹262.70', 'â‚¹272.70']
+08:43:48 [INFO] core.position_manager: Position value: ₹91,012.50
+08:43:48 [INFO] core.liveStrategy: TRADE BUY: 75 @ 242.70 - Strategy signal
+08:43:48 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹242.70 (375 contracts) - Strategy entry signal
+08:43:48 [INFO] core.position_manager: Trailing stop activated for fa6724ad at 243.0
+08:43:48 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:43:48 [INFO] core.position_manager: Partially closed position fa6724ad: 150 @ â‚¹248.0
+08:43:48 [INFO] core.position_manager: Closed position fa6724ad
+08:43:48 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:43:48 [INFO] core.position_manager: Exit price: â‚¹248.00 per unit
+08:43:48 [INFO] core.position_manager: P&L: â‚¹771.21 (Take Profit 1)
+08:43:48 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:48 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #1900, price: ₹246.55, keys: ['timestamp', 'price', 'volume']
+08:43:48 [INFO] core.position_manager: Fully closed position fa6724ad
+08:43:48 [INFO] core.position_manager: Closed position fa6724ad
+08:43:48 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:43:48 [INFO] core.position_manager: Exit price: â‚¹242.90 per unit
+08:43:48 [INFO] core.position_manager: P&L: â‚¹10.06 (Trailing Stop)
+08:43:48 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:48 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:43:48 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹245.0: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:43:48 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:43:48 [INFO] core.position_manager: Opened position ba8bf8d3
+08:43:48 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:43:48 [INFO] core.position_manager: Entry price: â‚¹245.00 per unit
+08:43:48 [INFO] core.position_manager: Stop loss: â‚¹230.00
+08:43:48 [INFO] core.position_manager: Take profit levels: ['â‚¹250.00', 'â‚¹257.00', 'â‚¹265.00', 'â‚¹275.00']
+08:43:48 [INFO] core.position_manager: Position value: ₹91,875.00
+08:43:48 [INFO] core.liveStrategy: TRADE BUY: 75 @ 245.00 - Strategy signal
+08:43:48 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹245.00 (375 contracts) - Strategy entry signal
+08:43:49 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2000, price: ₹245.0, keys: ['timestamp', 'price', 'volume']
+08:43:49 [INFO] live.trader: [FILE SIM] Processed 2000 ticks, position: True
+08:43:49 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2100, price: ₹245.0, keys: ['timestamp', 'price', 'volume']
+08:43:49 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #2100
+08:43:49 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #2100, tick keys: ['timestamp', 'price', 'volume']
+08:43:49 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:50 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2200, price: ₹247.65, keys: ['timestamp', 'price', 'volume']
+08:43:50 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2300, price: ₹241.75, keys: ['timestamp', 'price', 'volume']
+08:43:51 [INFO] core.position_manager: Trailing stop activated for ba8bf8d3 at 245.0
+08:43:51 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:43:51 [INFO] core.position_manager: Partially closed position ba8bf8d3: 150 @ â‚¹250.0
+08:43:51 [INFO] core.position_manager: Closed position ba8bf8d3
+08:43:51 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:43:51 [INFO] core.position_manager: Exit price: â‚¹250.00 per unit
+08:43:51 [INFO] core.position_manager: P&L: â‚¹726.02 (Take Profit 1)
+08:43:51 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:51 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2400, price: ₹248.9, keys: ['timestamp', 'price', 'volume']
+08:43:51 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #2400
+08:43:51 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #2400, tick keys: ['timestamp', 'price', 'volume']
+08:43:51 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:52 [INFO] core.position_manager: Fully closed position ba8bf8d3
+08:43:52 [INFO] core.position_manager: Closed position ba8bf8d3
+08:43:52 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:43:52 [INFO] core.position_manager: Exit price: â‚¹245.30 per unit
+08:43:52 [INFO] core.position_manager: P&L: â‚¹32.21 (Trailing Stop)
+08:43:52 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:52 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:43:52 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2500, price: ₹245.0, keys: ['timestamp', 'price', 'volume']
+08:43:52 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹247.3: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:43:52 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:43:52 [INFO] core.position_manager: Opened position f1afcaf4
+08:43:52 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:43:52 [INFO] core.position_manager: Entry price: â‚¹247.30 per unit
+08:43:52 [INFO] core.position_manager: Stop loss: â‚¹232.30
+08:43:52 [INFO] core.position_manager: Take profit levels: ['â‚¹252.30', 'â‚¹259.30', 'â‚¹267.30', 'â‚¹277.30']
+08:43:52 [INFO] core.position_manager: Position value: ₹92,737.50
+08:43:52 [INFO] core.liveStrategy: TRADE BUY: 75 @ 247.30 - Strategy signal
+08:43:52 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹247.30 (375 contracts) - Strategy entry signal
+08:43:52 [INFO] core.position_manager: Trailing stop activated for f1afcaf4 at 247.4
+08:43:52 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:43:52 [INFO] core.position_manager: Partially closed position f1afcaf4: 150 @ â‚¹252.4
+08:43:52 [INFO] core.position_manager: Closed position f1afcaf4
+08:43:52 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:43:52 [INFO] core.position_manager: Exit price: â‚¹252.40 per unit
+08:43:52 [INFO] core.position_manager: P&L: â‚¹740.79 (Take Profit 1)
+08:43:52 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:52 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2600, price: ₹248.5, keys: ['timestamp', 'price', 'volume']
+08:43:53 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2700, price: ₹254.25, keys: ['timestamp', 'price', 'volume']
+08:43:53 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #2700
+08:43:53 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #2700, tick keys: ['timestamp', 'price', 'volume']
+08:43:53 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:54 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2800, price: ₹254.85, keys: ['timestamp', 'price', 'volume']
+08:43:54 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:43:54 [INFO] core.position_manager: Partially closed position f1afcaf4: 75 @ â‚¹259.9
+08:43:54 [INFO] core.position_manager: Closed position f1afcaf4
+08:43:54 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:43:54 [INFO] core.position_manager: Exit price: â‚¹259.90 per unit
+08:43:54 [INFO] core.position_manager: P&L: â‚¹932.54 (Take Profit 2)
+08:43:54 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:54 [INFO] core.position_manager: ðŸŽ¯ TP3 Exit: 1 lots (75 units)
+08:43:54 [INFO] core.position_manager: Partially closed position f1afcaf4: 75 @ â‚¹268.2
+08:43:54 [INFO] core.position_manager: Closed position f1afcaf4
+08:43:54 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:43:54 [INFO] core.position_manager: Exit price: â‚¹268.20 per unit
+08:43:54 [INFO] core.position_manager: P&L: â‚¹1554.64 (Take Profit 3)
+08:43:54 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:54 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #2900, price: ₹265.0, keys: ['timestamp', 'price', 'volume']
+08:43:54 [INFO] core.position_manager: Fully closed position f1afcaf4
+08:43:54 [INFO] core.position_manager: Closed position f1afcaf4
+08:43:54 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:43:54 [INFO] core.position_manager: Exit price: â‚¹263.60 per unit
+08:43:55 [INFO] core.position_manager: P&L: â‚¹1209.86 (Trailing Stop)
+08:43:55 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:55 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:43:55 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹266.75: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:43:55 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:43:55 [INFO] core.position_manager: Opened position e4b0e0a6
+08:43:55 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:43:55 [INFO] core.position_manager: Entry price: â‚¹266.75 per unit
+08:43:55 [INFO] core.position_manager: Stop loss: â‚¹251.75
+08:43:55 [INFO] core.position_manager: Take profit levels: ['â‚¹271.75', 'â‚¹278.75', 'â‚¹286.75', 'â‚¹296.75']
+08:43:55 [INFO] core.position_manager: Position value: ₹100,031.25
+08:43:55 [INFO] core.liveStrategy: TRADE BUY: 75 @ 266.75 - Strategy signal
+08:43:55 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹266.75 (375 contracts) - Strategy entry signal
+08:43:55 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3000, price: ₹263.1, keys: ['timestamp', 'price', 'volume']
+08:43:55 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #3000
+08:43:55 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #3000, tick keys: ['timestamp', 'price', 'volume']
+08:43:55 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:55 [INFO] live.trader: [FILE SIM] Processed 3000 ticks, position: True
+08:43:56 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3100, price: ₹261.45, keys: ['timestamp', 'price', 'volume']
+08:43:56 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3200, price: ₹266.6, keys: ['timestamp', 'price', 'volume']
+08:43:56 [INFO] live.data_simulator: 📊 Simulation progress: 10% (3259/32591)
+08:43:56 [INFO] core.position_manager: Trailing stop activated for e4b0e0a6 at 267.35
+08:43:56 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:43:56 [INFO] core.position_manager: Partially closed position e4b0e0a6: 150 @ â‚¹272.35
+08:43:56 [INFO] core.position_manager: Closed position e4b0e0a6
+08:43:56 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:43:56 [INFO] core.position_manager: Exit price: â‚¹272.35 per unit
+08:43:56 [INFO] core.position_manager: P&L: â‚¹813.88 (Take Profit 1)
+08:43:56 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:57 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3300, price: ₹269.45, keys: ['timestamp', 'price', 'volume']
+08:43:57 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #3300
+08:43:57 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #3300, tick keys: ['timestamp', 'price', 'volume']
+08:43:57 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:57 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3400, price: ₹274.5, keys: ['timestamp', 'price', 'volume']
+08:43:57 [INFO] core.position_manager: Fully closed position e4b0e0a6
+08:43:57 [INFO] core.position_manager: Closed position e4b0e0a6
+08:43:57 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:43:57 [INFO] core.position_manager: Exit price: â‚¹270.00 per unit
+08:43:57 [INFO] core.position_manager: P&L: â‚¹692.41 (Trailing Stop)
+08:43:57 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:43:57 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:43:58 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3500, price: ₹263.4, keys: ['timestamp', 'price', 'volume']
+08:43:58 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3600, price: ₹254.85, keys: ['timestamp', 'price', 'volume']
+08:43:58 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #3600
+08:43:58 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #3600, tick keys: ['timestamp', 'price', 'volume']
+08:43:58 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:43:59 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#900): Need 3 green ticks, have 2, DATA_SIMULATION_PLACEHOLDER @ ₹253.4
+08:43:59 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3700, price: ₹249.2, keys: ['timestamp', 'price', 'volume']
+08:43:59 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3800, price: ₹248.9, keys: ['timestamp', 'price', 'volume']
+08:44:00 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹251.65: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:00 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:00 [INFO] core.position_manager: Opened position 671de970
+08:44:00 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:44:00 [INFO] core.position_manager: Entry price: â‚¹251.65 per unit
+08:44:00 [INFO] core.position_manager: Stop loss: â‚¹236.65
+08:44:00 [INFO] core.position_manager: Take profit levels: ['â‚¹256.65', 'â‚¹263.65', 'â‚¹271.65', 'â‚¹281.65']
+08:44:00 [INFO] core.position_manager: Position value: ₹94,368.75
+08:44:00 [INFO] core.liveStrategy: TRADE BUY: 75 @ 251.65 - Strategy signal
+08:44:00 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹251.65 (375 contracts) - Strategy entry signal
+08:44:00 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:00 [INFO] core.position_manager: Partially closed position 671de970: 150 @ â‚¹256.65
+08:44:00 [INFO] core.position_manager: Closed position 671de970
+08:44:00 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:00 [INFO] core.position_manager: Exit price: â‚¹256.65 per unit
+08:44:00 [INFO] core.position_manager: P&L: â‚¹725.38 (Take Profit 1)
+08:44:00 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:00 [INFO] core.position_manager: Trailing stop activated for 671de970 at 251.85000000000002
+08:44:00 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #3900, price: ₹258.75, keys: ['timestamp', 'price', 'volume']
+08:44:00 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #3900
+08:44:00 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #3900, tick keys: ['timestamp', 'price', 'volume']
+08:44:00 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:01 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #4000, price: ₹259.45, keys: ['timestamp', 'price', 'volume']
+08:44:01 [INFO] live.trader: [FILE SIM] Processed 4000 ticks, position: True
+08:44:01 [INFO] core.position_manager: Fully closed position 671de970
+08:44:01 [INFO] core.position_manager: Closed position 671de970
+08:44:01 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:44:01 [INFO] core.position_manager: Exit price: â‚¹258.25 per unit
+08:44:01 [INFO] core.position_manager: P&L: â‚¹1447.85 (Trailing Stop)
+08:44:01 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:01 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:01 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #4100, price: ₹255.25, keys: ['timestamp', 'price', 'volume']
+08:44:02 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#1200): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹257.25
+08:44:02 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #4200, price: ₹253.65, keys: ['timestamp', 'price', 'volume']
+08:44:02 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #4200
+08:44:02 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #4200, tick keys: ['timestamp', 'price', 'volume']
+08:44:02 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:02 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #4300, price: ₹257.25, keys: ['timestamp', 'price', 'volume']
+08:44:03 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹260.75: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:03 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:03 [INFO] core.position_manager: Opened position 99773753
+08:44:03 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:44:03 [INFO] core.position_manager: Entry price: â‚¹260.75 per unit
+08:44:03 [INFO] core.position_manager: Stop loss: â‚¹245.75
+08:44:03 [INFO] core.position_manager: Take profit levels: ['â‚¹265.75', 'â‚¹272.75', 'â‚¹280.75', 'â‚¹290.75']
+08:44:03 [INFO] core.position_manager: Position value: ₹97,781.25
+08:44:03 [INFO] core.liveStrategy: TRADE BUY: 75 @ 260.75 - Strategy signal
+08:44:03 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹260.75 (375 contracts) - Strategy entry signal
+08:44:03 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #4400, price: ₹258.95, keys: ['timestamp', 'price', 'volume']
+08:44:04 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #4500, price: ₹258.35, keys: ['timestamp', 'price', 'volume']
+08:44:04 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #4500
+08:44:04 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #4500, tick keys: ['timestamp', 'price', 'volume']
+08:44:04 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:04 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #4600, price: ₹255.0, keys: ['timestamp', 'price', 'volume']
+08:44:05 [INFO] core.position_manager: Fully closed position 99773753
+08:44:05 [INFO] core.position_manager: Closed position 99773753
+08:44:05 [INFO] core.position_manager: Lots closed: 5 (375 units)
+08:44:05 [INFO] core.position_manager: Exit price: â‚¹245.05 per unit
+08:44:05 [INFO] core.position_manager: P&L: â‚¹-5946.26 (Stop Loss)
+08:44:05 [INFO] core.liveStrategy: Base SL exit detected—next entry requires 4 green ticks.
+08:44:05 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:05 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #4700, price: ₹237.5, keys: ['timestamp', 'price', 'volume']
+08:44:05 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#1500): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹229.95
+08:44:05 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #4800, price: ₹220.8, keys: ['timestamp', 'price', 'volume']
+08:44:05 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #4800
+08:44:05 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #4800, tick keys: ['timestamp', 'price', 'volume']
+08:44:05 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:06 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #4900, price: ₹219.85, keys: ['timestamp', 'price', 'volume']
+08:44:06 [INFO] core.liveStrategy: 📊 ENTRY EVALUATION @ ₹210.85: Enabled checks: EMA Crossover
+08:44:06 [INFO] core.liveStrategy:    ❌ Entry REJECTED - Failed: EMA: fast(211.39) ≤ slow(212.32)
+08:44:07 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #5000, price: ₹218.75, keys: ['timestamp', 'price', 'volume']
+08:44:07 [INFO] live.trader: [FILE SIM] Processed 5000 ticks, position: False
+08:44:07 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#1800): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹212.85
+08:44:07 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #5100, price: ₹216.25, keys: ['timestamp', 'price', 'volume']
+08:44:07 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #5100
+08:44:07 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #5100, tick keys: ['timestamp', 'price', 'volume']
+08:44:07 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:07 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹221.0: All checks passed (EMA Crossover) - Green ticks: 4/4
+08:44:07 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:07 [INFO] core.position_manager: Opened position eb317a08
+08:44:07 [INFO] core.position_manager: Lots: 6 (450 total units)
+08:44:07 [INFO] core.position_manager: Entry price: â‚¹221.00 per unit
+08:44:07 [INFO] core.position_manager: Stop loss: â‚¹206.00
+08:44:07 [INFO] core.position_manager: Take profit levels: ['â‚¹226.00', 'â‚¹233.00', 'â‚¹241.00', 'â‚¹251.00']
+08:44:07 [INFO] core.position_manager: Position value: ₹99,450.00
+08:44:07 [INFO] core.liveStrategy: TRADE BUY: 75 @ 221.00 - Strategy signal
+08:44:07 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹221.00 (450 contracts) - Strategy entry signal
+08:44:08 [INFO] core.position_manager: Trailing stop activated for eb317a08 at 221.0
+08:44:08 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:08 [INFO] core.position_manager: Partially closed position eb317a08: 150 @ â‚¹226.0
+08:44:08 [INFO] core.position_manager: Closed position eb317a08
+08:44:08 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:08 [INFO] core.position_manager: Exit price: â‚¹226.00 per unit
+08:44:08 [INFO] core.position_manager: P&L: â‚¹728.32 (Take Profit 1)
+08:44:08 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:08 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:44:08 [INFO] core.position_manager: Partially closed position eb317a08: 75 @ â‚¹233.55
+08:44:08 [INFO] core.position_manager: Closed position eb317a08
+08:44:08 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:44:08 [INFO] core.position_manager: Exit price: â‚¹233.55 per unit
+08:44:08 [INFO] core.position_manager: P&L: â‚¹930.05 (Take Profit 2)
+08:44:08 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:08 [INFO] core.position_manager: Fully closed position eb317a08
+08:44:08 [INFO] core.position_manager: Closed position eb317a08
+08:44:08 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:44:08 [INFO] core.position_manager: Exit price: â‚¹231.00 per unit
+08:44:08 [INFO] core.position_manager: P&L: â‚¹2216.77 (Trailing Stop)
+08:44:08 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:08 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:08 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹232.25: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:08 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:08 [INFO] core.position_manager: Opened position 08c2a032
+08:44:08 [INFO] core.position_manager: Lots: 6 (450 total units)
+08:44:08 [INFO] core.position_manager: Entry price: â‚¹232.25 per unit
+08:44:08 [INFO] core.position_manager: Stop loss: â‚¹217.25
+08:44:08 [INFO] core.position_manager: Take profit levels: ['â‚¹237.25', 'â‚¹244.25', 'â‚¹252.25', 'â‚¹262.25']
+08:44:08 [INFO] core.position_manager: Position value: ₹104,512.50
+08:44:08 [INFO] core.liveStrategy: TRADE BUY: 75 @ 232.25 - Strategy signal
+08:44:08 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹232.25 (450 contracts) - Strategy entry signal
+08:44:08 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #5200, price: ₹229.4, keys: ['timestamp', 'price', 'volume']
+08:44:09 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #5300, price: ₹228.2, keys: ['timestamp', 'price', 'volume']
+08:44:09 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #5400, price: ₹230.65, keys: ['timestamp', 'price', 'volume']
+08:44:09 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #5400
+08:44:09 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #5400, tick keys: ['timestamp', 'price', 'volume']
+08:44:09 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:10 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #5500, price: ₹232.75, keys: ['timestamp', 'price', 'volume']
+08:44:10 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #5600, price: ₹229.25, keys: ['timestamp', 'price', 'volume']
+08:44:11 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #5700, price: ₹230.0, keys: ['timestamp', 'price', 'volume']
+08:44:11 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #5700
+08:44:11 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #5700, tick keys: ['timestamp', 'price', 'volume']
+08:44:11 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:12 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #5800, price: ₹235.35, keys: ['timestamp', 'price', 'volume']
+08:44:12 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #5900, price: ₹232.4, keys: ['timestamp', 'price', 'volume']
+08:44:13 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #6000, price: ₹233.75, keys: ['timestamp', 'price', 'volume']
+08:44:13 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #6000
+08:44:13 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #6000, tick keys: ['timestamp', 'price', 'volume']
+08:44:13 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:13 [INFO] live.trader: [FILE SIM] Processed 6000 ticks, position: True
+08:44:13 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #6100, price: ₹234.8, keys: ['timestamp', 'price', 'volume']
+08:44:14 [INFO] core.position_manager: Trailing stop activated for 08c2a032 at 232.3
+08:44:14 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:14 [INFO] core.position_manager: Partially closed position 08c2a032: 150 @ â‚¹237.3
+08:44:14 [INFO] core.position_manager: Closed position 08c2a032
+08:44:14 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:14 [INFO] core.position_manager: Exit price: â‚¹237.30 per unit
+08:44:14 [INFO] core.position_manager: P&L: â‚¹734.74 (Take Profit 1)
+08:44:14 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:14 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #6200, price: ₹235.4, keys: ['timestamp', 'price', 'volume']
+08:44:14 [INFO] core.position_manager: Fully closed position 08c2a032
+08:44:14 [INFO] core.position_manager: Closed position 08c2a032
+08:44:14 [INFO] core.position_manager: Lots closed: 4 (300 units)
+08:44:14 [INFO] core.position_manager: Exit price: â‚¹233.00 per unit
+08:44:14 [INFO] core.position_manager: P&L: â‚¹180.31 (Trailing Stop)
+08:44:14 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:14 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:15 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #6300, price: ₹233.95, keys: ['timestamp', 'price', 'volume']
+08:44:15 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #6300
+08:44:15 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #6300, tick keys: ['timestamp', 'price', 'volume']
+08:44:15 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:15 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹235.05: All checks passed (EMA Crossover) - Green ticks: 4/3
+08:44:15 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:15 [INFO] core.position_manager: Opened position 511ac8aa
+08:44:15 [INFO] core.position_manager: Lots: 6 (450 total units)
+08:44:15 [INFO] core.position_manager: Entry price: â‚¹235.05 per unit
+08:44:15 [INFO] core.position_manager: Stop loss: â‚¹220.05
+08:44:15 [INFO] core.position_manager: Take profit levels: ['â‚¹240.05', 'â‚¹247.05', 'â‚¹255.05', 'â‚¹265.05']
+08:44:15 [INFO] core.position_manager: Position value: ₹105,772.50
+08:44:15 [INFO] core.liveStrategy: TRADE BUY: 75 @ 235.05 - Strategy signal
+08:44:15 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹235.05 (450 contracts) - Strategy entry signal
+08:44:15 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #6400, price: ₹236.55, keys: ['timestamp', 'price', 'volume']
+08:44:16 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #6500, price: ₹227.6, keys: ['timestamp', 'price', 'volume']
+08:44:16 [INFO] live.data_simulator: 📊 Simulation progress: 20% (6518/32591)
+08:44:16 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #6600, price: ₹227.4, keys: ['timestamp', 'price', 'volume']
+08:44:16 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #6600
+08:44:16 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #6600, tick keys: ['timestamp', 'price', 'volume']
+08:44:16 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:17 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #6700, price: ₹226.9, keys: ['timestamp', 'price', 'volume']
+08:44:17 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #6800, price: ₹229.95, keys: ['timestamp', 'price', 'volume']
+08:44:18 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #6900, price: ₹230.25, keys: ['timestamp', 'price', 'volume']
+08:44:18 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #6900
+08:44:18 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #6900, tick keys: ['timestamp', 'price', 'volume']
+08:44:18 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:18 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #7000, price: ₹226.0, keys: ['timestamp', 'price', 'volume']
+08:44:19 [INFO] live.trader: [FILE SIM] Processed 7000 ticks, position: True
+08:44:19 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #7100, price: ₹234.0, keys: ['timestamp', 'price', 'volume']
+08:44:20 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #7200, price: ₹235.85, keys: ['timestamp', 'price', 'volume']
+08:44:20 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #7200
+08:44:20 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #7200, tick keys: ['timestamp', 'price', 'volume']
+08:44:20 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:20 [INFO] core.position_manager: Trailing stop activated for 511ac8aa at 236.0
+08:44:20 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:20 [INFO] core.position_manager: Partially closed position 511ac8aa: 150 @ â‚¹241.0
+08:44:20 [INFO] core.position_manager: Closed position 511ac8aa
+08:44:20 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:20 [INFO] core.position_manager: Exit price: â‚¹241.00 per unit
+08:44:20 [INFO] core.position_manager: P&L: â‚¹869.39 (Take Profit 1)
+08:44:20 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:20 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #7300, price: ₹241.0, keys: ['timestamp', 'price', 'volume']
+08:44:21 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:44:21 [INFO] core.position_manager: Partially closed position 511ac8aa: 75 @ â‚¹248.0
+08:44:21 [INFO] core.position_manager: Closed position 511ac8aa
+08:44:21 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:44:21 [INFO] core.position_manager: Exit price: â‚¹248.00 per unit
+08:44:21 [INFO] core.position_manager: P&L: â‚¹959.36 (Take Profit 2)
+08:44:21 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:21 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #7400, price: ₹248.0, keys: ['timestamp', 'price', 'volume']
+08:44:21 [INFO] core.position_manager: ðŸŽ¯ TP3 Exit: 1 lots (75 units)
+08:44:21 [INFO] core.position_manager: Partially closed position 511ac8aa: 75 @ â‚¹255.2
+08:44:21 [INFO] core.position_manager: Closed position 511ac8aa
+08:44:21 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:44:21 [INFO] core.position_manager: Exit price: â‚¹255.20 per unit
+08:44:21 [INFO] core.position_manager: P&L: â‚¹1499.01 (Take Profit 3)
+08:44:21 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:21 [INFO] core.position_manager: Fully closed position 511ac8aa
+08:44:21 [INFO] core.position_manager: Closed position 511ac8aa
+08:44:21 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:21 [INFO] core.position_manager: Exit price: â‚¹250.00 per unit
+08:44:21 [INFO] core.position_manager: P&L: â‚¹2218.52 (Trailing Stop)
+08:44:21 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:21 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:21 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹251.0: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:21 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:21 [INFO] core.position_manager: Opened position 579284e5
+08:44:21 [INFO] core.position_manager: Lots: 6 (450 total units)
+08:44:21 [INFO] core.position_manager: Entry price: â‚¹251.00 per unit
+08:44:21 [INFO] core.position_manager: Stop loss: â‚¹236.00
+08:44:21 [INFO] core.position_manager: Take profit levels: ['â‚¹256.00', 'â‚¹263.00', 'â‚¹271.00', 'â‚¹281.00']
+08:44:21 [INFO] core.position_manager: Position value: ₹112,950.00
+08:44:21 [INFO] core.liveStrategy: TRADE BUY: 75 @ 251.00 - Strategy signal
+08:44:21 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹251.00 (450 contracts) - Strategy entry signal
+08:44:21 [INFO] core.position_manager: Trailing stop activated for 579284e5 at 251.14999999999998
+08:44:21 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:21 [INFO] core.position_manager: Partially closed position 579284e5: 150 @ â‚¹256.15
+08:44:21 [INFO] core.position_manager: Closed position 579284e5
+08:44:21 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:21 [INFO] core.position_manager: Exit price: â‚¹256.15 per unit
+08:44:21 [INFO] core.position_manager: P&L: â‚¹747.93 (Take Profit 1)
+08:44:21 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:22 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #7500, price: ₹259.2, keys: ['timestamp', 'price', 'volume']
+08:44:22 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #7500
+08:44:22 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #7500, tick keys: ['timestamp', 'price', 'volume']
+08:44:22 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:22 [INFO] core.position_manager: Fully closed position 579284e5
+08:44:22 [INFO] core.position_manager: Closed position 579284e5
+08:44:22 [INFO] core.position_manager: Lots closed: 4 (300 units)
+08:44:22 [INFO] core.position_manager: Exit price: â‚¹256.00 per unit
+08:44:22 [INFO] core.position_manager: P&L: â‚¹1450.89 (Trailing Stop)
+08:44:22 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:22 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:22 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹261.0: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:22 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:22 [INFO] core.position_manager: Opened position 7e4ebc8e
+08:44:22 [INFO] core.position_manager: Lots: 6 (450 total units)
+08:44:22 [INFO] core.position_manager: Entry price: â‚¹261.00 per unit
+08:44:22 [INFO] core.position_manager: Stop loss: â‚¹246.00
+08:44:22 [INFO] core.position_manager: Take profit levels: ['â‚¹266.00', 'â‚¹273.00', 'â‚¹281.00', 'â‚¹291.00']
+08:44:22 [INFO] core.position_manager: Position value: ₹117,450.00
+08:44:22 [INFO] core.liveStrategy: TRADE BUY: 75 @ 261.00 - Strategy signal
+08:44:22 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹261.00 (450 contracts) - Strategy entry signal
+08:44:22 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #7600, price: ₹261.05, keys: ['timestamp', 'price', 'volume']
+08:44:23 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #7700, price: ₹256.0, keys: ['timestamp', 'price', 'volume']
+08:44:23 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #7800, price: ₹260.55, keys: ['timestamp', 'price', 'volume']
+08:44:23 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #7800
+08:44:23 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #7800, tick keys: ['timestamp', 'price', 'volume']
+08:44:23 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:24 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #7900, price: ₹258.6, keys: ['timestamp', 'price', 'volume']
+08:44:25 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #8000, price: ₹258.85, keys: ['timestamp', 'price', 'volume']
+08:44:25 [INFO] live.trader: [FILE SIM] Processed 8000 ticks, position: True
+08:44:25 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #8100, price: ₹257.65, keys: ['timestamp', 'price', 'volume']
+08:44:25 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #8100
+08:44:25 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #8100, tick keys: ['timestamp', 'price', 'volume']
+08:44:25 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:26 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #8200, price: ₹246.15, keys: ['timestamp', 'price', 'volume']
+08:44:26 [INFO] core.position_manager: Fully closed position 7e4ebc8e
+08:44:26 [INFO] core.position_manager: Closed position 7e4ebc8e
+08:44:26 [INFO] core.position_manager: Lots closed: 6 (450 units)
+08:44:26 [INFO] core.position_manager: Exit price: â‚¹245.80 per unit
+08:44:26 [INFO] core.position_manager: P&L: â‚¹-6910.72 (Stop Loss)
+08:44:26 [INFO] core.liveStrategy: Base SL exit detected—next entry requires 4 green ticks.
+08:44:26 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:26 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #8300, price: ₹248.85, keys: ['timestamp', 'price', 'volume']
+08:44:26 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#2100): Need 3 green ticks, have 1, DATA_SIMULATION_PLACEHOLDER @ ₹254.35
+08:44:27 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #8400, price: ₹249.45, keys: ['timestamp', 'price', 'volume']
+08:44:27 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #8400
+08:44:27 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #8400, tick keys: ['timestamp', 'price', 'volume']
+08:44:27 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:27 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #8500, price: ₹246.65, keys: ['timestamp', 'price', 'volume']
+08:44:28 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #8600, price: ₹240.5, keys: ['timestamp', 'price', 'volume']
+08:44:28 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#2400): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹237.8
+08:44:28 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #8700, price: ₹234.1, keys: ['timestamp', 'price', 'volume']
+08:44:28 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #8700
+08:44:28 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #8700, tick keys: ['timestamp', 'price', 'volume']
+08:44:28 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:29 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #8800, price: ₹229.0, keys: ['timestamp', 'price', 'volume']
+08:44:29 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #8900, price: ₹228.9, keys: ['timestamp', 'price', 'volume']
+08:44:30 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹230.0: All checks passed (EMA Crossover) - Green ticks: 4/4
+08:44:30 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:30 [INFO] core.position_manager: Opened position 6915c82a
+08:44:30 [INFO] core.position_manager: Lots: 6 (450 total units)
+08:44:30 [INFO] core.position_manager: Entry price: â‚¹230.00 per unit
+08:44:30 [INFO] core.position_manager: Stop loss: â‚¹215.00
+08:44:30 [INFO] core.position_manager: Take profit levels: ['â‚¹235.00', 'â‚¹242.00', 'â‚¹250.00', 'â‚¹260.00']
+08:44:30 [INFO] core.position_manager: Position value: ₹103,500.00
+08:44:30 [INFO] core.liveStrategy: TRADE BUY: 75 @ 230.00 - Strategy signal
+08:44:30 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹230.00 (450 contracts) - Strategy entry signal
+08:44:30 [INFO] core.position_manager: Trailing stop activated for 6915c82a at 230.2
+08:44:30 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:30 [INFO] core.position_manager: Partially closed position 6915c82a: 150 @ â‚¹235.2
+08:44:30 [INFO] core.position_manager: Closed position 6915c82a
+08:44:30 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:30 [INFO] core.position_manager: Exit price: â‚¹235.20 per unit
+08:44:30 [INFO] core.position_manager: P&L: â‚¹757.44 (Take Profit 1)
+08:44:30 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:30 [INFO] core.position_manager: Fully closed position 6915c82a
+08:44:30 [INFO] core.position_manager: Closed position 6915c82a
+08:44:30 [INFO] core.position_manager: Lots closed: 4 (300 units)
+08:44:30 [INFO] core.position_manager: Exit price: â‚¹231.10 per unit
+08:44:30 [INFO] core.position_manager: P&L: â‚¹285.67 (Trailing Stop)
+08:44:30 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:30 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:30 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #9000, price: ₹230.2, keys: ['timestamp', 'price', 'volume']
+08:44:30 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #9000
+08:44:30 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #9000, tick keys: ['timestamp', 'price', 'volume']
+08:44:30 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:30 [INFO] live.trader: [FILE SIM] Processed 9000 ticks, position: False
+08:44:31 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#2700): Need 3 green ticks, have 1, DATA_SIMULATION_PLACEHOLDER @ ₹235.0
+08:44:31 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #9100, price: ₹234.2, keys: ['timestamp', 'price', 'volume']
+08:44:31 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹234.65: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:31 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:31 [INFO] core.position_manager: Opened position 311fd5c5
+08:44:31 [INFO] core.position_manager: Lots: 6 (450 total units)
+08:44:31 [INFO] core.position_manager: Entry price: â‚¹234.65 per unit
+08:44:31 [INFO] core.position_manager: Stop loss: â‚¹219.65
+08:44:31 [INFO] core.position_manager: Take profit levels: ['â‚¹239.65', 'â‚¹246.65', 'â‚¹254.65', 'â‚¹264.65']
+08:44:31 [INFO] core.position_manager: Position value: ₹105,592.50
+08:44:31 [INFO] core.liveStrategy: TRADE BUY: 75 @ 234.65 - Strategy signal
+08:44:31 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹234.65 (450 contracts) - Strategy entry signal
+08:44:32 [INFO] core.position_manager: Trailing stop activated for 311fd5c5 at 235.0
+08:44:32 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:32 [INFO] core.position_manager: Partially closed position 311fd5c5: 150 @ â‚¹240.0
+08:44:32 [INFO] core.position_manager: Closed position 311fd5c5
+08:44:32 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:32 [INFO] core.position_manager: Exit price: â‚¹240.00 per unit
+08:44:32 [INFO] core.position_manager: P&L: â‚¹779.48 (Take Profit 1)
+08:44:32 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:32 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #9200, price: ₹240.3, keys: ['timestamp', 'price', 'volume']
+08:44:32 [INFO] core.position_manager: Fully closed position 311fd5c5
+08:44:32 [INFO] core.position_manager: Closed position 311fd5c5
+08:44:32 [INFO] core.position_manager: Lots closed: 4 (300 units)
+08:44:32 [INFO] core.position_manager: Exit price: â‚¹236.15 per unit
+08:44:32 [INFO] core.position_manager: P&L: â‚¹404.70 (Trailing Stop)
+08:44:32 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:32 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:32 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #9300, price: ₹237.9, keys: ['timestamp', 'price', 'volume']
+08:44:32 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #9300
+08:44:32 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #9300, tick keys: ['timestamp', 'price', 'volume']
+08:44:32 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:33 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #9400, price: ₹237.05, keys: ['timestamp', 'price', 'volume']
+08:44:33 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#3000): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹236.95
+08:44:33 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #9500, price: ₹238.9, keys: ['timestamp', 'price', 'volume']
+08:44:33 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹239.0: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:33 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:33 [INFO] core.position_manager: Opened position b168dbc7
+08:44:33 [INFO] core.position_manager: Lots: 6 (450 total units)
+08:44:33 [INFO] core.position_manager: Entry price: â‚¹239.00 per unit
+08:44:33 [INFO] core.position_manager: Stop loss: â‚¹224.00
+08:44:33 [INFO] core.position_manager: Take profit levels: ['â‚¹244.00', 'â‚¹251.00', 'â‚¹259.00', 'â‚¹269.00']
+08:44:33 [INFO] core.position_manager: Position value: ₹107,550.00
+08:44:33 [INFO] core.liveStrategy: TRADE BUY: 75 @ 239.00 - Strategy signal
+08:44:34 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹239.00 (450 contracts) - Strategy entry signal
+08:44:34 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #9600, price: ₹237.9, keys: ['timestamp', 'price', 'volume']
+08:44:34 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #9600
+08:44:34 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #9600, tick keys: ['timestamp', 'price', 'volume']
+08:44:34 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:35 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #9700, price: ₹242.65, keys: ['timestamp', 'price', 'volume']
+08:44:35 [INFO] live.data_simulator: 📊 Simulation progress: 30% (9777/32591)
+08:44:35 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #9800, price: ₹243.4, keys: ['timestamp', 'price', 'volume']
+08:44:35 [INFO] core.position_manager: Trailing stop activated for b168dbc7 at 239.0
+08:44:35 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:35 [INFO] core.position_manager: Partially closed position b168dbc7: 150 @ â‚¹244.0
+08:44:35 [INFO] core.position_manager: Closed position b168dbc7
+08:44:35 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:35 [INFO] core.position_manager: Exit price: â‚¹244.00 per unit
+08:44:35 [INFO] core.position_manager: P&L: â‚¹726.60 (Take Profit 1)
+08:44:35 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:36 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #9900, price: ₹242.05, keys: ['timestamp', 'price', 'volume']
+08:44:36 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #9900
+08:44:36 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #9900, tick keys: ['timestamp', 'price', 'volume']
+08:44:36 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:36 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #10000, price: ₹243.45, keys: ['timestamp', 'price', 'volume']
+08:44:36 [INFO] live.trader: [FILE SIM] Processed 10000 ticks, position: True
+08:44:37 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #10100, price: ₹243.6, keys: ['timestamp', 'price', 'volume']
+08:44:37 [INFO] core.position_manager: Fully closed position b168dbc7
+08:44:37 [INFO] core.position_manager: Closed position b168dbc7
+08:44:37 [INFO] core.position_manager: Lots closed: 4 (300 units)
+08:44:37 [INFO] core.position_manager: Exit price: â‚¹241.00 per unit
+08:44:37 [INFO] core.position_manager: P&L: â‚¹553.77 (Trailing Stop)
+08:44:37 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:37 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:37 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹244.55: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:37 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:37 [INFO] core.position_manager: Opened position 5c62d41a
+08:44:37 [INFO] core.position_manager: Lots: 6 (450 total units)
+08:44:37 [INFO] core.position_manager: Entry price: â‚¹244.55 per unit
+08:44:37 [INFO] core.position_manager: Stop loss: â‚¹229.55
+08:44:37 [INFO] core.position_manager: Take profit levels: ['â‚¹249.55', 'â‚¹256.55', 'â‚¹264.55', 'â‚¹274.55']
+08:44:37 [INFO] core.position_manager: Position value: ₹110,047.50
+08:44:37 [INFO] core.liveStrategy: TRADE BUY: 75 @ 244.55 - Strategy signal
+08:44:37 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹244.55 (450 contracts) - Strategy entry signal
+08:44:38 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #10200, price: ₹247.1, keys: ['timestamp', 'price', 'volume']
+08:44:38 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #10200
+08:44:38 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #10200, tick keys: ['timestamp', 'price', 'volume']
+08:44:38 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:38 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #10300, price: ₹247.9, keys: ['timestamp', 'price', 'volume']
+08:44:38 [INFO] core.position_manager: Trailing stop activated for 5c62d41a at 244.55
+08:44:38 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:38 [INFO] core.position_manager: Partially closed position 5c62d41a: 150 @ â‚¹249.55
+08:44:38 [INFO] core.position_manager: Closed position 5c62d41a
+08:44:38 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:38 [INFO] core.position_manager: Exit price: â‚¹249.55 per unit
+08:44:38 [INFO] core.position_manager: P&L: â‚¹726.07 (Take Profit 1)
+08:44:38 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:39 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #10400, price: ₹251.55, keys: ['timestamp', 'price', 'volume']
+08:44:39 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #10500, price: ₹254.25, keys: ['timestamp', 'price', 'volume']
+08:44:39 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #10500
+08:44:39 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #10500, tick keys: ['timestamp', 'price', 'volume']
+08:44:39 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:39 [INFO] core.position_manager: Fully closed position 5c62d41a
+08:44:39 [INFO] core.position_manager: Closed position 5c62d41a
+08:44:39 [INFO] core.position_manager: Lots closed: 4 (300 units)
+08:44:39 [INFO] core.position_manager: Exit price: â‚¹250.65 per unit
+08:44:39 [INFO] core.position_manager: P&L: â‚¹1781.92 (Trailing Stop)
+08:44:40 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:40 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:40 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #10600, price: ₹248.4, keys: ['timestamp', 'price', 'volume']
+08:44:40 [INFO] core.liveStrategy: 📊 ENTRY EVALUATION @ ₹249.05: Enabled checks: EMA Crossover
+08:44:40 [INFO] core.liveStrategy:    ❌ Entry REJECTED - Failed: EMA: fast(249.08) ≤ slow(249.72)
+08:44:41 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #10700, price: ₹248.4, keys: ['timestamp', 'price', 'volume']
+08:44:41 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#3300): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹245.5
+08:44:41 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹252.1: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:41 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:41 [INFO] core.position_manager: Opened position 26ed734a
+08:44:41 [INFO] core.position_manager: Lots: 6 (450 total units)
+08:44:41 [INFO] core.position_manager: Entry price: â‚¹252.10 per unit
+08:44:41 [INFO] core.position_manager: Stop loss: â‚¹237.10
+08:44:41 [INFO] core.position_manager: Take profit levels: ['â‚¹257.10', 'â‚¹264.10', 'â‚¹272.10', 'â‚¹282.10']
+08:44:41 [INFO] core.position_manager: Position value: ₹113,445.00
+08:44:41 [INFO] core.liveStrategy: TRADE BUY: 75 @ 252.10 - Strategy signal
+08:44:41 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹252.10 (450 contracts) - Strategy entry signal
+08:44:41 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #10800, price: ₹248.35, keys: ['timestamp', 'price', 'volume']
+08:44:41 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #10800
+08:44:41 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #10800, tick keys: ['timestamp', 'price', 'volume']
+08:44:41 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:42 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #10900, price: ₹255.75, keys: ['timestamp', 'price', 'volume']
+08:44:42 [INFO] core.position_manager: Trailing stop activated for 26ed734a at 252.60000000000002
+08:44:42 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:42 [INFO] core.position_manager: Partially closed position 26ed734a: 150 @ â‚¹257.6
+08:44:42 [INFO] core.position_manager: Closed position 26ed734a
+08:44:42 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:42 [INFO] core.position_manager: Exit price: â‚¹257.60 per unit
+08:44:42 [INFO] core.position_manager: P&L: â‚¹800.29 (Take Profit 1)
+08:44:42 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:42 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #11000, price: ₹257.9, keys: ['timestamp', 'price', 'volume']
+08:44:42 [INFO] live.trader: [FILE SIM] Processed 11000 ticks, position: True
+08:44:43 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #11100, price: ₹258.85, keys: ['timestamp', 'price', 'volume']
+08:44:43 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #11100
+08:44:43 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #11100, tick keys: ['timestamp', 'price', 'volume']
+08:44:43 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:43 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #11200, price: ₹258.35, keys: ['timestamp', 'price', 'volume']
+08:44:44 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:44:44 [INFO] core.position_manager: Partially closed position 26ed734a: 75 @ â‚¹264.6
+08:44:44 [INFO] core.position_manager: Closed position 26ed734a
+08:44:44 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:44:44 [INFO] core.position_manager: Exit price: â‚¹264.60 per unit
+08:44:44 [INFO] core.position_manager: P&L: â‚¹924.81 (Take Profit 2)
+08:44:44 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:44 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #11300, price: ₹267.85, keys: ['timestamp', 'price', 'volume']
+08:44:45 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #11400, price: ₹269.2, keys: ['timestamp', 'price', 'volume']
+08:44:45 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #11400
+08:44:45 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #11400, tick keys: ['timestamp', 'price', 'volume']
+08:44:45 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:45 [INFO] core.position_manager: Fully closed position 26ed734a
+08:44:45 [INFO] core.position_manager: Closed position 26ed734a
+08:44:45 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:44:45 [INFO] core.position_manager: Exit price: â‚¹265.00 per unit
+08:44:45 [INFO] core.position_manager: P&L: â‚¹2864.38 (Trailing Stop)
+08:44:45 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:45 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:45 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹269.35: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:45 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:45 [INFO] core.position_manager: Opened position 61c115da
+08:44:45 [INFO] core.position_manager: Lots: 6 (450 total units)
+08:44:45 [INFO] core.position_manager: Entry price: â‚¹269.35 per unit
+08:44:45 [INFO] core.position_manager: Stop loss: â‚¹254.35
+08:44:45 [INFO] core.position_manager: Take profit levels: ['â‚¹274.35', 'â‚¹281.35', 'â‚¹289.35', 'â‚¹299.35']
+08:44:45 [INFO] core.position_manager: Position value: ₹121,207.50
+08:44:45 [INFO] core.liveStrategy: TRADE BUY: 75 @ 269.35 - Strategy signal
+08:44:45 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹269.35 (450 contracts) - Strategy entry signal
+08:44:45 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #11500, price: ₹268.6, keys: ['timestamp', 'price', 'volume']
+08:44:45 [INFO] core.position_manager: Trailing stop activated for 61c115da at 269.55
+08:44:45 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:45 [INFO] core.position_manager: Partially closed position 61c115da: 150 @ â‚¹274.55
+08:44:45 [INFO] core.position_manager: Closed position 61c115da
+08:44:45 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:46 [INFO] core.position_manager: Exit price: â‚¹274.55 per unit
+08:44:46 [INFO] core.position_manager: P&L: â‚¹753.67 (Take Profit 1)
+08:44:46 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:46 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:44:46 [INFO] core.position_manager: Partially closed position 61c115da: 75 @ â‚¹283.05
+08:44:46 [INFO] core.position_manager: Closed position 61c115da
+08:44:46 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:44:46 [INFO] core.position_manager: Exit price: â‚¹283.05 per unit
+08:44:46 [INFO] core.position_manager: P&L: â‚¹1013.93 (Take Profit 2)
+08:44:46 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:46 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #11600, price: ₹283.0, keys: ['timestamp', 'price', 'volume']
+08:44:46 [INFO] core.position_manager: ðŸŽ¯ TP3 Exit: 1 lots (75 units)
+08:44:46 [INFO] core.position_manager: Partially closed position 61c115da: 75 @ â‚¹289.8
+08:44:46 [INFO] core.position_manager: Closed position 61c115da
+08:44:46 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:44:46 [INFO] core.position_manager: Exit price: â‚¹289.80 per unit
+08:44:46 [INFO] core.position_manager: P&L: â‚¹1519.85 (Take Profit 3)
+08:44:46 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:47 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #11700, price: ₹288.6, keys: ['timestamp', 'price', 'volume']
+08:44:47 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #11700
+08:44:47 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #11700, tick keys: ['timestamp', 'price', 'volume']
+08:44:47 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:47 [INFO] core.position_manager: Fully closed position 61c115da
+08:44:47 [INFO] core.position_manager: Closed position 61c115da
+08:44:47 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:47 [INFO] core.position_manager: Exit price: â‚¹284.95 per unit
+08:44:47 [INFO] core.position_manager: P&L: â‚¹2312.67 (Trailing Stop)
+08:44:47 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:47 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:47 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #11800, price: ₹284.2, keys: ['timestamp', 'price', 'volume']
+08:44:48 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #11900, price: ₹290.3, keys: ['timestamp', 'price', 'volume']
+08:44:48 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹291.6: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:48 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:48 [INFO] core.position_manager: Opened position 0566492c
+08:44:48 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:44:48 [INFO] core.position_manager: Entry price: â‚¹291.60 per unit
+08:44:48 [INFO] core.position_manager: Stop loss: â‚¹276.60
+08:44:48 [INFO] core.position_manager: Take profit levels: ['â‚¹296.60', 'â‚¹303.60', 'â‚¹311.60', 'â‚¹321.60']
+08:44:48 [INFO] core.position_manager: Position value: ₹109,350.00
+08:44:48 [INFO] core.liveStrategy: TRADE BUY: 75 @ 291.60 - Strategy signal
+08:44:48 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹291.60 (375 contracts) - Strategy entry signal
+08:44:48 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #12000, price: ₹284.9, keys: ['timestamp', 'price', 'volume']
+08:44:48 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #12000
+08:44:48 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #12000, tick keys: ['timestamp', 'price', 'volume']
+08:44:48 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:48 [INFO] live.trader: [FILE SIM] Processed 12000 ticks, position: True
+08:44:49 [INFO] core.position_manager: Trailing stop activated for 0566492c at 291.65
+08:44:49 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:49 [INFO] core.position_manager: Partially closed position 0566492c: 150 @ â‚¹296.65
+08:44:49 [INFO] core.position_manager: Closed position 0566492c
+08:44:49 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:49 [INFO] core.position_manager: Exit price: â‚¹296.65 per unit
+08:44:49 [INFO] core.position_manager: P&L: â‚¹729.05 (Take Profit 1)
+08:44:49 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:49 [INFO] core.position_manager: Fully closed position 0566492c
+08:44:49 [INFO] core.position_manager: Closed position 0566492c
+08:44:49 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:44:49 [INFO] core.position_manager: Exit price: â‚¹292.60 per unit
+08:44:49 [INFO] core.position_manager: P&L: â‚¹182.91 (Trailing Stop)
+08:44:49 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:49 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:49 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #12100, price: ₹291.7, keys: ['timestamp', 'price', 'volume']
+08:44:50 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #12200, price: ₹286.95, keys: ['timestamp', 'price', 'volume']
+08:44:50 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#3600): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹286.7
+08:44:50 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹290.85: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:44:50 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:44:50 [INFO] core.position_manager: Opened position dfde74b5
+08:44:50 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:44:50 [INFO] core.position_manager: Entry price: â‚¹290.85 per unit
+08:44:50 [INFO] core.position_manager: Stop loss: â‚¹275.85
+08:44:50 [INFO] core.position_manager: Take profit levels: ['â‚¹295.85', 'â‚¹302.85', 'â‚¹310.85', 'â‚¹320.85']
+08:44:50 [INFO] core.position_manager: Position value: ₹109,068.75
+08:44:50 [INFO] core.liveStrategy: TRADE BUY: 75 @ 290.85 - Strategy signal
+08:44:50 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹290.85 (375 contracts) - Strategy entry signal
+08:44:50 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #12300, price: ₹288.4, keys: ['timestamp', 'price', 'volume']
+08:44:50 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #12300
+08:44:50 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #12300, tick keys: ['timestamp', 'price', 'volume']
+08:44:50 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:51 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #12400, price: ₹282.65, keys: ['timestamp', 'price', 'volume']
+08:44:52 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #12500, price: ₹285.3, keys: ['timestamp', 'price', 'volume']
+08:44:52 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #12600, price: ₹285.45, keys: ['timestamp', 'price', 'volume']
+08:44:52 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #12600
+08:44:52 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #12600, tick keys: ['timestamp', 'price', 'volume']
+08:44:52 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:53 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #12700, price: ₹293.4, keys: ['timestamp', 'price', 'volume']
+08:44:53 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #12800, price: ₹292.85, keys: ['timestamp', 'price', 'volume']
+08:44:54 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #12900, price: ₹288.5, keys: ['timestamp', 'price', 'volume']
+08:44:54 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #12900
+08:44:54 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #12900, tick keys: ['timestamp', 'price', 'volume']
+08:44:54 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:54 [INFO] core.position_manager: Trailing stop activated for dfde74b5 at 292.2
+08:44:54 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:44:54 [INFO] core.position_manager: Partially closed position dfde74b5: 150 @ â‚¹297.2
+08:44:54 [INFO] core.position_manager: Closed position dfde74b5
+08:44:54 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:44:54 [INFO] core.position_manager: Exit price: â‚¹297.20 per unit
+08:44:54 [INFO] core.position_manager: P&L: â‚¹924.00 (Take Profit 1)
+08:44:54 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:55 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #13000, price: ₹298.9, keys: ['timestamp', 'price', 'volume']
+08:44:55 [INFO] live.trader: [FILE SIM] Processed 13000 ticks, position: True
+08:44:55 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:44:55 [INFO] core.position_manager: Partially closed position dfde74b5: 75 @ â‚¹303.5
+08:44:55 [INFO] core.position_manager: Closed position dfde74b5
+08:44:55 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:44:55 [INFO] core.position_manager: Exit price: â‚¹303.50 per unit
+08:44:55 [INFO] core.position_manager: P&L: â‚¹934.20 (Take Profit 2)
+08:44:55 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:55 [INFO] live.data_simulator: 📊 Simulation progress: 40% (13036/32591)
+08:44:55 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #13100, price: ₹307.1, keys: ['timestamp', 'price', 'volume']
+08:44:56 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #13200, price: ₹308.0, keys: ['timestamp', 'price', 'volume']
+08:44:56 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #13200
+08:44:56 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #13200, tick keys: ['timestamp', 'price', 'volume']
+08:44:56 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:56 [INFO] core.position_manager: ðŸŽ¯ TP3 Exit: 1 lots (75 units)
+08:44:56 [INFO] core.position_manager: Partially closed position dfde74b5: 75 @ â‚¹311.0
+08:44:56 [INFO] core.position_manager: Closed position dfde74b5
+08:44:56 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:44:56 [INFO] core.position_manager: Exit price: â‚¹311.00 per unit
+08:44:56 [INFO] core.position_manager: P&L: â‚¹1496.34 (Take Profit 3)
+08:44:56 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:56 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #13300, price: ₹314.1, keys: ['timestamp', 'price', 'volume']
+08:44:57 [INFO] core.position_manager: Fully closed position dfde74b5
+08:44:57 [INFO] core.position_manager: Closed position dfde74b5
+08:44:57 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:44:57 [INFO] core.position_manager: Exit price: â‚¹309.55 per unit
+08:44:57 [INFO] core.position_manager: P&L: â‚¹1387.66 (Trailing Stop)
+08:44:57 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:44:57 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:44:57 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #13400, price: ₹312.9, keys: ['timestamp', 'price', 'volume']
+08:44:57 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #13500, price: ₹312.0, keys: ['timestamp', 'price', 'volume']
+08:44:57 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #13500
+08:44:57 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #13500, tick keys: ['timestamp', 'price', 'volume']
+08:44:57 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:44:58 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #13600, price: ₹309.75, keys: ['timestamp', 'price', 'volume']
+08:44:58 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#3900): Need 3 green ticks, have 1, DATA_SIMULATION_PLACEHOLDER @ ₹307.0
+08:44:59 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #13700, price: ₹307.45, keys: ['timestamp', 'price', 'volume']
+08:44:59 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #13800, price: ₹311.55, keys: ['timestamp', 'price', 'volume']
+08:44:59 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #13800
+08:44:59 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #13800, tick keys: ['timestamp', 'price', 'volume']
+08:44:59 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:00 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #13900, price: ₹311.1, keys: ['timestamp', 'price', 'volume']
+08:45:00 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#4200): Need 3 green ticks, have 1, DATA_SIMULATION_PLACEHOLDER @ ₹309.8
+08:45:00 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #14000, price: ₹311.25, keys: ['timestamp', 'price', 'volume']
+08:45:00 [INFO] live.trader: [FILE SIM] Processed 14000 ticks, position: False
+08:45:00 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹315.0: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:00 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:00 [INFO] core.position_manager: Opened position aeb46ef2
+08:45:00 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:00 [INFO] core.position_manager: Entry price: â‚¹315.00 per unit
+08:45:00 [INFO] core.position_manager: Stop loss: â‚¹300.00
+08:45:00 [INFO] core.position_manager: Take profit levels: ['â‚¹320.00', 'â‚¹327.00', 'â‚¹335.00', 'â‚¹345.00']
+08:45:00 [INFO] core.position_manager: Position value: ₹118,125.00
+08:45:01 [INFO] core.liveStrategy: TRADE BUY: 75 @ 315.00 - Strategy signal
+08:45:01 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹315.00 (375 contracts) - Strategy entry signal
+08:45:01 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #14100, price: ₹318.05, keys: ['timestamp', 'price', 'volume']
+08:45:01 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #14100
+08:45:01 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #14100, tick keys: ['timestamp', 'price', 'volume']
+08:45:01 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:01 [INFO] core.position_manager: Trailing stop activated for aeb46ef2 at 315.0
+08:45:01 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:01 [INFO] core.position_manager: Partially closed position aeb46ef2: 150 @ â‚¹320.0
+08:45:01 [INFO] core.position_manager: Closed position aeb46ef2
+08:45:01 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:01 [INFO] core.position_manager: Exit price: â‚¹320.00 per unit
+08:45:01 [INFO] core.position_manager: P&L: â‚¹719.31 (Take Profit 1)
+08:45:01 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:01 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:45:01 [INFO] core.position_manager: Partially closed position aeb46ef2: 75 @ â‚¹327.0
+08:45:01 [INFO] core.position_manager: Closed position aeb46ef2
+08:45:01 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:45:01 [INFO] core.position_manager: Exit price: â‚¹327.00 per unit
+08:45:01 [INFO] core.position_manager: P&L: â‚¹884.32 (Take Profit 2)
+08:45:01 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:01 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #14200, price: ₹330.0, keys: ['timestamp', 'price', 'volume']
+08:45:02 [INFO] core.position_manager: ðŸŽ¯ TP3 Exit: 1 lots (75 units)
+08:45:02 [INFO] core.position_manager: Partially closed position aeb46ef2: 75 @ â‚¹335.05
+08:45:02 [INFO] core.position_manager: Closed position aeb46ef2
+08:45:02 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:45:02 [INFO] core.position_manager: Exit price: â‚¹335.05 per unit
+08:45:02 [INFO] core.position_manager: P&L: â‚¹1487.68 (Take Profit 3)
+08:45:02 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:02 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #14300, price: ₹335.45, keys: ['timestamp', 'price', 'volume']
+08:45:02 [INFO] core.position_manager: Fully closed position aeb46ef2
+08:45:02 [INFO] core.position_manager: Closed position aeb46ef2
+08:45:02 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:45:02 [INFO] core.position_manager: Exit price: â‚¹338.50 per unit
+08:45:02 [INFO] core.position_manager: P&L: â‚¹1746.27 (Trailing Stop)
+08:45:02 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:02 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:03 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #14400, price: ₹341.15, keys: ['timestamp', 'price', 'volume']
+08:45:03 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #14400
+08:45:03 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #14400, tick keys: ['timestamp', 'price', 'volume']
+08:45:03 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:03 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹344.0: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:03 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:03 [INFO] core.position_manager: Opened position d0ca9839
+08:45:03 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:03 [INFO] core.position_manager: Entry price: â‚¹344.00 per unit
+08:45:03 [INFO] core.position_manager: Stop loss: â‚¹329.00
+08:45:03 [INFO] core.position_manager: Take profit levels: ['â‚¹349.00', 'â‚¹356.00', 'â‚¹364.00', 'â‚¹374.00']
+08:45:03 [INFO] core.position_manager: Position value: ₹129,000.00
+08:45:03 [INFO] core.liveStrategy: TRADE BUY: 75 @ 344.00 - Strategy signal
+08:45:03 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹344.00 (375 contracts) - Strategy entry signal
+08:45:03 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #14500, price: ₹344.8, keys: ['timestamp', 'price', 'volume']
+08:45:04 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #14600, price: ₹341.75, keys: ['timestamp', 'price', 'volume']
+08:45:04 [INFO] core.position_manager: Trailing stop activated for d0ca9839 at 344.0
+08:45:04 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:04 [INFO] core.position_manager: Partially closed position d0ca9839: 150 @ â‚¹349.0
+08:45:04 [INFO] core.position_manager: Closed position d0ca9839
+08:45:04 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:04 [INFO] core.position_manager: Exit price: â‚¹349.00 per unit
+08:45:04 [INFO] core.position_manager: P&L: â‚¹716.53 (Take Profit 1)
+08:45:04 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:05 [INFO] core.position_manager: Fully closed position d0ca9839
+08:45:05 [INFO] core.position_manager: Closed position d0ca9839
+08:45:05 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:45:05 [INFO] core.position_manager: Exit price: â‚¹343.95 per unit
+08:45:05 [INFO] core.position_manager: P&L: â‚¹-60.73 (Trailing Stop)
+08:45:05 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:05 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:05 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #14700, price: ₹344.55, keys: ['timestamp', 'price', 'volume']
+08:45:05 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #14700
+08:45:05 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #14700, tick keys: ['timestamp', 'price', 'volume']
+08:45:05 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:05 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹349.05: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:05 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:05 [INFO] core.position_manager: Opened position de2c5723
+08:45:05 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:05 [INFO] core.position_manager: Entry price: â‚¹349.05 per unit
+08:45:05 [INFO] core.position_manager: Stop loss: â‚¹334.05
+08:45:05 [INFO] core.position_manager: Take profit levels: ['â‚¹354.05', 'â‚¹361.05', 'â‚¹369.05', 'â‚¹379.05']
+08:45:05 [INFO] core.position_manager: Position value: ₹130,893.75
+08:45:05 [INFO] core.liveStrategy: TRADE BUY: 75 @ 349.05 - Strategy signal
+08:45:05 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹349.05 (375 contracts) - Strategy entry signal
+08:45:05 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #14800, price: ₹348.05, keys: ['timestamp', 'price', 'volume']
+08:45:06 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #14900, price: ₹349.6, keys: ['timestamp', 'price', 'volume']
+08:45:06 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #15000, price: ₹349.0, keys: ['timestamp', 'price', 'volume']
+08:45:06 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #15000
+08:45:06 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #15000, tick keys: ['timestamp', 'price', 'volume']
+08:45:06 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:06 [INFO] live.trader: [FILE SIM] Processed 15000 ticks, position: True
+08:45:07 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #15100, price: ₹342.7, keys: ['timestamp', 'price', 'volume']
+08:45:08 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #15200, price: ₹343.4, keys: ['timestamp', 'price', 'volume']
+08:45:08 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #15300, price: ₹340.8, keys: ['timestamp', 'price', 'volume']
+08:45:08 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #15300
+08:45:08 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #15300, tick keys: ['timestamp', 'price', 'volume']
+08:45:08 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:09 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #15400, price: ₹353.75, keys: ['timestamp', 'price', 'volume']
+08:45:09 [INFO] core.position_manager: Trailing stop activated for de2c5723 at 349.75
+08:45:09 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:09 [INFO] core.position_manager: Partially closed position de2c5723: 150 @ â‚¹354.75
+08:45:09 [INFO] core.position_manager: Closed position de2c5723
+08:45:09 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:09 [INFO] core.position_manager: Exit price: â‚¹354.75 per unit
+08:45:09 [INFO] core.position_manager: P&L: â‚¹820.98 (Take Profit 1)
+08:45:09 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:09 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:45:09 [INFO] core.position_manager: Partially closed position de2c5723: 75 @ â‚¹361.9
+08:45:09 [INFO] core.position_manager: Closed position de2c5723
+08:45:09 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:45:09 [INFO] core.position_manager: Exit price: â‚¹361.90 per unit
+08:45:09 [INFO] core.position_manager: P&L: â‚¹946.40 (Take Profit 2)
+08:45:09 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:09 [INFO] core.position_manager: Fully closed position de2c5723
+08:45:09 [INFO] core.position_manager: Closed position de2c5723
+08:45:09 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:09 [INFO] core.position_manager: Exit price: â‚¹359.55 per unit
+08:45:09 [INFO] core.position_manager: P&L: â‚¹1540.52 (Trailing Stop)
+08:45:09 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:09 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:10 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #15500, price: ₹358.55, keys: ['timestamp', 'price', 'volume']
+08:45:10 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#4500): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹357.55
+08:45:10 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #15600, price: ₹359.35, keys: ['timestamp', 'price', 'volume']
+08:45:10 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #15600
+08:45:10 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #15600, tick keys: ['timestamp', 'price', 'volume']
+08:45:10 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:10 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹363.0: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:10 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:10 [INFO] core.position_manager: Opened position a86c2df7
+08:45:10 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:10 [INFO] core.position_manager: Entry price: â‚¹363.00 per unit
+08:45:10 [INFO] core.position_manager: Stop loss: â‚¹348.00
+08:45:10 [INFO] core.position_manager: Take profit levels: ['â‚¹368.00', 'â‚¹375.00', 'â‚¹383.00', 'â‚¹393.00']
+08:45:10 [INFO] core.position_manager: Position value: ₹136,125.00
+08:45:10 [INFO] core.liveStrategy: TRADE BUY: 75 @ 363.00 - Strategy signal
+08:45:10 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹363.00 (375 contracts) - Strategy entry signal
+08:45:11 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #15700, price: ₹365.9, keys: ['timestamp', 'price', 'volume']
+08:45:11 [INFO] core.position_manager: Trailing stop activated for a86c2df7 at 364.0
+08:45:11 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:11 [INFO] core.position_manager: Partially closed position a86c2df7: 150 @ â‚¹369.0
+08:45:11 [INFO] core.position_manager: Closed position a86c2df7
+08:45:11 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:11 [INFO] core.position_manager: Exit price: â‚¹369.00 per unit
+08:45:11 [INFO] core.position_manager: P&L: â‚¹864.61 (Take Profit 1)
+08:45:11 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:11 [INFO] core.position_manager: Fully closed position a86c2df7
+08:45:11 [INFO] core.position_manager: Closed position a86c2df7
+08:45:11 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:45:11 [INFO] core.position_manager: Exit price: â‚¹363.75 per unit
+08:45:11 [INFO] core.position_manager: P&L: â‚¹116.42 (Trailing Stop)
+08:45:11 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:11 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:11 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #15800, price: ₹361.6, keys: ['timestamp', 'price', 'volume']
+08:45:12 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #15900, price: ₹355.35, keys: ['timestamp', 'price', 'volume']
+08:45:12 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #15900
+08:45:12 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #15900, tick keys: ['timestamp', 'price', 'volume']
+08:45:12 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:12 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#4800): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹358.2
+08:45:13 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #16000, price: ₹362.2, keys: ['timestamp', 'price', 'volume']
+08:45:13 [INFO] live.trader: [FILE SIM] Processed 16000 ticks, position: False
+08:45:13 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹365.0: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:13 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:13 [INFO] core.position_manager: Opened position 64136c38
+08:45:13 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:13 [INFO] core.position_manager: Entry price: â‚¹365.00 per unit
+08:45:13 [INFO] core.position_manager: Stop loss: â‚¹350.00
+08:45:13 [INFO] core.position_manager: Take profit levels: ['â‚¹370.00', 'â‚¹377.00', 'â‚¹385.00', 'â‚¹395.00']
+08:45:13 [INFO] core.position_manager: Position value: ₹136,875.00
+08:45:13 [INFO] core.liveStrategy: TRADE BUY: 75 @ 365.00 - Strategy signal
+08:45:13 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹365.00 (375 contracts) - Strategy entry signal
+08:45:13 [INFO] core.position_manager: Trailing stop activated for 64136c38 at 365.75
+08:45:13 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:13 [INFO] core.position_manager: Partially closed position 64136c38: 150 @ â‚¹370.75
+08:45:13 [INFO] core.position_manager: Closed position 64136c38
+08:45:13 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:13 [INFO] core.position_manager: Exit price: â‚¹370.75 per unit
+08:45:13 [INFO] core.position_manager: P&L: â‚¹826.94 (Take Profit 1)
+08:45:13 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:13 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #16100, price: ₹370.35, keys: ['timestamp', 'price', 'volume']
+08:45:14 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:45:14 [INFO] core.position_manager: Partially closed position 64136c38: 75 @ â‚¹377.0
+08:45:14 [INFO] core.position_manager: Closed position 64136c38
+08:45:14 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:45:14 [INFO] core.position_manager: Exit price: â‚¹377.00 per unit
+08:45:14 [INFO] core.position_manager: P&L: â‚¹881.92 (Take Profit 2)
+08:45:14 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:14 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #16200, price: ₹375.35, keys: ['timestamp', 'price', 'volume']
+08:45:14 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #16200
+08:45:14 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #16200, tick keys: ['timestamp', 'price', 'volume']
+08:45:14 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:14 [INFO] core.position_manager: Fully closed position 64136c38
+08:45:14 [INFO] core.position_manager: Closed position 64136c38
+08:45:14 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:14 [INFO] core.position_manager: Exit price: â‚¹375.25 per unit
+08:45:14 [INFO] core.position_manager: P&L: â‚¹1501.51 (Trailing Stop)
+08:45:14 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:14 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:15 [INFO] live.data_simulator: 📊 Simulation progress: 50% (16295/32591)
+08:45:15 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #16300, price: ₹372.9, keys: ['timestamp', 'price', 'volume']
+08:45:15 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #16400, price: ₹365.65, keys: ['timestamp', 'price', 'volume']
+08:45:16 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#5100): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹369.6
+08:45:16 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #16500, price: ₹368.1, keys: ['timestamp', 'price', 'volume']
+08:45:16 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #16500
+08:45:16 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #16500, tick keys: ['timestamp', 'price', 'volume']
+08:45:16 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:16 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #16600, price: ₹367.2, keys: ['timestamp', 'price', 'volume']
+08:45:16 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹368.5: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:16 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:17 [INFO] core.position_manager: Opened position 138c2105
+08:45:17 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:17 [INFO] core.position_manager: Entry price: â‚¹368.50 per unit
+08:45:17 [INFO] core.position_manager: Stop loss: â‚¹353.50
+08:45:17 [INFO] core.position_manager: Take profit levels: ['â‚¹373.50', 'â‚¹380.50', 'â‚¹388.50', 'â‚¹398.50']
+08:45:17 [INFO] core.position_manager: Position value: ₹138,187.50
+08:45:17 [INFO] core.liveStrategy: TRADE BUY: 75 @ 368.50 - Strategy signal
+08:45:17 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹368.50 (375 contracts) - Strategy entry signal
+08:45:17 [INFO] core.position_manager: Trailing stop activated for 138c2105 at 368.7
+08:45:17 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:17 [INFO] core.position_manager: Partially closed position 138c2105: 150 @ â‚¹373.7
+08:45:17 [INFO] core.position_manager: Closed position 138c2105
+08:45:17 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:17 [INFO] core.position_manager: Exit price: â‚¹373.70 per unit
+08:45:17 [INFO] core.position_manager: P&L: â‚¹744.16 (Take Profit 1)
+08:45:17 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:17 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #16700, price: ₹377.05, keys: ['timestamp', 'price', 'volume']
+08:45:17 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:45:17 [INFO] core.position_manager: Partially closed position 138c2105: 75 @ â‚¹380.5
+08:45:17 [INFO] core.position_manager: Closed position 138c2105
+08:45:17 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:45:17 [INFO] core.position_manager: Exit price: â‚¹380.50 per unit
+08:45:17 [INFO] core.position_manager: P&L: â‚¹881.75 (Take Profit 2)
+08:45:17 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:18 [INFO] core.position_manager: Fully closed position 138c2105
+08:45:18 [INFO] core.position_manager: Closed position 138c2105
+08:45:18 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:18 [INFO] core.position_manager: Exit price: â‚¹375.20 per unit
+08:45:18 [INFO] core.position_manager: P&L: â‚¹969.01 (Trailing Stop)
+08:45:18 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:18 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:18 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #16800, price: ₹375.75, keys: ['timestamp', 'price', 'volume']
+08:45:18 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #16800
+08:45:18 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #16800, tick keys: ['timestamp', 'price', 'volume']
+08:45:18 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:18 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #16900, price: ₹374.65, keys: ['timestamp', 'price', 'volume']
+08:45:18 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#5400): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹372.95
+08:45:19 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #17000, price: ₹370.55, keys: ['timestamp', 'price', 'volume']
+08:45:19 [INFO] live.trader: [FILE SIM] Processed 17000 ticks, position: False
+08:45:19 [INFO] core.liveStrategy: 📊 ENTRY EVALUATION @ ₹372.5: Enabled checks: EMA Crossover
+08:45:19 [INFO] core.liveStrategy:    ❌ Entry REJECTED - Failed: EMA: fast(370.72) ≤ slow(371.13)
+08:45:19 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹374.2: All checks passed (EMA Crossover) - Green ticks: 6/3
+08:45:19 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:19 [INFO] core.position_manager: Opened position 460d9f0c
+08:45:19 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:19 [INFO] core.position_manager: Entry price: â‚¹374.20 per unit
+08:45:19 [INFO] core.position_manager: Stop loss: â‚¹359.20
+08:45:19 [INFO] core.position_manager: Take profit levels: ['â‚¹379.20', 'â‚¹386.20', 'â‚¹394.20', 'â‚¹404.20']
+08:45:19 [INFO] core.position_manager: Position value: ₹140,325.00
+08:45:19 [INFO] core.liveStrategy: TRADE BUY: 75 @ 374.20 - Strategy signal
+08:45:19 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹374.20 (375 contracts) - Strategy entry signal
+08:45:19 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #17100, price: ₹373.3, keys: ['timestamp', 'price', 'volume']
+08:45:19 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #17100
+08:45:19 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #17100, tick keys: ['timestamp', 'price', 'volume']
+08:45:19 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:20 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #17200, price: ₹370.0, keys: ['timestamp', 'price', 'volume']
+08:45:20 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #17300, price: ₹362.1, keys: ['timestamp', 'price', 'volume']
+08:45:21 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #17400, price: ₹361.7, keys: ['timestamp', 'price', 'volume']
+08:45:21 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #17400
+08:45:21 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #17400, tick keys: ['timestamp', 'price', 'volume']
+08:45:21 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:21 [INFO] core.position_manager: Fully closed position 460d9f0c
+08:45:21 [INFO] core.position_manager: Closed position 460d9f0c
+08:45:21 [INFO] core.position_manager: Lots closed: 5 (375 units)
+08:45:21 [INFO] core.position_manager: Exit price: â‚¹358.50 per unit
+08:45:21 [INFO] core.position_manager: P&L: â‚¹-5973.46 (Stop Loss)
+08:45:21 [INFO] core.liveStrategy: Base SL exit detected—next entry requires 4 green ticks.
+08:45:21 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:22 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #17500, price: ₹356.95, keys: ['timestamp', 'price', 'volume']
+08:45:22 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #17600, price: ₹350.35, keys: ['timestamp', 'price', 'volume']
+08:45:22 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#5700): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹350.8
+08:45:23 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #17700, price: ₹355.0, keys: ['timestamp', 'price', 'volume']
+08:45:23 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #17700
+08:45:23 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #17700, tick keys: ['timestamp', 'price', 'volume']
+08:45:23 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:23 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #17800, price: ₹353.2, keys: ['timestamp', 'price', 'volume']
+08:45:24 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #17900, price: ₹342.6, keys: ['timestamp', 'price', 'volume']
+08:45:24 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#6000): Need 3 green ticks, have 1, DATA_SIMULATION_PLACEHOLDER @ ₹341.3
+08:45:24 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹347.75: All checks passed (EMA Crossover) - Green ticks: 4/4
+08:45:24 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:24 [INFO] core.position_manager: Opened position 9cb65668
+08:45:24 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:24 [INFO] core.position_manager: Entry price: â‚¹347.75 per unit
+08:45:24 [INFO] core.position_manager: Stop loss: â‚¹332.75
+08:45:24 [INFO] core.position_manager: Take profit levels: ['â‚¹352.75', 'â‚¹359.75', 'â‚¹367.75', 'â‚¹377.75']
+08:45:24 [INFO] core.position_manager: Position value: ₹130,406.25
+08:45:24 [INFO] core.liveStrategy: TRADE BUY: 75 @ 347.75 - Strategy signal
+08:45:24 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹347.75 (375 contracts) - Strategy entry signal
+08:45:24 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #18000, price: ₹348.35, keys: ['timestamp', 'price', 'volume']
+08:45:24 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #18000
+08:45:24 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #18000, tick keys: ['timestamp', 'price', 'volume']
+08:45:24 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:24 [INFO] live.trader: [FILE SIM] Processed 18000 ticks, position: True
+08:45:24 [INFO] core.position_manager: Trailing stop activated for 9cb65668 at 347.95
+08:45:24 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:24 [INFO] core.position_manager: Partially closed position 9cb65668: 150 @ â‚¹352.95
+08:45:24 [INFO] core.position_manager: Closed position 9cb65668
+08:45:24 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:24 [INFO] core.position_manager: Exit price: â‚¹352.95 per unit
+08:45:24 [INFO] core.position_manager: P&L: â‚¹746.15 (Take Profit 1)
+08:45:24 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:25 [INFO] core.position_manager: Fully closed position 9cb65668
+08:45:25 [INFO] core.position_manager: Closed position 9cb65668
+08:45:25 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:45:25 [INFO] core.position_manager: Exit price: â‚¹348.00 per unit
+08:45:25 [INFO] core.position_manager: P&L: â‚¹6.18 (Trailing Stop)
+08:45:25 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:25 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:25 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #18100, price: ₹353.0, keys: ['timestamp', 'price', 'volume']
+08:45:25 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹348.3: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:25 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:25 [INFO] core.position_manager: Opened position 3c5bc2dd
+08:45:25 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:25 [INFO] core.position_manager: Entry price: â‚¹348.30 per unit
+08:45:25 [INFO] core.position_manager: Stop loss: â‚¹333.30
+08:45:25 [INFO] core.position_manager: Take profit levels: ['â‚¹353.30', 'â‚¹360.30', 'â‚¹368.30', 'â‚¹378.30']
+08:45:25 [INFO] core.position_manager: Position value: ₹130,612.50
+08:45:25 [INFO] core.liveStrategy: TRADE BUY: 75 @ 348.30 - Strategy signal
+08:45:25 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹348.30 (375 contracts) - Strategy entry signal
+08:45:25 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #18200, price: ₹348.25, keys: ['timestamp', 'price', 'volume']
+08:45:26 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #18300, price: ₹346.4, keys: ['timestamp', 'price', 'volume']
+08:45:26 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #18300
+08:45:26 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #18300, tick keys: ['timestamp', 'price', 'volume']
+08:45:26 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:27 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #18400, price: ₹344.9, keys: ['timestamp', 'price', 'volume']
+08:45:27 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #18500, price: ₹341.0, keys: ['timestamp', 'price', 'volume']
+08:45:27 [INFO] core.position_manager: Fully closed position 3c5bc2dd
+08:45:27 [INFO] core.position_manager: Closed position 3c5bc2dd
+08:45:27 [INFO] core.position_manager: Lots closed: 5 (375 units)
+08:45:27 [INFO] core.position_manager: Exit price: â‚¹333.00 per unit
+08:45:27 [INFO] core.position_manager: P&L: â‚¹-5817.35 (Stop Loss)
+08:45:27 [INFO] core.liveStrategy: Base SL exit detected—next entry requires 4 green ticks.
+08:45:27 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:28 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #18600, price: ₹334.85, keys: ['timestamp', 'price', 'volume']
+08:45:28 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #18600
+08:45:28 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #18600, tick keys: ['timestamp', 'price', 'volume']
+08:45:28 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:28 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹338.75: All checks passed (EMA Crossover) - Green ticks: 4/4
+08:45:28 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:28 [INFO] core.position_manager: Opened position 0b3d0a5b
+08:45:28 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:28 [INFO] core.position_manager: Entry price: â‚¹338.75 per unit
+08:45:28 [INFO] core.position_manager: Stop loss: â‚¹323.75
+08:45:28 [INFO] core.position_manager: Take profit levels: ['â‚¹343.75', 'â‚¹350.75', 'â‚¹358.75', 'â‚¹368.75']
+08:45:28 [INFO] core.position_manager: Position value: ₹127,031.25
+08:45:28 [INFO] core.liveStrategy: TRADE BUY: 75 @ 338.75 - Strategy signal
+08:45:28 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹338.75 (375 contracts) - Strategy entry signal
+08:45:28 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #18700, price: ₹340.7, keys: ['timestamp', 'price', 'volume']
+08:45:29 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #18800, price: ₹333.15, keys: ['timestamp', 'price', 'volume']
+08:45:29 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #18900, price: ₹338.8, keys: ['timestamp', 'price', 'volume']
+08:45:29 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #18900
+08:45:29 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #18900, tick keys: ['timestamp', 'price', 'volume']
+08:45:29 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:30 [INFO] core.position_manager: Trailing stop activated for 0b3d0a5b at 338.85
+08:45:30 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:30 [INFO] core.position_manager: Partially closed position 0b3d0a5b: 150 @ â‚¹343.85
+08:45:30 [INFO] core.position_manager: Closed position 0b3d0a5b
+08:45:30 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:30 [INFO] core.position_manager: Exit price: â‚¹343.85 per unit
+08:45:30 [INFO] core.position_manager: P&L: â‚¹732.02 (Take Profit 1)
+08:45:30 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:30 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #19000, price: ₹346.95, keys: ['timestamp', 'price', 'volume']
+08:45:30 [INFO] live.trader: [FILE SIM] Processed 19000 ticks, position: True
+08:45:30 [INFO] core.position_manager: Fully closed position 0b3d0a5b
+08:45:30 [INFO] core.position_manager: Closed position 0b3d0a5b
+08:45:30 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:45:30 [INFO] core.position_manager: Exit price: â‚¹344.00 per unit
+08:45:31 [INFO] core.position_manager: P&L: â‚¹1131.76 (Trailing Stop)
+08:45:31 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:31 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:31 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #19100, price: ₹342.45, keys: ['timestamp', 'price', 'volume']
+08:45:31 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#6300): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹343.65
+08:45:31 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #19200, price: ₹342.15, keys: ['timestamp', 'price', 'volume']
+08:45:31 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #19200
+08:45:31 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #19200, tick keys: ['timestamp', 'price', 'volume']
+08:45:31 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:32 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #19300, price: ₹339.0, keys: ['timestamp', 'price', 'volume']
+08:45:32 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #19400, price: ₹332.6, keys: ['timestamp', 'price', 'volume']
+08:45:32 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#6600): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹330.95
+08:45:33 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #19500, price: ₹329.4, keys: ['timestamp', 'price', 'volume']
+08:45:33 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #19500
+08:45:33 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #19500, tick keys: ['timestamp', 'price', 'volume']
+08:45:33 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:33 [INFO] live.data_simulator: 📊 Simulation progress: 60% (19554/32591)
+08:45:33 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #19600, price: ₹323.8, keys: ['timestamp', 'price', 'volume']
+08:45:34 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹323.9: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:34 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:34 [INFO] core.position_manager: Opened position 5d8eccac
+08:45:34 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:34 [INFO] core.position_manager: Entry price: â‚¹323.90 per unit
+08:45:34 [INFO] core.position_manager: Stop loss: â‚¹308.90
+08:45:34 [INFO] core.position_manager: Take profit levels: ['â‚¹328.90', 'â‚¹335.90', 'â‚¹343.90', 'â‚¹353.90']
+08:45:34 [INFO] core.position_manager: Position value: ₹121,462.50
+08:45:34 [INFO] core.liveStrategy: TRADE BUY: 75 @ 323.90 - Strategy signal
+08:45:34 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹323.90 (375 contracts) - Strategy entry signal
+08:45:34 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #19700, price: ₹327.85, keys: ['timestamp', 'price', 'volume']
+08:45:34 [INFO] core.position_manager: Trailing stop activated for 5d8eccac at 324.0
+08:45:34 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:34 [INFO] core.position_manager: Partially closed position 5d8eccac: 150 @ â‚¹329.0
+08:45:34 [INFO] core.position_manager: Closed position 5d8eccac
+08:45:34 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:34 [INFO] core.position_manager: Exit price: â‚¹329.00 per unit
+08:45:34 [INFO] core.position_manager: P&L: â‚¹733.45 (Take Profit 1)
+08:45:34 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:35 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:45:35 [INFO] core.position_manager: Partially closed position 5d8eccac: 75 @ â‚¹335.95
+08:45:35 [INFO] core.position_manager: Closed position 5d8eccac
+08:45:35 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:45:35 [INFO] core.position_manager: Exit price: â‚¹335.95 per unit
+08:45:35 [INFO] core.position_manager: P&L: â‚¹887.64 (Take Profit 2)
+08:45:35 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:35 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #19800, price: ₹333.5, keys: ['timestamp', 'price', 'volume']
+08:45:35 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #19800
+08:45:35 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #19800, tick keys: ['timestamp', 'price', 'volume']
+08:45:35 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:35 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #19900, price: ₹336.8, keys: ['timestamp', 'price', 'volume']
+08:45:35 [INFO] core.position_manager: Fully closed position 5d8eccac
+08:45:35 [INFO] core.position_manager: Closed position 5d8eccac
+08:45:35 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:35 [INFO] core.position_manager: Exit price: â‚¹334.00 per unit
+08:45:35 [INFO] core.position_manager: P&L: â‚¹1482.97 (Trailing Stop)
+08:45:35 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:35 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:36 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#6900): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹334.25
+08:45:36 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹335.7: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:36 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:36 [INFO] core.position_manager: Opened position d5426b1b
+08:45:36 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:36 [INFO] core.position_manager: Entry price: â‚¹335.70 per unit
+08:45:36 [INFO] core.position_manager: Stop loss: â‚¹320.70
+08:45:36 [INFO] core.position_manager: Take profit levels: ['â‚¹340.70', 'â‚¹347.70', 'â‚¹355.70', 'â‚¹365.70']
+08:45:36 [INFO] core.position_manager: Position value: ₹125,887.50
+08:45:36 [INFO] core.liveStrategy: TRADE BUY: 75 @ 335.70 - Strategy signal
+08:45:36 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹335.70 (375 contracts) - Strategy entry signal
+08:45:36 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #20000, price: ₹334.0, keys: ['timestamp', 'price', 'volume']
+08:45:36 [INFO] live.trader: [FILE SIM] Processed 20000 ticks, position: True
+08:45:37 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #20100, price: ₹332.15, keys: ['timestamp', 'price', 'volume']
+08:45:37 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #20100
+08:45:37 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #20100, tick keys: ['timestamp', 'price', 'volume']
+08:45:37 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:37 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #20200, price: ₹334.05, keys: ['timestamp', 'price', 'volume']
+08:45:38 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #20300, price: ₹334.55, keys: ['timestamp', 'price', 'volume']
+08:45:38 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #20400, price: ₹328.2, keys: ['timestamp', 'price', 'volume']
+08:45:38 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #20400
+08:45:38 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #20400, tick keys: ['timestamp', 'price', 'volume']
+08:45:38 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:39 [INFO] core.position_manager: Fully closed position d5426b1b
+08:45:39 [INFO] core.position_manager: Closed position d5426b1b
+08:45:39 [INFO] core.position_manager: Lots closed: 5 (375 units)
+08:45:39 [INFO] core.position_manager: Exit price: â‚¹320.50 per unit
+08:45:39 [INFO] core.position_manager: P&L: â‚¹-5776.85 (Stop Loss)
+08:45:39 [INFO] core.liveStrategy: Base SL exit detected—next entry requires 4 green ticks.
+08:45:39 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:39 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #20500, price: ₹320.35, keys: ['timestamp', 'price', 'volume']
+08:45:40 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #20600, price: ₹317.0, keys: ['timestamp', 'price', 'volume']
+08:45:40 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #20700, price: ₹319.25, keys: ['timestamp', 'price', 'volume']
+08:45:40 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #20700
+08:45:40 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #20700, tick keys: ['timestamp', 'price', 'volume']
+08:45:40 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:40 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹323.45: All checks passed (EMA Crossover) - Green ticks: 4/4
+08:45:40 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:40 [INFO] core.position_manager: Opened position c1218753
+08:45:40 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:40 [INFO] core.position_manager: Entry price: â‚¹323.45 per unit
+08:45:40 [INFO] core.position_manager: Stop loss: â‚¹308.45
+08:45:40 [INFO] core.position_manager: Take profit levels: ['â‚¹328.45', 'â‚¹335.45', 'â‚¹343.45', 'â‚¹353.45']
+08:45:40 [INFO] core.position_manager: Position value: ₹121,293.75
+08:45:40 [INFO] core.liveStrategy: TRADE BUY: 75 @ 323.45 - Strategy signal
+08:45:40 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹323.45 (375 contracts) - Strategy entry signal
+08:45:41 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #20800, price: ₹324.5, keys: ['timestamp', 'price', 'volume']
+08:45:41 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #20900, price: ₹320.25, keys: ['timestamp', 'price', 'volume']
+08:45:42 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #21000, price: ₹313.45, keys: ['timestamp', 'price', 'volume']
+08:45:42 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #21000
+08:45:42 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #21000, tick keys: ['timestamp', 'price', 'volume']
+08:45:42 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:42 [INFO] live.trader: [FILE SIM] Processed 21000 ticks, position: True
+08:45:42 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #21100, price: ₹319.3, keys: ['timestamp', 'price', 'volume']
+08:45:43 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #21200, price: ₹315.2, keys: ['timestamp', 'price', 'volume']
+08:45:44 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #21300, price: ₹321.0, keys: ['timestamp', 'price', 'volume']
+08:45:44 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #21300
+08:45:44 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #21300, tick keys: ['timestamp', 'price', 'volume']
+08:45:44 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:44 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #21400, price: ₹324.65, keys: ['timestamp', 'price', 'volume']
+08:45:45 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #21500, price: ₹317.8, keys: ['timestamp', 'price', 'volume']
+08:45:45 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #21600, price: ₹318.25, keys: ['timestamp', 'price', 'volume']
+08:45:45 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #21600
+08:45:45 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #21600, tick keys: ['timestamp', 'price', 'volume']
+08:45:45 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:46 [INFO] core.position_manager: Trailing stop activated for c1218753 at 323.95
+08:45:46 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:46 [INFO] core.position_manager: Partially closed position c1218753: 150 @ â‚¹328.95
+08:45:46 [INFO] core.position_manager: Closed position c1218753
+08:45:46 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:46 [INFO] core.position_manager: Exit price: â‚¹328.95 per unit
+08:45:46 [INFO] core.position_manager: P&L: â‚¹793.45 (Take Profit 1)
+08:45:46 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:46 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #21700, price: ₹331.6, keys: ['timestamp', 'price', 'volume']
+08:45:46 [INFO] core.position_manager: Fully closed position c1218753
+08:45:46 [INFO] core.position_manager: Closed position c1218753
+08:45:46 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:45:46 [INFO] core.position_manager: Exit price: â‚¹329.80 per unit
+08:45:46 [INFO] core.position_manager: P&L: â‚¹1381.30 (Trailing Stop)
+08:45:46 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:46 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:47 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#7200): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹332.4
+08:45:47 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #21800, price: ₹333.15, keys: ['timestamp', 'price', 'volume']
+08:45:47 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹335.4: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:47 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:47 [INFO] core.position_manager: Opened position 39ebaf30
+08:45:47 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:47 [INFO] core.position_manager: Entry price: â‚¹335.40 per unit
+08:45:47 [INFO] core.position_manager: Stop loss: â‚¹320.40
+08:45:47 [INFO] core.position_manager: Take profit levels: ['â‚¹340.40', 'â‚¹347.40', 'â‚¹355.40', 'â‚¹365.40']
+08:45:47 [INFO] core.position_manager: Position value: ₹125,775.00
+08:45:47 [INFO] core.liveStrategy: TRADE BUY: 75 @ 335.40 - Strategy signal
+08:45:47 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹335.40 (375 contracts) - Strategy entry signal
+08:45:47 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #21900, price: ₹335.0, keys: ['timestamp', 'price', 'volume']
+08:45:47 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #21900
+08:45:47 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #21900, tick keys: ['timestamp', 'price', 'volume']
+08:45:47 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:48 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #22000, price: ₹323.7, keys: ['timestamp', 'price', 'volume']
+08:45:48 [INFO] live.trader: [FILE SIM] Processed 22000 ticks, position: True
+08:45:48 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #22100, price: ₹331.55, keys: ['timestamp', 'price', 'volume']
+08:45:49 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #22200, price: ₹334.95, keys: ['timestamp', 'price', 'volume']
+08:45:49 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #22200
+08:45:49 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #22200, tick keys: ['timestamp', 'price', 'volume']
+08:45:49 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:49 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #22300, price: ₹334.85, keys: ['timestamp', 'price', 'volume']
+08:45:50 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #22400, price: ₹336.6, keys: ['timestamp', 'price', 'volume']
+08:45:51 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #22500, price: ₹338.0, keys: ['timestamp', 'price', 'volume']
+08:45:51 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #22500
+08:45:51 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #22500, tick keys: ['timestamp', 'price', 'volume']
+08:45:51 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:51 [INFO] core.position_manager: Trailing stop activated for 39ebaf30 at 336.0
+08:45:51 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:51 [INFO] core.position_manager: Partially closed position 39ebaf30: 150 @ â‚¹341.0
+08:45:51 [INFO] core.position_manager: Closed position 39ebaf30
+08:45:51 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:51 [INFO] core.position_manager: Exit price: â‚¹341.00 per unit
+08:45:51 [INFO] core.position_manager: P&L: â‚¹807.29 (Take Profit 1)
+08:45:51 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:51 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #22600, price: ₹336.25, keys: ['timestamp', 'price', 'volume']
+08:45:51 [INFO] core.position_manager: Fully closed position 39ebaf30
+08:45:51 [INFO] core.position_manager: Closed position 39ebaf30
+08:45:51 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:45:51 [INFO] core.position_manager: Exit price: â‚¹336.25 per unit
+08:45:51 [INFO] core.position_manager: P&L: â‚¹142.88 (Trailing Stop)
+08:45:51 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:51 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:52 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹341.85: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:52 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:52 [INFO] core.position_manager: Opened position d426159c
+08:45:52 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:52 [INFO] core.position_manager: Entry price: â‚¹341.85 per unit
+08:45:52 [INFO] core.position_manager: Stop loss: â‚¹326.85
+08:45:52 [INFO] core.position_manager: Take profit levels: ['â‚¹346.85', 'â‚¹353.85', 'â‚¹361.85', 'â‚¹371.85']
+08:45:52 [INFO] core.position_manager: Position value: ₹128,193.75
+08:45:52 [INFO] core.liveStrategy: TRADE BUY: 75 @ 341.85 - Strategy signal
+08:45:52 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹341.85 (375 contracts) - Strategy entry signal
+08:45:52 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #22700, price: ₹339.6, keys: ['timestamp', 'price', 'volume']
+08:45:52 [INFO] core.position_manager: Trailing stop activated for d426159c at 341.85
+08:45:52 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:45:52 [INFO] core.position_manager: Partially closed position d426159c: 150 @ â‚¹346.85
+08:45:52 [INFO] core.position_manager: Closed position d426159c
+08:45:52 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:52 [INFO] core.position_manager: Exit price: â‚¹346.85 per unit
+08:45:52 [INFO] core.position_manager: P&L: â‚¹716.73 (Take Profit 1)
+08:45:52 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:52 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #22800, price: ₹346.9, keys: ['timestamp', 'price', 'volume']
+08:45:52 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #22800
+08:45:52 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #22800, tick keys: ['timestamp', 'price', 'volume']
+08:45:52 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:53 [INFO] live.data_simulator: 📊 Simulation progress: 70% (22813/32591)
+08:45:53 [INFO] core.position_manager: ðŸŽ¯ TP2 Exit: 1 lots (75 units)
+08:45:53 [INFO] core.position_manager: Partially closed position d426159c: 75 @ â‚¹354.0
+08:45:53 [INFO] core.position_manager: Closed position d426159c
+08:45:53 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:45:53 [INFO] core.position_manager: Exit price: â‚¹354.00 per unit
+08:45:53 [INFO] core.position_manager: P&L: â‚¹894.27 (Take Profit 2)
+08:45:53 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:53 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #22900, price: ₹356.05, keys: ['timestamp', 'price', 'volume']
+08:45:54 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #23000, price: ₹354.0, keys: ['timestamp', 'price', 'volume']
+08:45:54 [INFO] live.trader: [FILE SIM] Processed 23000 ticks, position: True
+08:45:54 [INFO] core.position_manager: Fully closed position d426159c
+08:45:54 [INFO] core.position_manager: Closed position d426159c
+08:45:54 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:45:54 [INFO] core.position_manager: Exit price: â‚¹352.25 per unit
+08:45:54 [INFO] core.position_manager: P&L: â‚¹1526.22 (Trailing Stop)
+08:45:54 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:45:54 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:45:54 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #23100, price: ₹355.65, keys: ['timestamp', 'price', 'volume']
+08:45:54 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #23100
+08:45:54 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #23100, tick keys: ['timestamp', 'price', 'volume']
+08:45:54 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:54 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹357.4: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:45:54 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:45:54 [INFO] core.position_manager: Opened position 276e2141
+08:45:54 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:45:54 [INFO] core.position_manager: Entry price: â‚¹357.40 per unit
+08:45:54 [INFO] core.position_manager: Stop loss: â‚¹342.40
+08:45:54 [INFO] core.position_manager: Take profit levels: ['â‚¹362.40', 'â‚¹369.40', 'â‚¹377.40', 'â‚¹387.40']
+08:45:54 [INFO] core.position_manager: Position value: ₹134,025.00
+08:45:54 [INFO] core.liveStrategy: TRADE BUY: 75 @ 357.40 - Strategy signal
+08:45:54 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹357.40 (375 contracts) - Strategy entry signal
+08:45:55 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #23200, price: ₹349.05, keys: ['timestamp', 'price', 'volume']
+08:45:55 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #23300, price: ₹352.0, keys: ['timestamp', 'price', 'volume']
+08:45:56 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #23400, price: ₹351.05, keys: ['timestamp', 'price', 'volume']
+08:45:56 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #23400
+08:45:56 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #23400, tick keys: ['timestamp', 'price', 'volume']
+08:45:56 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:56 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #23500, price: ₹349.8, keys: ['timestamp', 'price', 'volume']
+08:45:57 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #23600, price: ₹354.85, keys: ['timestamp', 'price', 'volume']
+08:45:57 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #23700, price: ₹354.4, keys: ['timestamp', 'price', 'volume']
+08:45:57 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #23700
+08:45:57 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #23700, tick keys: ['timestamp', 'price', 'volume']
+08:45:57 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:58 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #23800, price: ₹354.6, keys: ['timestamp', 'price', 'volume']
+08:45:59 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #23900, price: ₹352.2, keys: ['timestamp', 'price', 'volume']
+08:45:59 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #24000, price: ₹355.8, keys: ['timestamp', 'price', 'volume']
+08:45:59 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #24000
+08:45:59 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #24000, tick keys: ['timestamp', 'price', 'volume']
+08:45:59 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:45:59 [INFO] live.trader: [FILE SIM] Processed 24000 ticks, position: True
+08:46:00 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #24100, price: ₹354.55, keys: ['timestamp', 'price', 'volume']
+08:46:00 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #24200, price: ₹349.75, keys: ['timestamp', 'price', 'volume']
+08:46:01 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #24300, price: ₹350.25, keys: ['timestamp', 'price', 'volume']
+08:46:01 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #24300
+08:46:01 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #24300, tick keys: ['timestamp', 'price', 'volume']
+08:46:01 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:01 [INFO] core.position_manager: Fully closed position 276e2141
+08:46:01 [INFO] core.position_manager: Closed position 276e2141
+08:46:01 [INFO] core.position_manager: Lots closed: 5 (375 units)
+08:46:01 [INFO] core.position_manager: Exit price: â‚¹342.20 per unit
+08:46:01 [INFO] core.position_manager: P&L: â‚¹-5782.05 (Stop Loss)
+08:46:01 [INFO] core.liveStrategy: Base SL exit detected—next entry requires 4 green ticks.
+08:46:01 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:46:01 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #24400, price: ₹344.15, keys: ['timestamp', 'price', 'volume']
+08:46:02 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#7500): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹344.15
+08:46:02 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #24500, price: ₹346.0, keys: ['timestamp', 'price', 'volume']
+08:46:03 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #24600, price: ₹339.8, keys: ['timestamp', 'price', 'volume']
+08:46:03 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #24600
+08:46:03 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #24600, tick keys: ['timestamp', 'price', 'volume']
+08:46:03 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:03 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #24700, price: ₹338.45, keys: ['timestamp', 'price', 'volume']
+08:46:03 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#7800): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹336.0
+08:46:04 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #24800, price: ₹343.8, keys: ['timestamp', 'price', 'volume']
+08:46:04 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #24900, price: ₹343.0, keys: ['timestamp', 'price', 'volume']
+08:46:04 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #24900
+08:46:04 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #24900, tick keys: ['timestamp', 'price', 'volume']
+08:46:04 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:05 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #25000, price: ₹351.0, keys: ['timestamp', 'price', 'volume']
+08:46:05 [INFO] live.trader: [FILE SIM] Processed 25000 ticks, position: False
+08:46:05 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#8100): Need 3 green ticks, have 3, DATA_SIMULATION_PLACEHOLDER @ ₹351.6
+08:46:05 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #25100, price: ₹344.7, keys: ['timestamp', 'price', 'volume']
+08:46:06 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #25200, price: ₹340.0, keys: ['timestamp', 'price', 'volume']
+08:46:06 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #25200
+08:46:06 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #25200, tick keys: ['timestamp', 'price', 'volume']
+08:46:06 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:06 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #25300, price: ₹346.15, keys: ['timestamp', 'price', 'volume']
+08:46:06 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#8400): Need 3 green ticks, have 1, DATA_SIMULATION_PLACEHOLDER @ ₹346.85
+08:46:07 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #25400, price: ₹345.85, keys: ['timestamp', 'price', 'volume']
+08:46:07 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #25500, price: ₹345.0, keys: ['timestamp', 'price', 'volume']
+08:46:07 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #25500
+08:46:07 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #25500, tick keys: ['timestamp', 'price', 'volume']
+08:46:07 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:08 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #25600, price: ₹348.25, keys: ['timestamp', 'price', 'volume']
+08:46:08 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#8700): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹349.1
+08:46:08 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #25700, price: ₹351.4, keys: ['timestamp', 'price', 'volume']
+08:46:09 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #25800, price: ₹359.0, keys: ['timestamp', 'price', 'volume']
+08:46:09 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #25800
+08:46:09 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #25800, tick keys: ['timestamp', 'price', 'volume']
+08:46:09 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:09 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹361.0: All checks passed (EMA Crossover) - Green ticks: 4/4
+08:46:09 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:46:09 [INFO] core.position_manager: Opened position e876ec36
+08:46:09 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:46:09 [INFO] core.position_manager: Entry price: â‚¹361.00 per unit
+08:46:09 [INFO] core.position_manager: Stop loss: â‚¹346.00
+08:46:09 [INFO] core.position_manager: Take profit levels: ['â‚¹366.00', 'â‚¹373.00', 'â‚¹381.00', 'â‚¹391.00']
+08:46:09 [INFO] core.position_manager: Position value: ₹135,375.00
+08:46:09 [INFO] core.liveStrategy: TRADE BUY: 75 @ 361.00 - Strategy signal
+08:46:09 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹361.00 (375 contracts) - Strategy entry signal
+08:46:10 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #25900, price: ₹363.75, keys: ['timestamp', 'price', 'volume']
+08:46:10 [INFO] core.position_manager: Trailing stop activated for e876ec36 at 361.0
+08:46:10 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:46:10 [INFO] core.position_manager: Partially closed position e876ec36: 150 @ â‚¹366.0
+08:46:10 [INFO] core.position_manager: Closed position e876ec36
+08:46:10 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:46:10 [INFO] core.position_manager: Exit price: â‚¹366.00 per unit
+08:46:10 [INFO] core.position_manager: P&L: â‚¹714.90 (Take Profit 1)
+08:46:10 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:10 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #26000, price: ₹365.0, keys: ['timestamp', 'price', 'volume']
+08:46:10 [INFO] live.trader: [FILE SIM] Processed 26000 ticks, position: True
+08:46:11 [INFO] live.data_simulator: 📊 Simulation progress: 80% (26072/32591)
+08:46:11 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #26100, price: ₹366.0, keys: ['timestamp', 'price', 'volume']
+08:46:11 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #26100
+08:46:11 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #26100, tick keys: ['timestamp', 'price', 'volume']
+08:46:11 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:11 [INFO] core.position_manager: Fully closed position e876ec36
+08:46:11 [INFO] core.position_manager: Closed position e876ec36
+08:46:11 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:46:11 [INFO] core.position_manager: Exit price: â‚¹365.85 per unit
+08:46:11 [INFO] core.position_manager: P&L: â‚¹1038.62 (Trailing Stop)
+08:46:11 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:11 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:46:12 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #26200, price: ₹362.3, keys: ['timestamp', 'price', 'volume']
+08:46:12 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#9000): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹363.95
+08:46:12 [INFO] core.liveStrategy: 📊 ENTRY EVALUATION @ ₹362.15: Enabled checks: EMA Crossover
+08:46:12 [INFO] core.liveStrategy:    ❌ Entry REJECTED - Failed: EMA: fast(361.58) ≤ slow(361.96)
+08:46:12 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #26300, price: ₹362.5, keys: ['timestamp', 'price', 'volume']
+08:46:13 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #26400, price: ₹361.8, keys: ['timestamp', 'price', 'volume']
+08:46:13 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #26400
+08:46:13 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #26400, tick keys: ['timestamp', 'price', 'volume']
+08:46:13 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:13 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #26500, price: ₹356.0, keys: ['timestamp', 'price', 'volume']
+08:46:13 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#9300): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹358.2
+08:46:14 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #26600, price: ₹351.4, keys: ['timestamp', 'price', 'volume']
+08:46:14 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #26700, price: ₹353.0, keys: ['timestamp', 'price', 'volume']
+08:46:14 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #26700
+08:46:14 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #26700, tick keys: ['timestamp', 'price', 'volume']
+08:46:14 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:14 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹354.75: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:46:14 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:46:14 [INFO] core.position_manager: Opened position 711fa5c3
+08:46:14 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:46:14 [INFO] core.position_manager: Entry price: â‚¹354.75 per unit
+08:46:14 [INFO] core.position_manager: Stop loss: â‚¹339.75
+08:46:14 [INFO] core.position_manager: Take profit levels: ['â‚¹359.75', 'â‚¹366.75', 'â‚¹374.75', 'â‚¹384.75']
+08:46:14 [INFO] core.position_manager: Position value: ₹133,031.25
+08:46:14 [INFO] core.liveStrategy: TRADE BUY: 75 @ 354.75 - Strategy signal
+08:46:14 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹354.75 (375 contracts) - Strategy entry signal
+08:46:15 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #26800, price: ₹357.9, keys: ['timestamp', 'price', 'volume']
+08:46:15 [INFO] core.position_manager: Trailing stop activated for 711fa5c3 at 354.95
+08:46:15 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:46:15 [INFO] core.position_manager: Partially closed position 711fa5c3: 150 @ â‚¹359.95
+08:46:15 [INFO] core.position_manager: Closed position 711fa5c3
+08:46:15 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:46:15 [INFO] core.position_manager: Exit price: â‚¹359.95 per unit
+08:46:15 [INFO] core.position_manager: P&L: â‚¹745.48 (Take Profit 1)
+08:46:15 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:15 [INFO] core.position_manager: Fully closed position 711fa5c3
+08:46:15 [INFO] core.position_manager: Closed position 711fa5c3
+08:46:15 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:46:15 [INFO] core.position_manager: Exit price: â‚¹356.55 per unit
+08:46:15 [INFO] core.position_manager: P&L: â‚¹353.70 (Trailing Stop)
+08:46:15 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:15 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:46:15 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #26900, price: ₹362.55, keys: ['timestamp', 'price', 'volume']
+08:46:16 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹368.0: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:46:16 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:46:16 [INFO] core.position_manager: Opened position e993dd41
+08:46:16 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:46:16 [INFO] core.position_manager: Entry price: â‚¹368.00 per unit
+08:46:16 [INFO] core.position_manager: Stop loss: â‚¹353.00
+08:46:16 [INFO] core.position_manager: Take profit levels: ['â‚¹373.00', 'â‚¹380.00', 'â‚¹388.00', 'â‚¹398.00']
+08:46:16 [INFO] core.position_manager: Position value: ₹138,000.00
+08:46:16 [INFO] core.liveStrategy: TRADE BUY: 75 @ 368.00 - Strategy signal
+08:46:16 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹368.00 (375 contracts) - Strategy entry signal
+08:46:16 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #27000, price: ₹370.9, keys: ['timestamp', 'price', 'volume']
+08:46:16 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #27000
+08:46:16 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #27000, tick keys: ['timestamp', 'price', 'volume']
+08:46:16 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:16 [INFO] live.trader: [FILE SIM] Processed 27000 ticks, position: True
+08:46:16 [INFO] core.position_manager: Trailing stop activated for e993dd41 at 368.15
+08:46:16 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:46:16 [INFO] core.position_manager: Partially closed position e993dd41: 150 @ â‚¹373.15
+08:46:16 [INFO] core.position_manager: Closed position e993dd41
+08:46:16 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:46:16 [INFO] core.position_manager: Exit price: â‚¹373.15 per unit
+08:46:16 [INFO] core.position_manager: P&L: â‚¹736.71 (Take Profit 1)
+08:46:16 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:17 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #27100, price: ₹376.55, keys: ['timestamp', 'price', 'volume']
+08:46:17 [INFO] core.position_manager: Fully closed position e993dd41
+08:46:17 [INFO] core.position_manager: Closed position e993dd41
+08:46:17 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:46:17 [INFO] core.position_manager: Exit price: â‚¹373.50 per unit
+08:46:17 [INFO] core.position_manager: P&L: â‚¹1183.77 (Trailing Stop)
+08:46:17 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:17 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:46:17 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#9600): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹376.0
+08:46:17 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #27200, price: ₹372.0, keys: ['timestamp', 'price', 'volume']
+08:46:18 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹373.5: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:46:18 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:46:18 [INFO] core.position_manager: Opened position 0860dc42
+08:46:18 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:46:18 [INFO] core.position_manager: Entry price: â‚¹373.50 per unit
+08:46:18 [INFO] core.position_manager: Stop loss: â‚¹358.50
+08:46:18 [INFO] core.position_manager: Take profit levels: ['â‚¹378.50', 'â‚¹385.50', 'â‚¹393.50', 'â‚¹403.50']
+08:46:18 [INFO] core.position_manager: Position value: ₹140,062.50
+08:46:18 [INFO] core.liveStrategy: TRADE BUY: 75 @ 373.50 - Strategy signal
+08:46:18 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹373.50 (375 contracts) - Strategy entry signal
+08:46:18 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #27300, price: ₹376.6, keys: ['timestamp', 'price', 'volume']
+08:46:18 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #27300
+08:46:18 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #27300, tick keys: ['timestamp', 'price', 'volume']
+08:46:18 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:18 [INFO] core.position_manager: Trailing stop activated for 0860dc42 at 374.0
+08:46:18 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:46:18 [INFO] core.position_manager: Partially closed position 0860dc42: 150 @ â‚¹379.0
+08:46:18 [INFO] core.position_manager: Closed position 0860dc42
+08:46:18 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:46:18 [INFO] core.position_manager: Exit price: â‚¹379.00 per unit
+08:46:18 [INFO] core.position_manager: P&L: â‚¹788.65 (Take Profit 1)
+08:46:18 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:19 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #27400, price: ₹377.9, keys: ['timestamp', 'price', 'volume']
+08:46:19 [INFO] core.position_manager: Fully closed position 0860dc42
+08:46:19 [INFO] core.position_manager: Closed position 0860dc42
+08:46:19 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:46:19 [INFO] core.position_manager: Exit price: â‚¹375.10 per unit
+08:46:19 [INFO] core.position_manager: P&L: â‚¹306.04 (Trailing Stop)
+08:46:19 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:19 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:46:19 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #27500, price: ₹375.0, keys: ['timestamp', 'price', 'volume']
+08:46:20 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #27600, price: ₹369.0, keys: ['timestamp', 'price', 'volume']
+08:46:20 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #27600
+08:46:20 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #27600, tick keys: ['timestamp', 'price', 'volume']
+08:46:20 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:20 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹376.95: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:46:20 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:46:20 [INFO] core.position_manager: Opened position fd798973
+08:46:20 [INFO] core.position_manager: Lots: 5 (375 total units)
+08:46:20 [INFO] core.position_manager: Entry price: â‚¹376.95 per unit
+08:46:20 [INFO] core.position_manager: Stop loss: â‚¹361.95
+08:46:20 [INFO] core.position_manager: Take profit levels: ['â‚¹381.95', 'â‚¹388.95', 'â‚¹396.95', 'â‚¹406.95']
+08:46:20 [INFO] core.position_manager: Position value: ₹141,356.25
+08:46:20 [INFO] core.liveStrategy: TRADE BUY: 75 @ 376.95 - Strategy signal
+08:46:20 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹376.95 (375 contracts) - Strategy entry signal
+08:46:20 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #27700, price: ₹378.6, keys: ['timestamp', 'price', 'volume']
+08:46:21 [INFO] core.position_manager: Trailing stop activated for fd798973 at 377.0
+08:46:21 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 2 lots (150 units)
+08:46:21 [INFO] core.position_manager: Partially closed position fd798973: 150 @ â‚¹382.0
+08:46:21 [INFO] core.position_manager: Closed position fd798973
+08:46:21 [INFO] core.position_manager: Lots closed: 2 (150 units)
+08:46:21 [INFO] core.position_manager: Exit price: â‚¹382.00 per unit
+08:46:21 [INFO] core.position_manager: P&L: â‚¹720.86 (Take Profit 1)
+08:46:21 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:21 [INFO] core.position_manager: Fully closed position fd798973
+08:46:21 [INFO] core.position_manager: Closed position fd798973
+08:46:21 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:46:21 [INFO] core.position_manager: Exit price: â‚¹378.85 per unit
+08:46:21 [INFO] core.position_manager: P&L: â‚¹373.00 (Trailing Stop)
+08:46:21 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:21 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:46:21 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #27800, price: ₹376.2, keys: ['timestamp', 'price', 'volume']
+08:46:21 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#9900): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹377.35
+08:46:22 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #27900, price: ₹377.0, keys: ['timestamp', 'price', 'volume']
+08:46:22 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #27900
+08:46:22 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #27900, tick keys: ['timestamp', 'price', 'volume']
+08:46:22 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:22 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #28000, price: ₹380.0, keys: ['timestamp', 'price', 'volume']
+08:46:22 [INFO] live.trader: [FILE SIM] Processed 28000 ticks, position: False
+08:46:23 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #28100, price: ₹384.55, keys: ['timestamp', 'price', 'volume']
+08:46:23 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#10200): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹384.25
+08:46:23 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #28200, price: ₹382.3, keys: ['timestamp', 'price', 'volume']
+08:46:23 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #28200
+08:46:23 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #28200, tick keys: ['timestamp', 'price', 'volume']
+08:46:23 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:23 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹392.0: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:46:23 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:46:23 [INFO] core.position_manager: Opened position 7065e2bc
+08:46:23 [INFO] core.position_manager: Lots: 4 (300 total units)
+08:46:23 [INFO] core.position_manager: Entry price: â‚¹392.00 per unit
+08:46:23 [INFO] core.position_manager: Stop loss: â‚¹377.00
+08:46:23 [INFO] core.position_manager: Take profit levels: ['â‚¹397.00', 'â‚¹404.00', 'â‚¹412.00', 'â‚¹422.00']
+08:46:23 [INFO] core.position_manager: Position value: ₹117,600.00
+08:46:23 [INFO] core.liveStrategy: TRADE BUY: 75 @ 392.00 - Strategy signal
+08:46:23 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹392.00 (300 contracts) - Strategy entry signal
+08:46:24 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #28300, price: ₹390.0, keys: ['timestamp', 'price', 'volume']
+08:46:24 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #28400, price: ₹385.45, keys: ['timestamp', 'price', 'volume']
+08:46:25 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #28500, price: ₹384.35, keys: ['timestamp', 'price', 'volume']
+08:46:25 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #28500
+08:46:25 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #28500, tick keys: ['timestamp', 'price', 'volume']
+08:46:25 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:25 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #28600, price: ₹386.45, keys: ['timestamp', 'price', 'volume']
+08:46:26 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #28700, price: ₹388.65, keys: ['timestamp', 'price', 'volume']
+08:46:27 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #28800, price: ₹384.0, keys: ['timestamp', 'price', 'volume']
+08:46:27 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #28800
+08:46:27 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #28800, tick keys: ['timestamp', 'price', 'volume']
+08:46:27 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:27 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #28900, price: ₹392.55, keys: ['timestamp', 'price', 'volume']
+08:46:27 [INFO] core.position_manager: Trailing stop activated for 7065e2bc at 393.1
+08:46:27 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 1 lots (75 units)
+08:46:27 [INFO] core.position_manager: Partially closed position 7065e2bc: 75 @ â‚¹398.1
+08:46:27 [INFO] core.position_manager: Closed position 7065e2bc
+08:46:27 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:46:27 [INFO] core.position_manager: Exit price: â‚¹398.10 per unit
+08:46:28 [INFO] core.position_manager: P&L: â‚¹438.41 (Take Profit 1)
+08:46:28 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:28 [INFO] core.position_manager: Fully closed position 7065e2bc
+08:46:28 [INFO] core.position_manager: Closed position 7065e2bc
+08:46:28 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:46:28 [INFO] core.position_manager: Exit price: â‚¹393.00 per unit
+08:46:28 [INFO] core.position_manager: P&L: â‚¹168.46 (Trailing Stop)
+08:46:28 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:28 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:46:28 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #29000, price: ₹393.7, keys: ['timestamp', 'price', 'volume']
+08:46:28 [INFO] live.trader: [FILE SIM] Processed 29000 ticks, position: False
+08:46:29 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹397.05: All checks passed (EMA Crossover) - Green ticks: 4/3
+08:46:29 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:46:29 [INFO] core.position_manager: Opened position 3abfd0a9
+08:46:29 [INFO] core.position_manager: Lots: 4 (300 total units)
+08:46:29 [INFO] core.position_manager: Entry price: â‚¹397.05 per unit
+08:46:29 [INFO] core.position_manager: Stop loss: â‚¹382.05
+08:46:29 [INFO] core.position_manager: Take profit levels: ['â‚¹402.05', 'â‚¹409.05', 'â‚¹417.05', 'â‚¹427.05']
+08:46:29 [INFO] core.position_manager: Position value: ₹119,115.00
+08:46:29 [INFO] core.liveStrategy: TRADE BUY: 75 @ 397.05 - Strategy signal
+08:46:29 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹397.05 (300 contracts) - Strategy entry signal
+08:46:29 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #29100, price: ₹396.85, keys: ['timestamp', 'price', 'volume']
+08:46:29 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #29100
+08:46:29 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #29100, tick keys: ['timestamp', 'price', 'volume']
+08:46:29 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:29 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #29200, price: ₹394.75, keys: ['timestamp', 'price', 'volume']
+08:46:30 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #29300, price: ₹396.6, keys: ['timestamp', 'price', 'volume']
+08:46:30 [INFO] live.data_simulator: 📊 Simulation progress: 90% (29331/32591)
+08:46:30 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #29400, price: ₹398.1, keys: ['timestamp', 'price', 'volume']
+08:46:30 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #29400
+08:46:30 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #29400, tick keys: ['timestamp', 'price', 'volume']
+08:46:30 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:31 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #29500, price: ₹393.4, keys: ['timestamp', 'price', 'volume']
+08:46:32 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #29600, price: ₹391.15, keys: ['timestamp', 'price', 'volume']
+08:46:32 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #29700, price: ₹395.0, keys: ['timestamp', 'price', 'volume']
+08:46:32 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #29700
+08:46:32 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #29700, tick keys: ['timestamp', 'price', 'volume']
+08:46:32 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:33 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #29800, price: ₹393.65, keys: ['timestamp', 'price', 'volume']
+08:46:33 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #29900, price: ₹390.35, keys: ['timestamp', 'price', 'volume']
+08:46:34 [INFO] core.position_manager: Fully closed position 3abfd0a9
+08:46:34 [INFO] core.position_manager: Closed position 3abfd0a9
+08:46:34 [INFO] core.position_manager: Lots closed: 4 (300 units)
+08:46:34 [INFO] core.position_manager: Exit price: â‚¹381.55 per unit
+08:46:34 [INFO] core.position_manager: P&L: â‚¹-4723.19 (Stop Loss)
+08:46:34 [INFO] core.liveStrategy: Base SL exit detected—next entry requires 4 green ticks.
+08:46:34 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:46:34 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #30000, price: ₹379.9, keys: ['timestamp', 'price', 'volume']
+08:46:34 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #30000
+08:46:34 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #30000, tick keys: ['timestamp', 'price', 'volume']
+08:46:34 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:34 [INFO] live.trader: [FILE SIM] Processed 30000 ticks, position: False
+08:46:34 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#10500): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹380.3
+08:46:34 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #30100, price: ₹386.15, keys: ['timestamp', 'price', 'volume']
+08:46:35 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #30200, price: ₹389.0, keys: ['timestamp', 'price', 'volume']
+08:46:35 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #30300, price: ₹388.4, keys: ['timestamp', 'price', 'volume']
+08:46:35 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #30300
+08:46:35 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #30300, tick keys: ['timestamp', 'price', 'volume']
+08:46:36 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:36 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#10800): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹387.0
+08:46:36 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #30400, price: ₹390.15, keys: ['timestamp', 'price', 'volume']
+08:46:37 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #30500, price: ₹396.15, keys: ['timestamp', 'price', 'volume']
+08:46:37 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #30600, price: ₹385.0, keys: ['timestamp', 'price', 'volume']
+08:46:37 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #30600
+08:46:37 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #30600, tick keys: ['timestamp', 'price', 'volume']
+08:46:37 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:37 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#11100): Need 3 green ticks, have 1, DATA_SIMULATION_PLACEHOLDER @ ₹385.85
+08:46:38 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #30700, price: ₹386.9, keys: ['timestamp', 'price', 'volume']
+08:46:38 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #30800, price: ₹380.75, keys: ['timestamp', 'price', 'volume']
+08:46:39 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #30900, price: ₹375.35, keys: ['timestamp', 'price', 'volume']
+08:46:39 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #30900
+08:46:39 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #30900, tick keys: ['timestamp', 'price', 'volume']
+08:46:39 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:39 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#11400): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹376.05
+08:46:39 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #31000, price: ₹379.0, keys: ['timestamp', 'price', 'volume']
+08:46:39 [INFO] live.trader: [FILE SIM] Processed 31000 ticks, position: False
+08:46:40 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #31100, price: ₹379.05, keys: ['timestamp', 'price', 'volume']
+08:46:40 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #31200, price: ₹379.5, keys: ['timestamp', 'price', 'volume']
+08:46:40 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #31200
+08:46:40 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #31200, tick keys: ['timestamp', 'price', 'volume']
+08:46:40 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:40 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#11700): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹379.5
+08:46:41 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #31300, price: ₹377.2, keys: ['timestamp', 'price', 'volume']
+08:46:41 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #31400, price: ₹382.15, keys: ['timestamp', 'price', 'volume']
+08:46:42 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹384.85: All checks passed (EMA Crossover) - Green ticks: 4/4
+08:46:42 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:46:42 [INFO] core.position_manager: Opened position 57770cd2
+08:46:42 [INFO] core.position_manager: Lots: 4 (300 total units)
+08:46:42 [INFO] core.position_manager: Entry price: â‚¹384.85 per unit
+08:46:42 [INFO] core.position_manager: Stop loss: â‚¹369.85
+08:46:42 [INFO] core.position_manager: Take profit levels: ['â‚¹389.85', 'â‚¹396.85', 'â‚¹404.85', 'â‚¹414.85']
+08:46:42 [INFO] core.position_manager: Position value: ₹115,455.00
+08:46:42 [INFO] core.liveStrategy: TRADE BUY: 75 @ 384.85 - Strategy signal
+08:46:42 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹384.85 (300 contracts) - Strategy entry signal
+08:46:42 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #31500, price: ₹387.5, keys: ['timestamp', 'price', 'volume']
+08:46:42 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #31500
+08:46:42 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #31500, tick keys: ['timestamp', 'price', 'volume']
+08:46:42 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:43 [INFO] core.position_manager: Trailing stop activated for 57770cd2 at 384.9
+08:46:43 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 1 lots (75 units)
+08:46:43 [INFO] core.position_manager: Partially closed position 57770cd2: 75 @ â‚¹389.9
+08:46:43 [INFO] core.position_manager: Closed position 57770cd2
+08:46:43 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:46:43 [INFO] core.position_manager: Exit price: â‚¹389.90 per unit
+08:46:43 [INFO] core.position_manager: P&L: â‚¹360.05 (Take Profit 1)
+08:46:43 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:43 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #31600, price: ₹387.95, keys: ['timestamp', 'price', 'volume']
+08:46:43 [INFO] core.position_manager: Fully closed position 57770cd2
+08:46:43 [INFO] core.position_manager: Closed position 57770cd2
+08:46:43 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:46:43 [INFO] core.position_manager: Exit price: â‚¹385.00 per unit
+08:46:43 [INFO] core.position_manager: P&L: â‚¹-21.64 (Trailing Stop)
+08:46:43 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:43 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:46:43 [INFO] core.liveStrategy: 🚫 ENTRY BLOCKED (#12000): Need 3 green ticks, have 0, DATA_SIMULATION_PLACEHOLDER @ ₹382.0
+08:46:43 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #31700, price: ₹382.75, keys: ['timestamp', 'price', 'volume']
+08:46:44 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #31800, price: ₹381.65, keys: ['timestamp', 'price', 'volume']
+08:46:44 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #31800
+08:46:44 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #31800, tick keys: ['timestamp', 'price', 'volume']
+08:46:44 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:44 [INFO] core.liveStrategy: ✅ ENTRY SIGNAL @ ₹383.8: All checks passed (EMA Crossover) - Green ticks: 3/3
+08:46:44 [INFO] core.liveStrategy: Entry taken; threshold reset to 3 green ticks.
+08:46:44 [INFO] core.position_manager: Opened position 867470d1
+08:46:44 [INFO] core.position_manager: Lots: 4 (300 total units)
+08:46:44 [INFO] core.position_manager: Entry price: â‚¹383.80 per unit
+08:46:44 [INFO] core.position_manager: Stop loss: â‚¹368.80
+08:46:45 [INFO] core.position_manager: Take profit levels: ['â‚¹388.80', 'â‚¹395.80', 'â‚¹403.80', 'â‚¹413.80']
+08:46:45 [INFO] core.position_manager: Position value: ₹115,140.00
+08:46:45 [INFO] core.liveStrategy: TRADE BUY: 75 @ 383.80 - Strategy signal
+08:46:45 [INFO] live.trader: [DIRECT] ENTERED LONG at ₹383.80 (300 contracts) - Strategy entry signal
+08:46:45 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #31900, price: ₹383.15, keys: ['timestamp', 'price', 'volume']
+08:46:45 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #32000, price: ₹384.85, keys: ['timestamp', 'price', 'volume']
+08:46:45 [INFO] live.trader: [FILE SIM] Processed 32000 ticks, position: True
+08:46:46 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #32100, price: ₹386.35, keys: ['timestamp', 'price', 'volume']
+08:46:46 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #32100
+08:46:46 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #32100, tick keys: ['timestamp', 'price', 'volume']
+08:46:46 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:46 [INFO] core.position_manager: Trailing stop activated for 867470d1 at 383.9
+08:46:46 [INFO] core.position_manager: ðŸŽ¯ TP1 Exit: 1 lots (75 units)
+08:46:46 [INFO] core.position_manager: Partially closed position 867470d1: 75 @ â‚¹388.9
+08:46:46 [INFO] core.position_manager: Closed position 867470d1
+08:46:46 [INFO] core.position_manager: Lots closed: 1 (75 units)
+08:46:46 [INFO] core.position_manager: Exit price: â‚¹388.90 per unit
+08:46:46 [INFO] core.position_manager: P&L: â‚¹363.85 (Take Profit 1)
+08:46:46 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:46 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #32200, price: ₹388.5, keys: ['timestamp', 'price', 'volume']
+08:46:47 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #32300, price: ₹388.95, keys: ['timestamp', 'price', 'volume']
+08:46:48 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #32400, price: ₹393.35, keys: ['timestamp', 'price', 'volume']
+08:46:48 [INFO] live.trader: 📊 [CALLBACK] Calling strategy.on_tick() for tick #32400
+08:46:48 [INFO] core.liveStrategy: 📊 [STRATEGY] on_tick called #32400, tick keys: ['timestamp', 'price', 'volume']
+08:46:48 [INFO] live.trader: ⏸️ [CALLBACK] Strategy returned None (no entry signal)
+08:46:48 [INFO] live.trader: 🔍 [CALLBACK] Processing tick #32500, price: ₹390.8, keys: ['timestamp', 'price', 'volume']
+08:46:48 [INFO] core.position_manager: Fully closed position 867470d1
+08:46:48 [INFO] core.position_manager: Closed position 867470d1
+08:46:48 [INFO] core.position_manager: Lots closed: 3 (225 units)
+08:46:48 [INFO] core.position_manager: Exit price: â‚¹388.70 per unit
+08:46:48 [INFO] core.position_manager: P&L: â‚¹1046.58 (Trailing Stop)
+08:46:48 [INFO] core.liveStrategy: Profitable exit detected—threshold reset to 3 green ticks.
+08:46:48 [INFO] live.trader: Position closed by risk management (TP/SL/trailing) [Direct Callback]
+08:46:49 [INFO] live.data_simulator: 📊 Simulation progress: 100% (32590/32591)
+08:46:49 [INFO] live.data_simulator: 📋 Simulation completed successfully - all data processed
+08:46:49 [INFO] live.trader: 📋 File simulation completed - all data processed
+08:46:49 [INFO] live.trader: File simulation session ended
+08:46:49 [INFO] live.forward_test_results: Path detection: Using data simulation mode
+08:46:49 [INFO] live.forward_test_results: Created trades DataFrame with 106 rows and 11 columns
+08:46:49 [INFO] live.forward_test_results: DataFrame columns: ['#', 'Entry Time', 'Exit Time', 'Entry Price', 'Exit Price', 'Qty', 'Gross PnL', 'Commission', 'Net PnL', 'Exit Reason', 'Duration (min)']
+08:46:49 [INFO] live.forward_test_results: Sample row data: {'#': 1, 'Entry Time': '2025-10-25 08:43:37', 'Exit Time': '2025-10-25 08:43:38', 'Entry Price': 226.2, 'Exit Price': 231.8, 'Qty': 150, 'Gross PnL': 840.0, 'Commission': 22.23, 'Net PnL': 817.77, 'Exit Reason': 'Take Profit 1', 'Duration (min)': 0.0}
+08:46:49 [INFO] live.forward_test_results: P&L Validation - Summary Net P&L: 44671.45
+08:46:49 [INFO] live.forward_test_results: P&L Validation - Trades Net P&L Sum: 44671.51
+08:46:49 [INFO] live.forward_test_results: P&L Validation - Difference: 0.06
+08:46:49 [WARNING] live.forward_test_results: P&L mismatch detected: 0.06 difference between summary and trades
+08:46:49 [INFO] live.forward_test_results: Created trades DataFrame with 106 rows and 11 columns
+08:46:49 [INFO] live.forward_test_results: DataFrame columns: ['#', 'Entry Time', 'Exit Time', 'Entry Price', 'Exit Price', 'Qty', 'Gross PnL', 'Commission', 'Net PnL', 'Exit Reason', 'Duration (min)']
+08:46:49 [INFO] live.forward_test_results: Sample row data: {'#': 1, 'Entry Time': '2025-10-25 08:43:37', 'Exit Time': '2025-10-25 08:43:38', 'Entry Price': 226.2, 'Exit Price': 231.8, 'Qty': 150, 'Gross PnL': 840.0, 'Commission': 22.23, 'Net PnL': 817.77, 'Exit Reason': 'Take Profit 1', 'Duration (min)': 0.0}
+08:46:49 [INFO] live.forward_test_results: ℹ️ Strategy Configuration section skipped in dashboard
+08:46:49 [INFO] live.forward_test_results: ℹ️ Full configuration available in separate 'Config' sheet
+08:46:49 [INFO] live.forward_test_results: Created trades DataFrame with 106 rows and 11 columns
+08:46:49 [INFO] live.forward_test_results: DataFrame columns: ['#', 'Entry Time', 'Exit Time', 'Entry Price', 'Exit Price', 'Qty', 'Gross PnL', 'Commission', 'Net PnL', 'Exit Reason', 'Duration (min)']
+08:46:49 [INFO] live.forward_test_results: Sample row data: {'#': 1, 'Entry Time': '2025-10-25 08:43:37', 'Exit Time': '2025-10-25 08:43:38', 'Entry Price': 226.2, 'Exit Price': 231.8, 'Qty': 150, 'Gross PnL': 840.0, 'Commission': 22.23, 'Net PnL': 817.77, 'Exit Reason': 'Take Profit 1', 'Duration (min)': 0.0}
+08:46:49 [INFO] shared.dashboard_components: Creating trades table with 106 rows, 11 columns
+08:46:49 [INFO] shared.dashboard_components: Trades DataFrame columns: ['#', 'Entry Time', 'Exit Time', 'Entry Price', 'Exit Price', 'Qty', 'Gross PnL', 'Commission', 'Net PnL', 'Exit Reason', 'Duration (min)']
+08:46:49 [INFO] shared.dashboard_components: Trades DataFrame shape: (106, 11)
+08:46:49 [INFO] live.forward_test_results: ================================================================================
+08:46:49 [INFO] live.forward_test_results: ADDING CONFIG SHEET (CSV-STYLE TEXT VIEW)
+08:46:49 [INFO] live.forward_test_results: ================================================================================
+08:46:49 [INFO] live.forward_test_results: ✅ Using dialog_text from GUI - length: 1925
+08:46:49 [INFO] live.forward_test_results: 📄 Config sheet: 59 lines of text
+08:46:49 [INFO] live.forward_test_results: 📝 First line: ================================================================================
+08:46:49 [INFO] live.forward_test_results: ✅ Config sheet added successfully with 59 rows
+08:46:49 [INFO] live.forward_test_results: ✅ Config sheet font: 22pt (2x) bold for better readability
+08:46:49 [INFO] live.forward_test_results: ✅ Traders now have both fancy dashboard AND guaranteed text view
+08:46:49 [INFO] live.forward_test_results: ================================================================================
+08:46:50 [INFO] live.forward_test_results: ADDING SESSION LOG SHEET (AUTOMATIC - NO USER INTERVENTION)
+08:46:50 [INFO] live.forward_test_results: ================================================================================
+08:46:50 [INFO] live.forward_test_results: 📋 Retrieved GUI log text: 187056 characters
+08:46:50 [INFO] live.forward_test_results: 📋 Session log sheet: 2101 lines of log text
+08:46:50 [INFO] live.forward_test_results: 📝 First line: GUI Log initialized at 2025-10-25 08:42:45
+08:46:50 [INFO] live.forward_test_results: ✅ Session log sheet added automatically with 2101 log entries
+08:46:50 [INFO] live.forward_test_results: ✅ GUI Logs tab content saved to 3rd worksheet (SessionLog)
+08:46:50 [INFO] live.forward_test_results: ✅ Session log font: 17pt (1.5x) bold for better readability
+08:46:50 [INFO] live.forward_test_results: ================================================================================
+08:46:50 [INFO] live.forward_test_results: FORWARD TEST RESULTS EXPORT COMPLETED
+08:46:50 [INFO] live.forward_test_results: ================================================================================
+08:46:50 [INFO] live.forward_test_results: Mode detected: DATA
+08:46:50 [INFO] live.forward_test_results: Results folder: C:\Users\user\Desktop\BotResults\results\Forward Test\data
+08:46:50 [INFO] live.forward_test_results: Full file path: C:\Users\user\Desktop\BotResults\results\Forward Test\data\ft-DATA_SIMULATION_PLACEHOLDER-20251025_084649-data.xlsx
+08:46:50 [INFO] live.forward_test_results: File size: 49995 bytes
+08:46:50 [INFO] live.forward_test_results: File contains: Enhanced Excel report with dashboard + Config sheet
+08:46:50 [INFO] live.forward_test_results: ================================================================================
+08:46:50 [INFO] live.trader: File simulation results exported to: C:\Users\user\Desktop\BotResults\results\Forward Test\data\ft-DATA_SIMULATION_PLACEHOLDER-20251025_084649-data.xlsx
+

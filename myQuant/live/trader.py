@@ -648,22 +648,28 @@ class LiveTrader:
                     self.last_price = current_price
                     current_tick_row = self._create_tick_row(tick, current_price, now)
                     
+                    # Debug log every 100 ticks when in position
+                    if self._callback_tick_count % 100 == 0:
+                        logger.info(f"[DEBUG] Position active: {self.active_position_id} | Tick count: {self._callback_tick_count} | Price: ₹{current_price:.2f}")
+                    
                     try:
                         self.position_manager.process_positions(current_tick_row, now)
                     except Exception as e:
                         logger.error(f"Error in position_manager.process_positions: {e}")
+                        logger.exception("Position processing exception details:")
                     
                     # Check if position was closed by risk management
                     if self.active_position_id not in self.position_manager.positions:
                         logger.info("Position closed by risk management (TP/SL/trailing) [Direct Callback]")
                         self._update_result_box(self.result_box, f"Risk CLOSE: @ {current_price:.2f}")
-                    
-                    try:
-                        self.strategy.on_position_closed(self.active_position_id, "Risk Management")
-                    except Exception as e:
-                        logger.warning(f"Strategy notification failed: {e}")
-                    
-                    self.active_position_id = None
+                        
+                        # Notify strategy
+                        try:
+                            self.strategy.on_position_closed(self.active_position_id, "Risk Management")
+                        except Exception as e:
+                            logger.warning(f"Strategy notification failed: {e}")
+                        
+                        self.active_position_id = None
             
             # Phase 1.5: End trader measurement (normal completion)
             if _pre_convergence_instrumentor:

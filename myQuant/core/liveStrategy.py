@@ -354,6 +354,16 @@ class ModularIntradayStrategy:
         Args:
             exit_info: Dictionary containing exit details including exit_reason
         """
+        # CRITICAL: Reset position state to allow new entries
+        position_id = exit_info.get('position_id')
+        if self.position_id == position_id:
+            self.in_position = False
+            self.position_id = None
+            self.position_entry_time = None
+            self.position_entry_price = None
+            logger.debug(f"Position state reset after exit: {position_id}")
+        
+        # Handle Control Base SL logic
         if not self.control_base_sl_enabled:
             return
             
@@ -703,7 +713,8 @@ class ModularIntradayStrategy:
                         )
             
             # Check exit conditions for existing position
-            if self.in_position and self.should_exit_for_session(timestamp):
+            should_exit, exit_reason = self.should_exit_for_session(timestamp)
+            if self.in_position and should_exit:
                 # GRACEFUL: Extract price safely for live trading resilience
                 price = None
                 if 'close' in updated_tick:
@@ -716,7 +727,7 @@ class ModularIntradayStrategy:
                         action="CLOSE",
                         timestamp=timestamp,
                         price=price,
-                        reason="Session end exit"
+                        reason=f"Strategy Signal: {exit_reason}"
                     )
                 
             return None
